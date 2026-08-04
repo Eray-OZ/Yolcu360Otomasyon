@@ -1,6 +1,6 @@
 using System.Globalization;
-using System.Collections.ObjectModel;
 using Avalonia.Controls;
+using Avalonia.Data;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
 using Yolcu360Otomasyon.Models;
@@ -12,12 +12,11 @@ namespace Yolcu360Otomasyon;
 public partial class MainWindow : Window
 {
     private BrowserAutomationService? _browserAutomationService;
-    private readonly ObservableCollection<SearchResultItem> _searchResults = [];
 
     public MainWindow()
     {
         InitializeComponent();
-        ResultsDataGrid.ItemsSource = _searchResults;
+        ConfigureResultsGrid();
     }
 
     private async void SaveLoginInfoButton_Click(object? sender, RoutedEventArgs e)
@@ -145,14 +144,15 @@ public partial class MainWindow : Window
             await _browserAutomationService.ApplySearchFiltersAndSearchAsync(filter);
 
             var results = await _browserAutomationService.ReadSearchResultsAsync();
-
-            _searchResults.Clear();
-            foreach (var result in results)
-                _searchResults.Add(result);
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                ResultsDataGrid.ItemsSource = null;
+                ResultsDataGrid.ItemsSource = results.ToList();
+            });
 
             SearchStatusTextBlock.Text = results.Count == 0
                 ? "Arama tamamlandı, sonuç bulunamadı."
-                : $"{results.Count} sonuç listelendi.";
+                : $"{results.Count} sonuç listelendi. İlk sonuç: {results[0].Title} | {results[0].Price}";
         }
         catch (Exception ex)
         {
@@ -175,6 +175,68 @@ public partial class MainWindow : Window
         Dispatcher.UIThread.Post(() =>
         {
             SearchStatusTextBlock.Text = message;
+        });
+    }
+
+    private void ConfigureResultsGrid()
+    {
+        ResultsDataGrid.AutoGenerateColumns = false;
+        ResultsDataGrid.Columns.Clear();
+
+        ResultsDataGrid.Columns.Add(new DataGridTextColumn
+        {
+            Header = "Araç",
+            Binding = new Binding(nameof(SearchResultItem.Title)),
+            Width = new DataGridLength(2, DataGridLengthUnitType.Star)
+        });
+
+        ResultsDataGrid.Columns.Add(new DataGridTextColumn
+        {
+            Header = "Detay",
+            Binding = new Binding(nameof(SearchResultItem.Subtitle)),
+            Width = new DataGridLength(2, DataGridLengthUnitType.Star)
+        });
+
+        ResultsDataGrid.Columns.Add(new DataGridTextColumn
+        {
+            Header = "Toplam Fiyat",
+            Binding = new Binding(nameof(SearchResultItem.Price)),
+            Width = new DataGridLength(1, DataGridLengthUnitType.Star)
+        });
+
+        ResultsDataGrid.Columns.Add(new DataGridTextColumn
+        {
+            Header = "Günlük",
+            Binding = new Binding(nameof(SearchResultItem.DailyPrice)),
+            Width = new DataGridLength(1, DataGridLengthUnitType.Star)
+        });
+
+        ResultsDataGrid.Columns.Add(new DataGridTextColumn
+        {
+            Header = "Vites",
+            Binding = new Binding(nameof(SearchResultItem.Transmission)),
+            Width = new DataGridLength(1, DataGridLengthUnitType.Star)
+        });
+
+        ResultsDataGrid.Columns.Add(new DataGridTextColumn
+        {
+            Header = "Yakıt",
+            Binding = new Binding(nameof(SearchResultItem.FuelType)),
+            Width = new DataGridLength(1, DataGridLengthUnitType.Star)
+        });
+
+        ResultsDataGrid.Columns.Add(new DataGridTextColumn
+        {
+            Header = "Şirket",
+            Binding = new Binding(nameof(SearchResultItem.Supplier)),
+            Width = new DataGridLength(1, DataGridLengthUnitType.Star)
+        });
+
+        ResultsDataGrid.Columns.Add(new DataGridTextColumn
+        {
+            Header = "Teslim",
+            Binding = new Binding(nameof(SearchResultItem.PickupInfo)),
+            Width = new DataGridLength(2, DataGridLengthUnitType.Star)
         });
     }
 
