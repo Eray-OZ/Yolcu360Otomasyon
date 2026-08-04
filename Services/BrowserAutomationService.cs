@@ -146,6 +146,77 @@ public sealed class BrowserAutomationService : IAsyncDisposable
         await WaitForSearchResultAsync();
     }
 
+    public async Task<IReadOnlyList<SearchResultItem>> ReadSearchResultsAsync()
+    {
+        var page = GetPage();
+
+        Report("Sonuç kartları bekleniyor...");
+
+        try
+        {
+            await page.WaitForFunctionAsync(
+                """
+                () => {
+                    const cards = document.querySelectorAll('#car_card_list .car-card, .car-card');
+                    return cards.length > 0;
+                }
+                """,
+                new WaitForFunctionOptions { Timeout = 30_000 });
+        }
+        catch (WaitTaskTimeoutException)
+        {
+            var diag = await GetDiagnosticAsync();
+            throw new InvalidOperationException($"Sonuç kartları yüklenmedi. {diag}");
+        }
+
+        await WaitAsync(2_000);
+
+        Report("Sonuçlar okunuyor...");
+
+        var results = await page.EvaluateFunctionAsync<SearchResultItem[]>(
+            """
+            () => {
+                const normalize = value => (value || '').replace(/\s+/g, ' ').trim();
+
+                return Array.from(document.querySelectorAll('#car_card_list .car-card, .car-card'))
+                    .map(card => {
+                        const specs = Array.from(card.querySelectorAll('.icon-gear-type, .icon-gas-type'))
+                            .map(icon => normalize(icon.parentElement?.textContent))
+                            .filter(Boolean);
+
+                        const title = normalize(card.querySelector('.text-dark-gray.text-lg.font-bold')?.textContent);
+                        const subtitle = normalize(card.querySelector('[data-cms-key="or_similar"]')?.textContent);
+                        const price = normalize(card.querySelector('#car_total_price')?.textContent);
+                        const dailyPrice = normalize(card.querySelector('[data-cms-key="text_daily_price2"]')?.textContent);
+                        const transmission = specs.find(text => /manuel|otomatik/i.test(text)) || '';
+                        const fuelType = specs.find(text => /benzin|dizel|hibrit|elektrik/i.test(text)) || '';
+                        const supplier = normalize(card.querySelector('figure img[alt]')?.getAttribute('alt'));
+                        const pickupInfo = normalize(card.querySelector('.icon-filled')?.parentElement?.textContent);
+                        const actionText = normalize(card.querySelector('[data-cms-key="button_rent_now"]')?.textContent)
+                            || normalize(card.querySelector('button')?.textContent);
+                        const url = normalize(card.querySelector('a[href]')?.getAttribute('href'));
+
+                        return {
+                            title,
+                            subtitle,
+                            price,
+                            dailyPrice,
+                            transmission,
+                            fuelType,
+                            supplier,
+                            pickupInfo,
+                            actionText,
+                            url
+                        };
+                    })
+                    .filter(item => item.title || item.price);
+            }
+            """);
+
+        Report($"{results.Length} sonuç okundu.");
+        return results;
+    }
+
     // ─── Alış Yeri ────────────────────────────────────────────────────────────
 
     private async Task FillPickupLocationAsync(string location)

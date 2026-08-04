@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Collections.ObjectModel;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
@@ -11,10 +12,12 @@ namespace Yolcu360Otomasyon;
 public partial class MainWindow : Window
 {
     private BrowserAutomationService? _browserAutomationService;
+    private readonly ObservableCollection<SearchResultItem> _searchResults = [];
 
     public MainWindow()
     {
         InitializeComponent();
+        ResultsDataGrid.ItemsSource = _searchResults;
     }
 
     private async void SaveLoginInfoButton_Click(object? sender, RoutedEventArgs e)
@@ -141,7 +144,15 @@ public partial class MainWindow : Window
             SearchStatusTextBlock.Text = "Yolcu360 arama formu dolduruluyor...";
             await _browserAutomationService.ApplySearchFiltersAndSearchAsync(filter);
 
-            SearchStatusTextBlock.Text = "Arama tetiklendi.";
+            var results = await _browserAutomationService.ReadSearchResultsAsync();
+
+            _searchResults.Clear();
+            foreach (var result in results)
+                _searchResults.Add(result);
+
+            SearchStatusTextBlock.Text = results.Count == 0
+                ? "Arama tamamlandı, sonuç bulunamadı."
+                : $"{results.Count} sonuç listelendi.";
         }
         catch (Exception ex)
         {

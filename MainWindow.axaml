@@ -122,7 +122,30 @@
                 BorderThickness="1"
                 BorderBrush="#D0D7DE"
                 Padding="16">
+            <StackPanel Spacing="12">
+                <TextBlock Text="Arama Sonuçları"
+                           FontSize="18"
+                           FontWeight="SemiBold" />
 
+                <DataGrid x:Name="ResultsDataGrid"
+                          AutoGenerateColumns="False"
+                          IsReadOnly="True"
+                          CanUserResizeColumns="True"
+                          CanUserSortColumns="True"
+                          GridLinesVisibility="All"
+                          MinHeight="220">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Araç" Binding="{ReflectionBinding Title}" Width="2*" />
+                        <DataGridTextColumn Header="Detay" Binding="{ReflectionBinding Subtitle}" Width="2*" />
+                        <DataGridTextColumn Header="Toplam Fiyat" Binding="{ReflectionBinding Price}" Width="*" />
+                        <DataGridTextColumn Header="Günlük" Binding="{ReflectionBinding DailyPrice}" Width="*" />
+                        <DataGridTextColumn Header="Vites" Binding="{ReflectionBinding Transmission}" Width="*" />
+                        <DataGridTextColumn Header="Yakıt" Binding="{ReflectionBinding FuelType}" Width="*" />
+                        <DataGridTextColumn Header="Şirket" Binding="{ReflectionBinding Supplier}" Width="*" />
+                        <DataGridTextColumn Header="Teslim" Binding="{ReflectionBinding PickupInfo}" Width="2*" />
+                    </DataGrid.Columns>
+                </DataGrid>
+            </StackPanel>
         </Border>
     </Grid>
 </Window>
