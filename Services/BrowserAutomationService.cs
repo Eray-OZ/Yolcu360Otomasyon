@@ -1,0 +1,1037 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using PuppeteerSharp;
+using Yolcu360Otomasyon.Models;
+
+namespace Yolcu360Otomasyon.Services;
+
+public sealed class BrowserAutomationService : IAsyncDisposable
+{
+    private const string Yolcu360HomeUrl = "https://www.yolcu360.com/";
+
+    private IBrowser? _browser;
+    private IPage? _page;
+
+    public event Action<string>? ProgressChanged;
+
+    // ─── Selector Sabitleri ───────────────────────────────────────────────────
+    // Yolcu360 sayfa yapısı değişirse ilk olarak bu bölüm güncellenir.
+    private static class Selectors
+    {
+        // Login
+        public const string LoginButton        = "button[data-testid='login-button']";
+        public const string EmailInput         = "input[type='email']";
+        public const string PasswordInput      = "input[type='password']";
+        public const string SubmitLoginButton  = "button[type='submit']";
+
+        // Arama formu — canlı HTML'den doğrulanmış
+        public const string PickupLocationInput = "#inputPickUpLocation";
+
+        // Takvim (VueDatePicker): İlk .dp__main → alış tarihi, ikincisi → bırakış tarihi
+        public const string AllDatePickers      = ".dp__main.dp__theme_light";
+
+        // Alış tarihi container (modaltitlecmskey'i olan kapsayıcı)
+        public const string PickupDateContainer  = "[modaltitlecmskey='pickup_and_dropoff_date'] .dp__main.dp__theme_light";
+        // Bırakış tarihi container (cmskey olmayan ikinci group)
+        // JS ile index=1 olarak seçilecek
+
+        // Takvim menüsü (açıldıktan sonra)
+        public const string DatePickerMenu      = ".dp__menu";
+        public const string DatePickerNextMonth = ".dp__nav_btn[data-dp-element='action-next'], .dp__next_btn, button[aria-label*='Next']";
+        public const string DatePickerPrevMonth = ".dp__nav_btn[data-dp-element='action-prev'], .dp__prev_btn, button[aria-label*='Prev']";
+        public const string DatePickerMonthYear = ".dp__month_year_select, .dp__calendar_header_item--current, .dp__action_select";
+
+        // Arama butonu — id="search", data-cms-key="search"
+        public const string SearchButton = "#search";
+
+        // Filtreler (arama sonuçları sayfası)
+        public const string AutomaticTransmissionFilter = "[data-filter='automatic']";
+        public const string ManualTransmissionFilter    = "[data-filter='manual']";
+        public const string DieselFuelFilter            = "[data-filter='diesel']";
+        public const string GasolineFuelFilter          = "[data-filter='gasoline']";
+    }
+
+    // ─── Başlatma ─────────────────────────────────────────────────────────────
+
+    public async Task InitializeAsync(bool headless = true)
+    {
+        if (_browser is not null && _page is not null)
+            return;
+
+        await new BrowserFetcher().DownloadAsync();
+
+        _browser = await Puppeteer.LaunchAsync(new LaunchOptions
+        {
+            Headless = headless,
+            Args = ["--no-sandbox", "--disable-setuid-sandbox"]
+        });
+
+        _page = await _browser.NewPageAsync();
+
+        await _page.SetViewportAsync(new ViewPortOptions
+        {
+            Width  = 1440,
+            Height = 900
+        });
+    }
+
+    // ─── Login ────────────────────────────────────────────────────────────────
+
+    public async Task LoginAsync(AppUser user)
+    {
+        var page = GetPage();
+
+        await page.GoToAsync(Yolcu360HomeUrl, WaitUntilNavigation.Networkidle2);
+
+        await page.WaitForSelectorAsync(Selectors.LoginButton);
+        await page.ClickAsync(Selectors.LoginButton);
+
+        await page.WaitForSelectorAsync(Selectors.EmailInput);
+        await NativeSetInputAsync(Selectors.EmailInput, user.Email);
+
+        await page.WaitForSelectorAsync(Selectors.PasswordInput);
+        await NativeSetInputAsync(Selectors.PasswordInput, user.Password);
+
+        await page.WaitForSelectorAsync(Selectors.SubmitLoginButton);
+
+        await Task.WhenAll(
+            page.ClickAsync(Selectors.SubmitLoginButton),
+            page.WaitForNavigationAsync(new NavigationOptions
+            {
+                WaitUntil = [WaitUntilNavigation.Networkidle2],
+                Timeout   = 60_000
+            }));
+    }
+
+    // ─── Ana Arama Akışı ──────────────────────────────────────────────────────
+
+    public async Task ApplySearchFiltersAndSearchAsync(SearchFilter filter)
+    {
+        var page = GetPage();
+
+        // 1. Anasayfayı aç
+        Report("Yolcu360 ana sayfası açılıyor...");
+        await page.GoToAsync(Yolcu360HomeUrl, WaitUntilNavigation.Networkidle2);
+        await ShowDebugAsync("Sayfa açıldı.");
+
+        // 2. Nuxt hydration ısınma hareketi
+        Report("Sayfa etkileşime hazırlanıyor...");
+        await WarmUpHydrationAsync();
+
+        // 3. Alış yeri
+        Report($"Alış yeri yazılıyor: {filter.PickupLocation}");
+        await FillPickupLocationAsync(filter.PickupLocation);
+
+        // 4 + 6. Alış ve Bırakış tarihleri — tek range picker'da birlikte seç
+        Report($"Tarihler seçiliyor: {filter.PickupDate:dd.MM.yyyy} – {filter.ReturnDate:dd.MM.yyyy}");
+        await SelectDateRangeAsync(filter.PickupDate, filter.ReturnDate);
+
+        // 5. Alış saati
+        Report($"Alış saati seçiliyor: {filter.PickupTime}");
+        await SelectTimeAsync(timePickerIndex: 0, filter.PickupTime);
+
+        // 7. Bırakış saati
+        Report($"Bırakış saati seçiliyor: {filter.ReturnTime}");
+        await SelectTimeAsync(timePickerIndex: 1, filter.ReturnTime);
+
+        // 8. İsteğe bağlı filtreler
+        await ClickOptionalFilterAsync(GetTransmissionSelector(filter.TransmissionType));
+        await ClickOptionalFilterAsync(GetFuelSelector(filter.FuelType));
+
+        // 9. Arama
+        Report("Araç Ara butonuna tıklanıyor...");
+        await ClickSearchButtonAsync();
+
+        Report("Sonuç ekranı bekleniyor...");
+        await WaitForSearchResultAsync();
+    }
+
+    // ─── Alış Yeri ────────────────────────────────────────────────────────────
+
+    private async Task FillPickupLocationAsync(string location)
+    {
+        var page = GetPage();
+
+        if (string.IsNullOrWhiteSpace(location))
+            throw new InvalidOperationException("Alış yeri boş bırakılamaz.");
+
+        await page.WaitForSelectorAsync(Selectors.PickupLocationInput, new WaitForSelectorOptions
+        {
+            Visible  = true,
+            Timeout  = 30_000
+        });
+
+        // Odaklan ve temizle
+        await page.FocusAsync(Selectors.PickupLocationInput);
+        await page.EvaluateExpressionAsync("""
+            (() => {
+                const el = document.querySelector('#inputPickUpLocation');
+                el.focus();
+                el.select();
+            })();
+            """);
+
+        // Yazma sırasında form submit / beforeunload ile sayfanın yenilenmesini engelle.
+        // Yolcu360 Vue router bazı durumlarda navigation tetikleyebiliyor.
+        await page.EvaluateExpressionAsync("""
+            (() => {
+                // Form submit'i durdur
+                document.querySelectorAll('form').forEach(f => {
+                    f.__y360_submitGuard = (e) => { e.preventDefault(); e.stopImmediatePropagation(); };
+                    f.addEventListener('submit', f.__y360_submitGuard, true);
+                });
+                // Enter tuşuyla tetiklenebilecek keydown submit'i de engelle
+                window.__y360_keyGuard = (e) => {
+                    if (e.key === 'Enter' && document.activeElement?.id === 'inputPickUpLocation') {
+                        e.preventDefault();
+                        e.stopImmediatePropagation();
+                    }
+                };
+                window.addEventListener('keydown', window.__y360_keyGuard, true);
+            })();
+            """);
+
+        await page.Keyboard.TypeAsync(location, new PuppeteerSharp.Input.TypeOptions { Delay = 80 });
+
+        // Guard'ı kaldır (öneri seçildikten sonra normal davranış devam etsin)
+        await page.EvaluateExpressionAsync("""
+            (() => {
+                document.querySelectorAll('form').forEach(f => {
+                    if (f.__y360_submitGuard) {
+                        f.removeEventListener('submit', f.__y360_submitGuard, true);
+                        delete f.__y360_submitGuard;
+                    }
+                });
+                if (window.__y360_keyGuard) {
+                    window.removeEventListener('keydown', window.__y360_keyGuard, true);
+                    delete window.__y360_keyGuard;
+                }
+            })();
+            """);
+
+        // Eğer yazma sırasında navigation başladıysa geri dön ve tekrar bekle
+        if (!page.Url.Contains("yolcu360.com") || page.Url.Contains("search") || page.Url.Contains("arac-kiralama"))
+        {
+            await ShowDebugAsync("Sayfa yenilendi, anasayfaya dönülüyor...");
+            await page.GoToAsync(Yolcu360HomeUrl, WaitUntilNavigation.Networkidle2);
+            await WarmUpHydrationAsync();
+            await page.WaitForSelectorAsync(Selectors.PickupLocationInput, new WaitForSelectorOptions
+            {
+                Visible = true,
+                Timeout = 30_000
+            });
+            await page.FocusAsync(Selectors.PickupLocationInput);
+        }
+
+        // Autocomplete açılmasını bekle
+        await WaitAsync(1_500);
+
+        // Enter formu submit edip sayfayı yenileyebiliyor; öneriyi mouse ile seç.
+        var suggestionPoint = await page.EvaluateExpressionAsync<ClickPoint>("""
+            (() => {
+                const input = document.querySelector('#inputPickUpLocation');
+                if (!input) {
+                    return { found: false, enabled: false, x: 0, y: 0, text: 'input yok' };
+                }
+
+                const inputRect = input.getBoundingClientRect();
+                const visible = el => {
+                    const rect = el.getBoundingClientRect();
+                    const style = window.getComputedStyle(el);
+                    return rect.width > 0 &&
+                        rect.height > 0 &&
+                        style.display !== 'none' &&
+                        style.visibility !== 'hidden';
+                };
+
+                const candidates = Array.from(document.querySelectorAll(
+                    '[role="option"], [role="listbox"] *, .pac-item, li, button, div'
+                ))
+                    .filter(el => {
+                        if (!visible(el)) return false;
+                        if (el === input || el.contains(input)) return false;
+
+                        const rect = el.getBoundingClientRect();
+                        const text = el.textContent.trim();
+
+                        return text.length > 1 &&
+                            rect.top >= inputRect.bottom - 8 &&
+                            rect.left < inputRect.right + 500 &&
+                            rect.right > inputRect.left;
+                    })
+                    .sort((a, b) => {
+                        const ar = a.getBoundingClientRect();
+                        const br = b.getBoundingClientRect();
+                        return ar.top === br.top ? ar.left - br.left : ar.top - br.top;
+                    });
+
+                const target = candidates[0];
+                if (!target) {
+                    return { found: false, enabled: false, x: 0, y: 0, text: 'öneri bulunamadı' };
+                }
+
+                target.scrollIntoView({ block: 'center', inline: 'center' });
+                const rect = target.getBoundingClientRect();
+
+                return {
+                    found: true,
+                    enabled: true,
+                    x: rect.left + Math.min(rect.width / 2, 220),
+                    y: rect.top + rect.height / 2,
+                    text: target.textContent.trim()
+                };
+            })();
+            """);
+
+        if (!suggestionPoint.Found)
+            throw new InvalidOperationException(
+                $"Alış yeri önerisi bulunamadı. Yazılan değer: {location}");
+
+        await page.Mouse.ClickAsync(suggestionPoint.X, suggestionPoint.Y);
+
+        // Seçimin kabul edilip edilmediğini doğrula
+        await WaitAsync(800);
+        var value = await page.EvaluateExpressionAsync<string>(
+            "document.querySelector('#inputPickUpLocation')?.value || ''");
+
+        if (string.IsNullOrWhiteSpace(value))
+            throw new InvalidOperationException(
+                $"Alış yeri '{location}' girilemedi. Autocomplete listesinden geçerli bir konum seçilmesi gerekiyor.");
+
+        Report($"Alış yeri seçildi: {value}");
+        await ShowDebugAsync($"Alış yeri: {value}");
+
+        // Autocomplete/listbox açık kalırsa sonraki tarih tıklamasını engelleyebilir.
+        await page.Keyboard.PressAsync("Escape");
+        await page.EvaluateExpressionAsync("document.activeElement?.blur();");
+        await WaitAsync(300);
+    }
+
+    // ─── Tarih Seçimi (VueDatePicker) ────────────────────────────────────────
+
+    /// <summary>
+    /// Range picker'da alış ve bırakış tarihlerini tek seferde seçer.
+    /// Yolcu360, iki tarihi tek bir VueDatePicker range bileşeninde gösteriyor;
+    /// picker ikinci kez açılınca ilk seçim sıfırlanıyor. Bu metot takvimi
+    /// yalnızca bir kez açıp ardışık iki tarihi seçer.
+    /// </summary>
+    private async Task SelectDateRangeAsync(DateTime pickupDate, DateTime returnDate)
+    {
+        var page = GetPage();
+
+        // Alış tarihi picker'a tıkla (range picker'ı açar)
+        var pickerPoint = await page.EvaluateExpressionAsync<ClickPoint>("""
+            (() => {
+                const labelEl = Array.from(document.querySelectorAll('span, div'))
+                    .find(el => el.textContent.trim() === 'Alış Tarihi');
+                const picker = labelEl?.closest('.dp__main.dp__theme_light');
+                if (!picker) return { found: false, enabled: false, x: 0, y: 0, text: '' };
+                picker.scrollIntoView({ block: 'center', inline: 'center' });
+                const rect = picker.getBoundingClientRect();
+                return { found: true, enabled: rect.width > 0 && rect.height > 0,
+                         x: rect.left + rect.width / 2, y: rect.top + rect.height / 2, text: '' };
+            })();
+            """);
+
+        if (!pickerPoint.Found || !pickerPoint.Enabled)
+            throw new InvalidOperationException("Alış Tarihi picker bulunamadı.");
+
+        await page.Mouse.ClickAsync(pickerPoint.X, pickerPoint.Y);
+
+        // Takvim mensünün açılmasını bekle
+        await page.WaitForSelectorAsync(Selectors.DatePickerMenu, new WaitForSelectorOptions
+        {
+            Visible = true,
+            Timeout = 10_000
+        });
+        await ShowDebugAsync($"Takvim açıldı. Hedef: {pickupDate:dd.MM.yyyy} – {returnDate:dd.MM.yyyy}");
+
+        // Alış tarihi için doğru aya git
+        await NavigateToMonthAsync(pickupDate);
+
+        // Alış gününü seç (range başlatılır, takvim kapanmaz)
+        var pickupSelected = await ClickCalendarDayAsync(pickupDate);
+        if (!pickupSelected)
+            throw new InvalidOperationException($"Alış tarihi {pickupDate:dd.MM.yyyy} seçilemedi.");
+
+        Report($"Alış tarihi seçildi: {pickupDate:dd.MM.yyyy}");
+        await ShowDebugAsync($"Alış tarihi seçildi: {pickupDate:dd.MM.yyyy}");
+
+        // Takvim hâlâ açık — range'in ikinci parçası (bırakış) için bekliyoruz.
+        await WaitAsync(400);
+
+        // Eğer bırakış tarihi farklı bir ayda ise ona navige et
+        if (returnDate.Year != pickupDate.Year || returnDate.Month != pickupDate.Month)
+        {
+            await NavigateToMonthAsync(returnDate);
+            await WaitAsync(300);
+        }
+
+        // Bırakış gününü seç (range tamamlanır, takvim kapanır)
+        var returnSelected = await ClickCalendarDayAsync(returnDate);
+        if (!returnSelected)
+            throw new InvalidOperationException($"Bırakış tarihi {returnDate:dd.MM.yyyy} seçilemedi.");
+
+        Report($"Bırakış tarihi seçildi: {returnDate:dd.MM.yyyy}");
+        await ShowDebugAsync($"Bırakış tarihi seçildi: {returnDate:dd.MM.yyyy}");
+        await WaitAsync(500);
+    }
+
+    /// <summary>
+    /// Açık .dp__menu içinde hedef tarihin gününü bulup tıklar.
+    /// </summary>
+    private async Task<bool> ClickCalendarDayAsync(DateTime date)
+    {
+        var page      = GetPage();
+        var dayJson   = JsonSerializer.Serialize(date.Day);
+        var monthJson = JsonSerializer.Serialize(
+            new[] { "Ocak","Şubat","Mart","Nisan","Mayıs","Haziran",
+                    "Temmuz","Ağustos","Eylül","Ekim","Kasım","Aralık" }[date.Month - 1]);
+        var yearJson  = JsonSerializer.Serialize(date.Year.ToString());
+
+        return await page.EvaluateExpressionAsync<bool>($$"""
+            (() => {
+                const menu = Array.from(document.querySelectorAll('.dp__menu'))
+                    .find(m => window.getComputedStyle(m).display !== 'none' && m.getBoundingClientRect().width > 0);
+                if (!menu) return false;
+
+                const dayTarget   = {{dayJson}};
+                const monthTarget = {{monthJson}};
+                const yearTarget  = {{yearJson}};
+
+                // İki aylı gösterimde hedef aya ait .dp__calendar panel ini bul.
+                const allCalendars = Array.from(menu.querySelectorAll('.dp__calendar'));
+                let searchRoot = allCalendars.length > 0 ? null : menu;
+
+                for (const cal of allCalendars) {
+                    // Panel başlığında ay ismini ara
+                    const hdr = cal.querySelector('.dp__month_year_select');
+                    const hdrText = hdr?.textContent?.trim() ?? '';
+                    if (hdrText.includes(monthTarget) && hdrText.includes(yearTarget)) {
+                        searchRoot = cal;
+                        break;
+                    }
+                }
+
+                // Fallback: tüm menu
+                if (!searchRoot) searchRoot = menu;
+
+                // Çoklu selector stratejisi
+                const SELECTORS = [
+                    '.dp__cell_inner',
+                    '.dp__calendar_item button',
+                    '.dp__calendar_item > div',
+                    '.dp__calendar_item',
+                ];
+
+                for (const sel of SELECTORS) {
+                    const candidates = Array.from(searchRoot.querySelectorAll(sel))
+                        .filter(c => {
+                            const text = c.textContent.trim();
+                            const num  = parseInt(text, 10);
+                            if (!text || isNaN(num)) return false;
+                            const item = c.closest('.dp__calendar_item') ?? c;
+                            return !item.classList.contains('dp__cell_offset') &&
+                                   !c.classList.contains('dp__cell_offset');
+                        });
+
+                    const cell = candidates.find(c => parseInt(c.textContent.trim(), 10) === dayTarget);
+                    if (cell) {
+                        cell.scrollIntoView({ block: 'nearest' });
+                        cell.click();
+                        return true;
+                    }
+                }
+
+                return false;
+            })();
+            """);
+    }
+
+    /// <summary>
+    /// Açık takvimdeki ay/yıl başlığını okuyup hedef aya ulaşana dek ok tuşlarına basar.
+    /// </summary>
+    private async Task NavigateToMonthAsync(DateTime target)
+    {
+        var page = GetPage();
+
+        for (var attempt = 0; attempt < 24; attempt++)
+        {
+            var currentText = await page.EvaluateExpressionAsync<string>($$"""
+                (() => {
+                    // Açık .dp__menu içindeki ay/yıl butonlarını oku.
+                    // Tüm DOM'dan okumak birden fazla takvim varsa yanlış ay gösterir.
+                    const menu = Array.from(document.querySelectorAll('.dp__menu'))
+                        .find(m => {
+                            const s = window.getComputedStyle(m);
+                            const r = m.getBoundingClientRect();
+                            return s.display !== 'none' && s.visibility !== 'hidden' && r.width > 0;
+                        });
+                    if (!menu) return '';
+                    const headers = Array.from(menu.querySelectorAll('.dp__month_year_select'));
+                    return headers.map(h => h.textContent.trim()).join(' ');
+                })();
+                """);
+
+            if (IsTargetMonthVisible(currentText, target))
+                break;
+
+            // Hedef geçmişte mi, gelecekte mi?
+            if (ShouldGoBack(currentText, target))
+                await ClickCalendarNavAsync(forward: false);
+            else
+                await ClickCalendarNavAsync(forward: true);
+
+            await WaitAsync(300);
+        }
+    }
+
+    private async Task ClickCalendarNavAsync(bool forward)
+    {
+        var page = GetPage();
+        var selector = forward
+            ? ".dp__arrow_top, [data-dp-element='action-next'], button.dp__btn:last-of-type"
+            : ".dp__arrow_top, [data-dp-element='action-prev'], button.dp__btn:first-of-type";
+
+        // Yön düğmelerini metinle de bulmaya çalış
+        var clicked = await page.EvaluateExpressionAsync<bool>($$"""
+            (() => {
+                // Önce data-dp-element
+                const next = document.querySelector("[data-dp-element='action-next']");
+                const prev = document.querySelector("[data-dp-element='action-prev']");
+                const btn  = {{(forward ? "next" : "prev")}};
+                if (btn) { btn.click(); return true; }
+
+                // Yoksa SVG içeren ileri/geri butonları dene
+                const navBtns = Array.from(document.querySelectorAll('.dp__nav_btn'));
+                const target  = {{(forward ? "navBtns[navBtns.length - 1]" : "navBtns[0]")}};
+                if (target) { target.click(); return true; }
+
+                return false;
+            })();
+            """);
+
+        if (!clicked)
+            await ShowDebugAsync("Takvim navigasyon butonu bulunamadı.");
+    }
+
+    // ─── Saat Seçimi ──────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Yolcu360'ın özel saat dropdown'ını açıp istenilen saati seçer.
+    /// timePickerIndex: 0 = Alış Saati, 1 = Bırakış Saati
+    /// </summary>
+    private async Task SelectTimeAsync(int timePickerIndex, string time)
+    {
+        var page = GetPage();
+
+        if (string.IsNullOrWhiteSpace(time))
+            return;
+
+        var timeJson  = JsonSerializer.Serialize(time.Trim());
+        var indexJson = JsonSerializer.Serialize(timePickerIndex);
+
+        // Saat kutusu: her tarih grubundaki ikinci büyük div (alış=0, bırakış=1)
+        var opened = await page.EvaluateExpressionAsync<bool>($$"""
+            (() => {
+                // Her iki büyük tarih+saat grubu
+                const groups = document.querySelectorAll(
+                    '[modaltitle="Alış ve Bırakış Tarihi"]');
+                const group  = groups[{{indexJson}}];
+                if (!group) return false;
+
+                // Grup içindeki ikinci büyük div = saat kutusu
+                const timeBox = group.querySelectorAll(':scope > div')[1];
+                if (!timeBox) return false;
+
+                timeBox.click();
+                return true;
+            })();
+            """);
+
+        if (!opened)
+        {
+            await ShowDebugAsync($"Saat picker[{timePickerIndex}] açılamadı, atlanıyor.");
+            return;
+        }
+
+        await WaitAsync(500);
+
+        // Dropdown içinden zaman seçeneğini bul ve tıkla
+        var selected = await page.EvaluateExpressionAsync<bool>($$"""
+            (() => {
+                const target = {{timeJson}};
+
+                // Açık dropdown option'larını tara
+                const options = Array.from(document.querySelectorAll(
+                    '.dropdown-item, [role="option"], li, .time-option'));
+
+                const found = options.find(o =>
+                    o.textContent.trim() === target ||
+                    o.textContent.trim().startsWith(target));
+
+                if (found) { found.click(); return true; }
+
+                // Fallback: tüm görünür buton ve li'lerde ara
+                const all = Array.from(document.querySelectorAll('div, li, span, button'))
+                    .filter(el => {
+                        const t = el.textContent.trim();
+                        return (t === target || t.startsWith(target)) && el.children.length === 0;
+                    });
+
+                if (all.length > 0) { all[0].click(); return true; }
+                return false;
+            })();
+            """);
+
+        if (!selected)
+            await ShowDebugAsync($"Saat '{time}' dropdown'da bulunamadı, varsayılan bırakıldı.");
+        else
+            await ShowDebugAsync($"Saat seçildi: {time}");
+
+        await WaitAsync(300);
+    }
+
+    // ─── Arama Butonu ─────────────────────────────────────────────────────────
+
+    private async Task ClickSearchButtonAsync()
+    {
+        var page = GetPage();
+
+        await page.WaitForSelectorAsync(Selectors.SearchButton, new WaitForSelectorOptions
+        {
+            Visible = true,
+            Timeout = 30_000
+        });
+
+        // Açık dropdown/takvim varsa kapat; üstte kalıp buton tıklamasını yutmasın.
+        await page.Keyboard.PressAsync("Escape");
+        await WaitAsync(250);
+
+        var clickPoint = await page.EvaluateExpressionAsync<ClickPoint>("""
+            (() => {
+                const btn = document.querySelector('#search');
+                if (!btn) {
+                    return { found: false, enabled: false, x: 0, y: 0, text: '' };
+                }
+
+                btn.scrollIntoView({ block: 'center', inline: 'center' });
+
+                const rect = btn.getBoundingClientRect();
+                const style = window.getComputedStyle(btn);
+                const enabled =
+                    !btn.disabled &&
+                    btn.getAttribute('aria-disabled') !== 'true' &&
+                    style.pointerEvents !== 'none' &&
+                    rect.width > 0 &&
+                    rect.height > 0;
+
+                return {
+                    found: true,
+                    enabled,
+                    x: rect.left + rect.width / 2,
+                    y: rect.top + rect.height / 2,
+                    text: btn.textContent.trim()
+                };
+            })();
+            """);
+
+        if (!clickPoint.Found)
+            throw new InvalidOperationException("Araç Ara butonu DOM'da bulunamadı.");
+
+        if (!clickPoint.Enabled)
+            throw new InvalidOperationException($"Araç Ara butonu pasif görünüyor. Buton yazısı: {clickPoint.Text}");
+
+        var beforeUrl = page.Url;
+
+        // Önce gerçek fare tıklaması yapılıyor.
+        await page.Mouse.ClickAsync(clickPoint.X, clickPoint.Y);
+        await WaitAsync(750);
+
+        var changedAfterMouseClick = await HasSearchStartedAsync(beforeUrl);
+
+        if (!changedAfterMouseClick)
+        {
+            // Framework listener'ları için pointer/mouse/click olaylarını sırayla gönder.
+            await page.EvaluateExpressionAsync("""
+                (() => {
+                    const btn = document.querySelector('#search');
+                    if (!btn) return;
+
+                    btn.scrollIntoView({ block: 'center', inline: 'center' });
+                    btn.focus();
+
+                    btn.dispatchEvent(new PointerEvent('pointerdown', {
+                        bubbles: true,
+                        cancelable: true,
+                        pointerType: 'mouse',
+                        isPrimary: true
+                    }));
+                    btn.dispatchEvent(new MouseEvent('mousedown', {
+                        bubbles: true,
+                        cancelable: true,
+                        view: window
+                    }));
+                    btn.dispatchEvent(new PointerEvent('pointerup', {
+                        bubbles: true,
+                        cancelable: true,
+                        pointerType: 'mouse',
+                        isPrimary: true
+                    }));
+                    btn.dispatchEvent(new MouseEvent('mouseup', {
+                        bubbles: true,
+                        cancelable: true,
+                        view: window
+                    }));
+                    btn.dispatchEvent(new MouseEvent('click', {
+                        bubbles: true,
+                        cancelable: true,
+                        view: window
+                    }));
+                    btn.click();
+                })();
+                """);
+
+            await WaitAsync(750);
+        }
+
+        if (!await HasSearchStartedAsync(beforeUrl))
+        {
+            var diag = await GetDiagnosticAsync();
+            throw new InvalidOperationException($"Araç Ara butonu tıklandı ama sayfa aramayı başlatmadı. {diag}");
+        }
+
+        Report("Araç Ara butonu tıklandı.");
+        await ShowDebugAsync("Araç Ara butonu tıklandı.");
+    }
+
+    private async Task<bool> HasSearchStartedAsync(string beforeUrl)
+    {
+        var page = GetPage();
+
+        return await page.EvaluateExpressionAsync<bool>($$"""
+            (() => {
+                const beforeUrl = {{JsonSerializer.Serialize(beforeUrl)}};
+                const text = document.body.innerText.toLocaleLowerCase('tr-TR');
+
+                return window.location.href !== beforeUrl
+                    || window.location.href.includes('search')
+                    || window.location.href.includes('arac-kiralama')
+                    || window.location.href.includes('list')
+                    || text.includes('sonuç')
+                    || text.includes('araç bulundu')
+                    || text.includes('kirala')
+                    || text.includes('lütfen bir alış yeri seçin');
+            })();
+            """);
+    }
+
+    // ─── Sonuç Bekleme ────────────────────────────────────────────────────────
+
+    private async Task WaitForSearchResultAsync()
+    {
+        var page = GetPage();
+
+        try
+        {
+            await page.WaitForFunctionAsync(
+                """
+                () => {
+                    const text = document.body.innerText.toLocaleLowerCase('tr-TR');
+                    return window.location.href.includes('search')
+                        || window.location.href.includes('arac-kiralama')
+                        || window.location.href.includes('list')
+                        || text.includes('tl')
+                        || text.includes('araç bulundu')
+                        || text.includes('kirala')
+                        || text.includes('lütfen bir alış yeri seçin');
+                }
+                """,
+                new WaitForFunctionOptions { Timeout = 20_000 });
+        }
+        catch (WaitTaskTimeoutException)
+        {
+            var diag = await GetDiagnosticAsync();
+            throw new InvalidOperationException($"Arama tetiklendi ama sonuç gelmedi. {diag}");
+        }
+
+        var bodyText = await GetBodyTextAsync();
+
+        if (bodyText.Contains("Lütfen bir alış yeri seçin", StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException(
+                "Yolcu360, alış yeri seçimini geçersiz saydı. " +
+                "Autocomplete listesinden kayıtlı bir konum seçilmesi gerekiyor.");
+    }
+
+    // ─── Filtreler ────────────────────────────────────────────────────────────
+
+    private async Task ClickOptionalFilterAsync(string? selector)
+    {
+        if (string.IsNullOrWhiteSpace(selector))
+            return;
+
+        var page = GetPage();
+
+        try
+        {
+            await page.WaitForSelectorAsync(selector, new WaitForSelectorOptions
+            {
+                Visible = true,
+                Timeout = 8_000
+            });
+
+            await page.EvaluateExpressionAsync($$"""
+                (() => {
+                    const el = document.querySelector({{JsonSerializer.Serialize(selector)}});
+                    el?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
+                })();
+                """);
+        }
+        catch (WaitTaskTimeoutException)
+        {
+            // Filtre DOM'da yoksa akış devam eder.
+        }
+    }
+
+    private static string? GetTransmissionSelector(string transmissionType) =>
+        transmissionType.Trim().ToLowerInvariant() switch
+        {
+            "automatic" or "otomatik" => Selectors.AutomaticTransmissionFilter,
+            "manual"    or "manuel"   => Selectors.ManualTransmissionFilter,
+            _                         => null
+        };
+
+    private static string? GetFuelSelector(string fuelType) =>
+        fuelType.Trim().ToLowerInvariant() switch
+        {
+            "diesel"  or "dizel"  => Selectors.DieselFuelFilter,
+            "gasoline" or "benzin" => Selectors.GasolineFuelFilter,
+            _                      => null
+        };
+
+    // ─── Yardımcı Metotlar ────────────────────────────────────────────────────
+
+    /// <summary>Nuxt SSR hydration'ın tamamlanması için küçük bir fare hareketi yapar.</summary>
+    private async Task WarmUpHydrationAsync()
+    {
+        var page = GetPage();
+        await page.Mouse.MoveAsync(20, 20);
+        await page.Mouse.ClickAsync(20, 20);
+
+        try
+        {
+            await page.WaitForFunctionAsync(
+                "() => document.readyState === 'complete' && !!document.querySelector('#inputPickUpLocation')",
+                new WaitForFunctionOptions { Timeout = 10_000 });
+        }
+        catch
+        {
+            // Hydration sinyali okunamazsa arama yine denenecek.
+        }
+    }
+
+    /// <summary>Vue native setter + olay zincirleme — React/Vue formları için.</summary>
+    private async Task NativeSetInputAsync(string selector, string value)
+    {
+        var page      = GetPage();
+        var selJson   = JsonSerializer.Serialize(selector);
+        var valJson   = JsonSerializer.Serialize(value);
+
+        await page.EvaluateExpressionAsync($$"""
+            (() => {
+                const el = document.querySelector({{selJson}});
+                if (!el) throw new Error('Element not found: ' + {{selJson}});
+
+                const proto = el instanceof HTMLTextAreaElement
+                    ? HTMLTextAreaElement.prototype
+                    : HTMLInputElement.prototype;
+
+                Object.getOwnPropertyDescriptor(proto, 'value').set.call(el, {{valJson}});
+                el.dispatchEvent(new Event('input',  { bubbles: true }));
+                el.dispatchEvent(new Event('change', { bubbles: true }));
+                el.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true }));
+            })();
+            """);
+    }
+
+    private void Report(string message) => ProgressChanged?.Invoke(message);
+
+    private async Task ShowDebugAsync(string message)
+    {
+        var page    = GetPage();
+        var msgJson = JsonSerializer.Serialize(message);
+
+        await page.EvaluateExpressionAsync($$"""
+            (() => {
+                let panel = document.querySelector('#_y360_debug');
+                if (!panel) {
+                    panel = document.createElement('div');
+                    panel.id = '_y360_debug';
+                    Object.assign(panel.style, {
+                        position: 'fixed', left: '12px', top: '12px',
+                        zIndex: '2147483647', padding: '10px 14px',
+                        background: '#111827', color: '#f9fafb',
+                        font: '13px -apple-system, sans-serif', borderRadius: '8px',
+                        boxShadow: '0 8px 24px rgba(0,0,0,.35)', maxWidth: '520px'
+                    });
+                    document.body.appendChild(panel);
+                }
+                panel.textContent = {{msgJson}};
+            })();
+            """);
+    }
+
+    private async Task<string> GetBodyTextAsync()
+    {
+        var page = GetPage();
+        return await page.EvaluateExpressionAsync<string>(
+            "document.body?.innerText || ''");
+    }
+
+    private async Task<string> GetDiagnosticAsync()
+    {
+        var page = GetPage();
+        var url  = page.Url;
+        var text = (await GetBodyTextAsync())
+            .Replace('\n', ' ')
+            .Replace('\r', ' ');
+
+        if (text.Length > 240)
+            text = text[..240];
+
+        return $"URL: {url}. Sayfa: {text}";
+    }
+
+    private static Task WaitAsync(int ms) => Task.Delay(ms);
+
+    // ─── Takvim Yardımcıları ──────────────────────────────────────────────────
+
+    private static bool IsTargetMonthVisible(string headerText, DateTime target)
+    {
+        if (string.IsNullOrWhiteSpace(headerText))
+            return false;
+
+        var turkishMonths = new[]
+        {
+            "Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran",
+            "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"
+        };
+
+        var monthName = turkishMonths[target.Month - 1];
+        var yearStr   = target.Year.ToString();
+
+        return headerText.Contains(monthName, StringComparison.OrdinalIgnoreCase)
+            && headerText.Contains(yearStr);
+    }
+
+    private static bool DoesDisplayedDateLookLikeTarget(string displayedText, DateTime target)
+    {
+        if (string.IsNullOrWhiteSpace(displayedText))
+            return false;
+
+        var turkishMonths = new[]
+        {
+            "Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran",
+            "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"
+        };
+
+        var compact = displayedText
+            .Replace('\n', ' ')
+            .Replace('\r', ' ')
+            .Trim();
+
+        var day = target.Day.ToString();
+        var dayWithZero = target.Day.ToString("00");
+        var month = target.Month.ToString();
+        var monthWithZero = target.Month.ToString("00");
+        var year = target.Year.ToString();
+        var monthName = turkishMonths[target.Month - 1];
+
+        return compact.Contains(target.ToString("yyyy-MM-dd"), StringComparison.OrdinalIgnoreCase)
+            || compact.Contains(target.ToString("dd.MM.yyyy"), StringComparison.OrdinalIgnoreCase)
+            || compact.Contains(target.ToString("d.M.yyyy"), StringComparison.OrdinalIgnoreCase)
+            || (
+                compact.Contains(year, StringComparison.OrdinalIgnoreCase)
+                && compact.Contains(monthName, StringComparison.OrdinalIgnoreCase)
+                && (
+                    compact.Contains($" {day} ", StringComparison.OrdinalIgnoreCase)
+                    || compact.Contains($" {day}.", StringComparison.OrdinalIgnoreCase)
+                    || compact.Contains($"{day} {monthName}", StringComparison.OrdinalIgnoreCase)
+                )
+            )
+            || (
+                compact.Contains(year, StringComparison.OrdinalIgnoreCase)
+                && (compact.Contains($".{monthWithZero}.", StringComparison.OrdinalIgnoreCase)
+                    || compact.Contains($".{month}.", StringComparison.OrdinalIgnoreCase))
+                && (compact.Contains(dayWithZero, StringComparison.OrdinalIgnoreCase)
+                    || compact.Contains(day, StringComparison.OrdinalIgnoreCase))
+            );
+    }
+
+    private static bool ShouldGoBack(string headerText, DateTime target)
+    {
+        if (string.IsNullOrWhiteSpace(headerText))
+            return false;
+
+        // Yıl sayısı eşleşmiyorsa karşılaştır
+        foreach (var part in headerText.Split(' '))
+        {
+            if (int.TryParse(part, out var year))
+            {
+                if (year > target.Year) return true;
+                if (year < target.Year) return false;
+                break;
+            }
+        }
+
+        // Aynı yıl — ay indeksine göre karar ver
+        var turkishMonths = new[]
+        {
+            "Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran",
+            "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"
+        };
+
+        for (var i = 0; i < turkishMonths.Length; i++)
+        {
+            if (headerText.Contains(turkishMonths[i], StringComparison.OrdinalIgnoreCase))
+                return (i + 1) > target.Month;
+        }
+
+        return false;
+    }
+
+    // ─── IAsyncDisposable ─────────────────────────────────────────────────────
+
+    private IPage GetPage()
+    {
+        return _page ?? throw new InvalidOperationException(
+            "InitializeAsync çağrılmadan tarayıcı kullanılamaz.");
+    }
+
+    private sealed class ClickPoint
+    {
+        [JsonPropertyName("found")]
+        public bool Found { get; init; }
+
+        [JsonPropertyName("enabled")]
+        public bool Enabled { get; init; }
+
+        [JsonPropertyName("x")]
+        public decimal X { get; init; }
+
+        [JsonPropertyName("y")]
+        public decimal Y { get; init; }
+
+        [JsonPropertyName("text")]
+        public string Text { get; init; } = "";
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_page is not null)
+            await _page.CloseAsync();
+
+        if (_browser is not null)
+            await _browser.CloseAsync();
+    }
+}

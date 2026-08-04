@@ -1,0 +1,138 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        x:Class="Yolcu360Otomasyon.MainWindow"
+        Title="Yolcu360 Otomasyon"
+        Width="900"
+        Height="520">
+    <Grid RowDefinitions="Auto,Auto,*" Margin="24" RowSpacing="18">
+        <StackPanel Spacing="12">
+            <TextBlock Text="Yolcu360 Login"
+                       FontSize="24"
+                       FontWeight="SemiBold" />
+
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                <StackPanel Spacing="6">
+                    <TextBlock Text="E-posta" />
+                    <TextBox x:Name="EmailTextBox"
+                             PlaceholderText="mail@example.com" />
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" Spacing="6">
+                    <TextBlock Text="Şifre" />
+                    <TextBox x:Name="PasswordTextBox"
+                             PasswordChar="*"
+                             PlaceholderText="Yolcu360 şifresi" />
+                </StackPanel>
+            </Grid>
+
+            <StackPanel Orientation="Horizontal" Spacing="12">
+                <Button x:Name="SaveLoginInfoButton"
+                        Content="Bilgileri Kaydet"
+                        Click="SaveLoginInfoButton_Click" />
+
+                <Button x:Name="LoginButton"
+                        Content="Giriş Yap"
+                        Click="LoginButton_Click" />
+
+                <TextBlock x:Name="StatusTextBlock"
+                           VerticalAlignment="Center"
+                           Text="Hazır" />
+            </StackPanel>
+        </StackPanel>
+
+        <Border Grid.Row="1"
+                BorderThickness="1"
+                BorderBrush="#D0D7DE"
+                Padding="16">
+            <StackPanel Spacing="12">
+                <TextBlock Text="Arama ve Filtreleme"
+                           FontSize="18"
+                           FontWeight="SemiBold" />
+
+                <Grid ColumnDefinitions="*,*,*" ColumnSpacing="12">
+                    <StackPanel Spacing="6">
+                        <TextBlock Text="Alış yeri" />
+                        <TextBox x:Name="PickupLocationTextBox"
+                                 PlaceholderText="Düzce" />
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="1" Spacing="6">
+                        <TextBlock Text="Alış tarihi" />
+                        <TextBox x:Name="PickupDateTextBox"
+                                 PlaceholderText="2026-08-10" />
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="2" Spacing="6">
+                        <TextBlock Text="Dönüş tarihi" />
+                        <TextBox x:Name="ReturnDateTextBox"
+                                 PlaceholderText="2026-08-12" />
+                    </StackPanel>
+                </Grid>
+
+                <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="12">
+                    <StackPanel Spacing="6">
+                        <TextBlock Text="Alış saati" />
+                        <TextBox x:Name="PickupTimeTextBox"
+                                 Text="10:00" />
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="1" Spacing="6">
+                        <TextBlock Text="Dönüş saati" />
+                        <TextBox x:Name="ReturnTimeTextBox"
+                                 Text="18:00" />
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="2" Spacing="6">
+                        <TextBlock Text="Vites" />
+                        <ComboBox x:Name="TransmissionComboBox"
+                                  SelectedIndex="0">
+                            <ComboBoxItem Content="Farketmez" Tag="" />
+                            <ComboBoxItem Content="Otomatik" Tag="otomatik" />
+                            <ComboBoxItem Content="Manuel" Tag="manuel" />
+                        </ComboBox>
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="3" Spacing="6">
+                        <TextBlock Text="Yakıt" />
+                        <ComboBox x:Name="FuelComboBox"
+                                  SelectedIndex="0">
+                            <ComboBoxItem Content="Farketmez" Tag="" />
+                            <ComboBoxItem Content="Dizel" Tag="dizel" />
+                            <ComboBoxItem Content="Benzin" Tag="benzin" />
+                        </ComboBox>
+                    </StackPanel>
+                </Grid>
+
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                    <Button x:Name="SearchButton"
+                            Content="Ara"
+                            Click="SearchButton_Click" />
+
+                    <TextBlock x:Name="SearchStatusTextBlock"
+                               VerticalAlignment="Center"
+                               Text="Arama hazır" />
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
+        <Border Grid.Row="2"
+                BorderThickness="1"
+                BorderBrush="#D0D7DE"
+                Padding="16">
+            <StackPanel Spacing="8">
+                <TextBlock Text="Login akışı"
+                           FontSize="18"
+                           FontWeight="SemiBold" />
+
+                <TextBlock Text="1. MySQL users tablosundan ilk kullanıcı okunur." />
+                <TextBlock Text="2. Puppeteer-Sharp arka planda Chromium başlatır." />
+                <TextBlock Text="3. Yolcu360 giriş ekranı açılır." />
+                <TextBlock Text="4. E-posta ve şifre JS enjeksiyonu ile inputlara yazılır." />
+                <TextBlock Text="5. input/change eventleri gönderilir ve giriş butonu tetiklenir." />
+            </StackPanel>
+        </Border>
+    </Grid>
+</Window>
