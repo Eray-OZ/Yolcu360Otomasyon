@@ -122,17 +122,7 @@
                 BorderThickness="1"
                 BorderBrush="#D0D7DE"
                 Padding="16">
-            <StackPanel Spacing="8">
-                <TextBlock Text="Login akışı"
-                           FontSize="18"
-                           FontWeight="SemiBold" />
 
-                <TextBlock Text="1. MySQL users tablosundan ilk kullanıcı okunur." />
-                <TextBlock Text="2. Puppeteer-Sharp arka planda Chromium başlatır." />
-                <TextBlock Text="3. Yolcu360 giriş ekranı açılır." />
-                <TextBlock Text="4. E-posta ve şifre JS enjeksiyonu ile inputlara yazılır." />
-                <TextBlock Text="5. input/change eventleri gönderilir ve giriş butonu tetiklenir." />
-            </StackPanel>
         </Border>
     </Grid>
 </Window>

@@ -224,10 +224,33 @@ public sealed class BrowserAutomationService : IAsyncDisposable
         }
 
         // Autocomplete açılmasını bekle
-        await WaitAsync(1_500);
+        try
+        {
+            await page.WaitForFunctionAsync(
+                """
+                () => {
+                    const items = Array.from(document.querySelectorAll('.search-autocomplete .location-item'));
+                    return items.some(el => {
+                        const rect = el.getBoundingClientRect();
+                        const style = window.getComputedStyle(el);
+                        return rect.width > 0 &&
+                            rect.height > 0 &&
+                            style.display !== 'none' &&
+                            style.visibility !== 'hidden';
+                    });
+                }
+                """,
+                new WaitForFunctionOptions { Timeout = 6_000 });
+        }
+        catch (WaitTaskTimeoutException)
+        {
+            await ShowDebugAsync("Alış yeri menüsü görünmedi, genel fallback deneniyor.");
+            await WaitAsync(1_500);
+        }
 
         // Enter formu submit edip sayfayı yenileyebiliyor; öneriyi mouse ile seç.
-        var suggestionPoint = await page.EvaluateExpressionAsync<ClickPoint>("""
+        var locationJson = JsonSerializer.Serialize(location);
+        var suggestionPoint = await page.EvaluateExpressionAsync<ClickPoint>($$"""
             (() => {
                 const input = document.querySelector('#inputPickUpLocation');
                 if (!input) {
@@ -244,9 +267,14 @@ public sealed class BrowserAutomationService : IAsyncDisposable
                         style.visibility !== 'hidden';
                 };
 
-                const candidates = Array.from(document.querySelectorAll(
-                    '[role="option"], [role="listbox"] *, .pac-item, li, button, div'
-                ))
+                const normalize = text => text
+                    .toLocaleLowerCase('tr-TR')
+                    .replace(/\s+/g, ' ')
+                    .trim();
+
+                const locationText = normalize({{locationJson}});
+
+                const candidates = Array.from(document.querySelectorAll('.search-autocomplete .location-item'))
                     .filter(el => {
                         if (!visible(el)) return false;
                         if (el === input || el.contains(input)) return false;
@@ -260,6 +288,11 @@ public sealed class BrowserAutomationService : IAsyncDisposable
                             rect.right > inputRect.left;
                     })
                     .sort((a, b) => {
+                        const aText = normalize(a.textContent || '');
+                        const bText = normalize(b.textContent || '');
+                        const aScore = aText === locationText ? 0 : aText.startsWith(locationText) ? 1 : aText.includes(locationText) ? 2 : 3;
+                        const bScore = bText === locationText ? 0 : bText.startsWith(locationText) ? 1 : bText.includes(locationText) ? 2 : 3;
+                        if (aScore !== bScore) return aScore - bScore;
                         const ar = a.getBoundingClientRect();
                         const br = b.getBoundingClientRect();
                         return ar.top === br.top ? ar.left - br.left : ar.top - br.top;
@@ -278,7 +311,8 @@ public sealed class BrowserAutomationService : IAsyncDisposable
                     enabled: true,
                     x: rect.left + Math.min(rect.width / 2, 220),
                     y: rect.top + rect.height / 2,
-                    text: target.textContent.trim()
+                    text: target.textContent.trim(),
+                    index: candidates.indexOf(target)
                 };
             })();
             """);
@@ -287,9 +321,76 @@ public sealed class BrowserAutomationService : IAsyncDisposable
             throw new InvalidOperationException(
                 $"Alış yeri önerisi bulunamadı. Yazılan değer: {location}");
 
-        await page.Mouse.ClickAsync(suggestionPoint.X, suggestionPoint.Y);
+        var locationItems = await page.QuerySelectorAllAsync(".search-autocomplete .location-item");
+        if (suggestionPoint.Index < 0 || suggestionPoint.Index >= locationItems.Length)
+            throw new InvalidOperationException(
+                $"Alış yeri önerisi DOM'da bulunamadı. Yazılan değer: {location}");
+
+        var selectedItem = locationItems[suggestionPoint.Index];
+        var clickableChild = await selectedItem.QuerySelectorAsync("strong, div:last-child, div");
+        var clickTarget = clickableChild ?? selectedItem;
+        var targetBox = await clickTarget.BoundingBoxAsync();
+
+        if (targetBox is not null)
+        {
+            await page.Mouse.MoveAsync(targetBox.X + targetBox.Width / 2, targetBox.Y + targetBox.Height / 2);
+            await page.Mouse.DownAsync();
+            await WaitAsync(100);
+            await page.Mouse.UpAsync();
+        }
+        else
+        {
+            await clickTarget.ClickAsync();
+        }
+
+        await page.EvaluateExpressionAsync($$"""
+            (() => {
+                const targetIndex = {{suggestionPoint.Index}};
+                const items = Array.from(document.querySelectorAll('.search-autocomplete .location-item'));
+                const target = items[targetIndex];
+                if (!target) return;
+
+                const clickTarget = target.querySelector('strong') || target.lastElementChild || target;
+
+                for (const current of [clickTarget, target]) {
+                    current.dispatchEvent(new PointerEvent('pointerdown', {
+                        bubbles: true, cancelable: true, pointerType: 'mouse', isPrimary: true
+                    }));
+                    current.dispatchEvent(new MouseEvent('mousedown', {
+                        bubbles: true, cancelable: true, view: window
+                    }));
+                    current.dispatchEvent(new PointerEvent('pointerup', {
+                        bubbles: true, cancelable: true, pointerType: 'mouse', isPrimary: true
+                    }));
+                    current.dispatchEvent(new MouseEvent('mouseup', {
+                        bubbles: true, cancelable: true, view: window
+                    }));
+                    current.dispatchEvent(new MouseEvent('click', {
+                        bubbles: true, cancelable: true, view: window
+                    }));
+                }
+            })();
+            """);
 
         // Seçimin kabul edilip edilmediğini doğrula
+        try
+        {
+            await page.WaitForFunctionAsync(
+                """
+                () => {
+                    const input = document.querySelector('#inputPickUpLocation');
+                    const menu = document.querySelector('.search-autocomplete');
+                    const menuVisible = !!menu && menu.getBoundingClientRect().height > 0;
+                    return !!input && input.value.trim().length > 0 && !menuVisible;
+                }
+                """,
+                new WaitForFunctionOptions { Timeout = 3_000 });
+        }
+        catch (WaitTaskTimeoutException)
+        {
+            await ShowDebugAsync("Alış yeri menüsü kapanmadı; input değeri kontrol ediliyor.");
+        }
+
         await WaitAsync(800);
         var value = await page.EvaluateExpressionAsync<string>(
             "document.querySelector('#inputPickUpLocation')?.value || ''");
@@ -1024,6 +1125,9 @@ public sealed class BrowserAutomationService : IAsyncDisposable
 
         [JsonPropertyName("text")]
         public string Text { get; init; } = "";
+
+        [JsonPropertyName("index")]
+        public int Index { get; init; }
     }
 
     public async ValueTask DisposeAsync()
