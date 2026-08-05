@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using PuppeteerSharp;
+using PuppeteerExtraSharp;
 using Yolcu360Otomasyon.Models;
 
 namespace Yolcu360Otomasyon.Services;
@@ -27,15 +28,15 @@ public sealed class BrowserAutomationService : IAsyncDisposable
         public const string PickupLocationInput = "#inputPickUpLocation";
 
         // Takvim (VueDatePicker): İlk .dp__main → alış tarihi, ikincisi → bırakış tarihi
-        public const string AllDatePickers      = ".dp__main.dp__theme_light";
+        public const string AllDatePickers = ".dp__main.dp__theme_light";
 
         // Alış tarihi container (modaltitlecmskey'i olan kapsayıcı)
-        public const string PickupDateContainer  = "[modaltitlecmskey='pickup_and_dropoff_date'] .dp__main.dp__theme_light";
+        public const string PickupDateContainer = "[modaltitlecmskey='pickup_and_dropoff_date'] .dp__main.dp__theme_light";
         // Bırakış tarihi container (cmskey olmayan ikinci group)
         // JS ile index=1 olarak seçilecek
 
         // Takvim menüsü (açıldıktan sonra)
-        public const string DatePickerMenu      = ".dp__menu";
+        public const string DatePickerMenu = ".dp__menu";
         public const string DatePickerNextMonth = ".dp__nav_btn[data-dp-element='action-next'], .dp__next_btn, button[aria-label*='Next']";
         public const string DatePickerPrevMonth = ".dp__nav_btn[data-dp-element='action-prev'], .dp__prev_btn, button[aria-label*='Prev']";
         public const string DatePickerMonthYear = ".dp__month_year_select, .dp__calendar_header_item--current, .dp__action_select";
@@ -45,9 +46,9 @@ public sealed class BrowserAutomationService : IAsyncDisposable
 
         // Filtreler (arama sonuçları sayfası)
         public const string AutomaticTransmissionFilter = "[data-filter='automatic']";
-        public const string ManualTransmissionFilter    = "[data-filter='manual']";
-        public const string DieselFuelFilter            = "[data-filter='diesel']";
-        public const string GasolineFuelFilter          = "[data-filter='gasoline']";
+        public const string ManualTransmissionFilter = "[data-filter='manual']";
+        public const string DieselFuelFilter = "[data-filter='diesel']";
+        public const string GasolineFuelFilter = "[data-filter='gasoline']";
     }
 
     // ─── Başlatma ─────────────────────────────────────────────────────────────
@@ -62,14 +63,39 @@ public sealed class BrowserAutomationService : IAsyncDisposable
         _browser = await Puppeteer.LaunchAsync(new LaunchOptions
         {
             Headless = headless,
-            Args = ["--no-sandbox", "--disable-setuid-sandbox"]
+            Args = [
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-blink-features=AutomationControlled",
+        "--disable-features=IsolateOrigins,site-per-process",
+        "--flag-switches-begin",
+        "--disable-site-isolation-trials",
+        "--flag-switches-end"
+    ]
         });
+
+
 
         _page = await _browser.NewPageAsync();
 
+        await _page.SetUserAgentAsync("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.5.2 Safari/605.1.15");
+
+
+
+        await _page.EvaluateFunctionOnNewDocumentAsync(@"() => {
+    Object.defineProperty(navigator, 'webdriver', {
+        get: () => undefined
+    });
+    window.chrome = { runtime: {} };
+    Object.defineProperty(navigator, 'languages', {
+        get: () => ['tr-TR', 'tr', 'en-US', 'en']
+    });
+}");
+
+
         await _page.SetViewportAsync(new ViewPortOptions
         {
-            Width  = 1440,
+            Width = 1440,
             Height = 900
         });
 
@@ -98,6 +124,13 @@ public sealed class BrowserAutomationService : IAsyncDisposable
         var normalizedPhone = NormalizePhoneNumber(phoneNumber);
         await NativeSetInputAsync(Selectors.LoginPagePhoneInput, normalizedPhone);
 
+        await WaitAsync(5000);
+
+
+
+
+
+
         var continueClicked = await page.EvaluateExpressionAsync<bool>(
             """
             (() => {
@@ -112,7 +145,11 @@ public sealed class BrowserAutomationService : IAsyncDisposable
         if (!continueClicked)
             throw new InvalidOperationException("Login sayfasında 'Devam Et' butonu bulunamadı.");
 
-        await WaitAsync(2_000);
+        await page.WaitForFunctionAsync(
+        """
+        () => document.body.innerText.toLocaleLowerCase('tr-TR').includes('doğrulama kodu')
+        """, new WaitForFunctionOptions { Timeout = 20000 });
+
     }
 
     public async Task<bool> IsSmsVerificationRequiredAsync()
@@ -481,8 +518,8 @@ public sealed class BrowserAutomationService : IAsyncDisposable
 
         await page.WaitForSelectorAsync(Selectors.PickupLocationInput, new WaitForSelectorOptions
         {
-            Visible  = true,
-            Timeout  = 30_000
+            Visible = true,
+            Timeout = 30_000
         });
 
         // Odaklan ve temizle
@@ -806,12 +843,12 @@ public sealed class BrowserAutomationService : IAsyncDisposable
     /// </summary>
     private async Task<bool> ClickCalendarDayAsync(DateTime date)
     {
-        var page      = GetPage();
-        var dayJson   = JsonSerializer.Serialize(date.Day);
+        var page = GetPage();
+        var dayJson = JsonSerializer.Serialize(date.Day);
         var monthJson = JsonSerializer.Serialize(
             new[] { "Ocak","Şubat","Mart","Nisan","Mayıs","Haziran",
                     "Temmuz","Ağustos","Eylül","Ekim","Kasım","Aralık" }[date.Month - 1]);
-        var yearJson  = JsonSerializer.Serialize(date.Year.ToString());
+        var yearJson = JsonSerializer.Serialize(date.Year.ToString());
 
         return await page.EvaluateExpressionAsync<bool>($$"""
             (() => {
@@ -952,7 +989,7 @@ public sealed class BrowserAutomationService : IAsyncDisposable
         if (string.IsNullOrWhiteSpace(time))
             return;
 
-        var timeJson  = JsonSerializer.Serialize(time.Trim());
+        var timeJson = JsonSerializer.Serialize(time.Trim());
         var indexJson = JsonSerializer.Serialize(timePickerIndex);
 
         // Saat kutusu: her tarih grubundaki ikinci büyük div (alış=0, bırakış=1)
@@ -1221,16 +1258,16 @@ public sealed class BrowserAutomationService : IAsyncDisposable
         transmissionType.Trim().ToLowerInvariant() switch
         {
             "automatic" or "otomatik" => Selectors.AutomaticTransmissionFilter,
-            "manual"    or "manuel"   => Selectors.ManualTransmissionFilter,
-            _                         => null
+            "manual" or "manuel" => Selectors.ManualTransmissionFilter,
+            _ => null
         };
 
     private static string? GetFuelSelector(string fuelType) =>
         fuelType.Trim().ToLowerInvariant() switch
         {
-            "diesel"  or "dizel"  => Selectors.DieselFuelFilter,
+            "diesel" or "dizel" => Selectors.DieselFuelFilter,
             "gasoline" or "benzin" => Selectors.GasolineFuelFilter,
-            _                      => null
+            _ => null
         };
 
     // ─── Yardımcı Metotlar ────────────────────────────────────────────────────
@@ -1292,9 +1329,9 @@ public sealed class BrowserAutomationService : IAsyncDisposable
     /// <summary>Vue native setter + olay zincirleme — React/Vue formları için.</summary>
     private async Task NativeSetInputAsync(string selector, string value)
     {
-        var page      = GetPage();
-        var selJson   = JsonSerializer.Serialize(selector);
-        var valJson   = JsonSerializer.Serialize(value);
+        var page = GetPage();
+        var selJson = JsonSerializer.Serialize(selector);
+        var valJson = JsonSerializer.Serialize(value);
 
         await page.EvaluateExpressionAsync($$"""
             (() => {
@@ -1330,7 +1367,7 @@ public sealed class BrowserAutomationService : IAsyncDisposable
 
     private async Task ShowDebugAsync(string message)
     {
-        var page    = GetPage();
+        var page = GetPage();
         var msgJson = JsonSerializer.Serialize(message);
 
         await page.EvaluateExpressionAsync($$"""
@@ -1363,7 +1400,7 @@ public sealed class BrowserAutomationService : IAsyncDisposable
     private async Task<string> GetDiagnosticAsync()
     {
         var page = GetPage();
-        var url  = page.Url;
+        var url = page.Url;
         var text = (await GetBodyTextAsync())
             .Replace('\n', ' ')
             .Replace('\r', ' ');
@@ -1489,7 +1526,7 @@ public sealed class BrowserAutomationService : IAsyncDisposable
         };
 
         var monthName = turkishMonths[target.Month - 1];
-        var yearStr   = target.Year.ToString();
+        var yearStr = target.Year.ToString();
 
         return headerText.Contains(monthName, StringComparison.OrdinalIgnoreCase)
             && headerText.Contains(yearStr);
