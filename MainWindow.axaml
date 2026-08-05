@@ -5,8 +5,8 @@
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
         x:Class="Yolcu360Otomasyon.MainWindow"
         Title="Yolcu360 Otomasyon"
-        Width="900"
-        Height="520">
+        Width="1200"
+        Height="760">
     <Grid RowDefinitions="Auto,Auto,*" Margin="24" RowSpacing="18">
         <StackPanel Spacing="12">
             <TextBlock Text="Yolcu360 Login"
@@ -122,19 +122,23 @@
                 BorderThickness="1"
                 BorderBrush="#D0D7DE"
                 Padding="16">
-            <StackPanel Spacing="12">
+            <Grid RowDefinitions="Auto,*" RowSpacing="12">
                 <TextBlock Text="Arama Sonuçları"
                            FontSize="18"
                            FontWeight="SemiBold" />
 
                 <DataGrid x:Name="ResultsDataGrid"
+                          Grid.Row="1"
                           AutoGenerateColumns="True"
                           IsReadOnly="True"
                           CanUserResizeColumns="True"
                           CanUserSortColumns="True"
                           GridLinesVisibility="All"
-                          MinHeight="220" />
-            </StackPanel>
+                          VerticalAlignment="Stretch"
+                          HorizontalAlignment="Stretch"
+                          Height="320"
+                          MinHeight="320" />
+            </Grid>
         </Border>
     </Grid>
 </Window>

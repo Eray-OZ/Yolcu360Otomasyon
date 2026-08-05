@@ -1,0 +1,220 @@
+{
+    "predictions": [
+        {
+            "description": "Düzce, Türkiye",
+            "matched_substrings": [
+                {
+                    "length": 5,
+                    "offset": 0
+                }
+            ],
+            "place_id": "ChIJIdQ2ZRugnUAR1_iMViKm0OE",
+            "reference": "ChIJIdQ2ZRugnUAR1_iMViKm0OE",
+            "structured_formatting": {
+                "main_text": "Düzce",
+                "main_text_matched_substrings": [
+                    {
+                        "length": 5,
+                        "offset": 0
+                    }
+                ],
+                "secondary_text": "Türkiye"
+            },
+            "terms": [
+                {
+                    "offset": 0,
+                    "value": "Düzce"
+                },
+                {
+                    "offset": 7,
+                    "value": "Türkiye"
+                }
+            ],
+            "types": [
+                "geocode",
+                "locality",
+                "political"
+            ]
+        },
+        {
+            "description": "Düzce Merkez/Düzce, Türkiye",
+            "matched_substrings": [
+                {
+                    "length": 5,
+                    "offset": 0
+                }
+            ],
+            "place_id": "ChIJuWVEivB0nUARPjDb-3Pr9jE",
+            "reference": "ChIJuWVEivB0nUARPjDb-3Pr9jE",
+            "structured_formatting": {
+                "main_text": "Düzce Merkez",
+                "main_text_matched_substrings": [
+                    {
+                        "length": 5,
+                        "offset": 0
+                    }
+                ],
+                "secondary_text": "Düzce, Türkiye"
+            },
+            "terms": [
+                {
+                    "offset": 0,
+                    "value": "Düzce Merkez"
+                },
+                {
+                    "offset": 13,
+                    "value": "Düzce"
+                },
+                {
+                    "offset": 20,
+                    "value": "Türkiye"
+                }
+            ],
+            "types": [
+                "administrative_area_level_2",
+                "geocode",
+                "political"
+            ]
+        },
+        {
+            "description": "Düzce Otobüs Terminali, Darıcı, Bayrak Caddesi, Düzce, Türkiye",
+            "matched_substrings": [
+                {
+                    "length": 5,
+                    "offset": 0
+                }
+            ],
+            "place_id": "ChIJlcVp4z91nUARufXlDFLd7xk",
+            "reference": "ChIJlcVp4z91nUARufXlDFLd7xk",
+            "structured_formatting": {
+                "main_text": "Düzce Otobüs Terminali",
+                "main_text_matched_substrings": [
+                    {
+                        "length": 5,
+                        "offset": 0
+                    }
+                ],
+                "secondary_text": "Darıcı, Bayrak Caddesi, Düzce, Türkiye"
+            },
+            "terms": [
+                {
+                    "offset": 0,
+                    "value": "Düzce Otobüs Terminali"
+                },
+                {
+                    "offset": 24,
+                    "value": "Darıcı"
+                },
+                {
+                    "offset": 32,
+                    "value": "Bayrak Caddesi"
+                },
+                {
+                    "offset": 48,
+                    "value": "Düzce"
+                },
+                {
+                    "offset": 55,
+                    "value": "Türkiye"
+                }
+            ],
+            "types": [
+                "establishment",
+                "point_of_interest"
+            ]
+        },
+        {
+            "description": "Düzce Otogar, Darıcı, Düzce, Türkiye",
+            "matched_substrings": [
+                {
+                    "length": 5,
+                    "offset": 0
+                }
+            ],
+            "place_id": "ChIJQVYHABV1nUARJBg_bQUnRv4",
+            "reference": "ChIJQVYHABV1nUARJBg_bQUnRv4",
+            "structured_formatting": {
+                "main_text": "Düzce Otogar",
+                "main_text_matched_substrings": [
+                    {
+                        "length": 5,
+                        "offset": 0
+                    }
+                ],
+                "secondary_text": "Darıcı, Düzce, Türkiye"
+            },
+            "terms": [
+                {
+                    "offset": 0,
+                    "value": "Düzce Otogar"
+                },
+                {
+                    "offset": 14,
+                    "value": "Darıcı"
+                },
+                {
+                    "offset": 22,
+                    "value": "Düzce"
+                },
+                {
+                    "offset": 29,
+                    "value": "Türkiye"
+                }
+            ],
+            "types": [
+                "establishment",
+                "point_of_interest"
+            ]
+        },
+        {
+            "description": "Düzce Atatürk Devlet Hastanesi, Aziziye, Şehit Ramazan Gel Caddesi, Düzce, Türkiye",
+            "matched_substrings": [
+                {
+                    "length": 5,
+                    "offset": 0
+                }
+            ],
+            "place_id": "ChIJlwFo4uCfnUARrfprPjh9yQo",
+            "reference": "ChIJlwFo4uCfnUARrfprPjh9yQo",
+            "structured_formatting": {
+                "main_text": "Düzce Atatürk Devlet Hastanesi",
+                "main_text_matched_substrings": [
+                    {
+                        "length": 5,
+                        "offset": 0
+                    }
+                ],
+                "secondary_text": "Aziziye, Şehit Ramazan Gel Caddesi, Düzce, Türkiye"
+            },
+            "terms": [
+                {
+                    "offset": 0,
+                    "value": "Düzce Atatürk Devlet Hastanesi"
+                },
+                {
+                    "offset": 32,
+                    "value": "Aziziye"
+                },
+                {
+                    "offset": 41,
+                    "value": "Şehit Ramazan Gel Caddesi"
+                },
+                {
+                    "offset": 68,
+                    "value": "Düzce"
+                },
+                {
+                    "offset": 75,
+                    "value": "Türkiye"
+                }
+            ],
+            "types": [
+                "establishment",
+                "health",
+                "hospital",
+                "point_of_interest"
+            ]
+        }
+    ],
+    "status": "OK"
+}

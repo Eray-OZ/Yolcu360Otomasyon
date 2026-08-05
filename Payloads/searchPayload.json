@@ -1,0 +1,728 @@
+{
+    "count": 50,
+    "results": [
+        {
+            "campaign": {
+                "activationCode": "buq2zt",
+                "id": 663,
+                "merchantShare": 0,
+                "name": "Yaz Katkat Kampanyası 2026"
+            },
+            "campaignID": 663,
+            "cmsKey": "car",
+            "code": "eyJ0IjoiY2FyIiwiY3IiOnsidiI6ODI3LCJiIjo2OCwibSI6NDE5LCJjIjoxLCJmIjoxLCJ0IjoyLCJzYyI6NX19",
+            "integration": {
+                "code": "eyJzdXBwbGllcklEIjowLCJob29rTmFtZSI6InppcmFhdGZpbG8iLCJwaWNrdXBEYXRlIjoiMjAyNi0wOC0wNVQxMDowMDowMCswMzowMCIsInBpY2t1cExvY2F0aW9uTGFiZWwiOiJiYzhkZmRkYy05YTdlLTQyMDYtOTNjMy02OGRiNzE0NzJmY2YiLCJkcm9wT2ZmRGF0ZSI6IjIwMjYtMDgtMDdUMTA6MDA6MDArMDM6MDAiLCJkcm9wb2ZmTG9jYXRpb25MYWJlbCI6ImJjOGRmZGRjLTlhN2UtNDIwNi05M2MzLTY4ZGI3MTQ3MmZjZiIsInN1cHBsaWVyTGFiZWwiOiIiLCJjYXJMYWJlbCI6IjQ2ZTdjMjgzLThmMGQtNGYzYS1hM2Q5LTA1NTM4YWE4NjJjZiIsImRheUNvdW50IjowLCJsYW5ndWFnZSI6IiIsImV4dHJhcyI6eyJFeHRyYXMiOlt7IkV4dHJhTGFiZWwiOiJBZGRpdGlvbmFsX0RyaXZlciIsIkV4dHJhTmFtZSI6IkFkZGl0aW9uYWxfRHJpdmVyIiwiVG90YWxQcmljZSI6MjQwLCJEYWlseVByaWNlIjoxMjAsIkN1cnJlbmN5IjoiVFJZIn0seyJFeHRyYUxhYmVsIjoiQ2hpbGRfU2VhdCIsIkV4dHJhTmFtZSI6IkNoaWxkX1NlYXQiLCJUb3RhbFByaWNlIjo0NTAsIkRhaWx5UHJpY2UiOjIyNSwiQ3VycmVuY3kiOiJUUlkifSx7IkV4dHJhTGFiZWwiOiJZb3VuZ19Ecml2ZSIsIkV4dHJhTmFtZSI6IllvdW5nX0RyaXZlIiwiVG90YWxQcmljZSI6MTIwMCwiRGFpbHlQcmljZSI6NjAwLCJDdXJyZW5jeSI6IlRSWSJ9LHsiRXh0cmFMYWJlbCI6Ik1LUCIsIkV4dHJhTmFtZSI6Ik1LUCIsIlRvdGFsUHJpY2UiOjg5OCwiRGFpbHlQcmljZSI6NDQ5LCJDdXJyZW5jeSI6IlRSWSJ9LHsiRXh0cmFMYWJlbCI6IlNLUCIsIkV4dHJhTmFtZSI6IlNLUCIsIlRvdGFsUHJpY2UiOjEwNTgsIkRhaWx5UHJpY2UiOjUyOSwiQ3VycmVuY3kiOiJUUlkifSx7IkV4dHJhTGFiZWwiOiJYS1AiLCJFeHRyYU5hbWUiOiJYS1AiLCJUb3RhbFByaWNlIjoxMjU4LCJEYWlseVByaWNlIjo2MjksIkN1cnJlbmN5IjoiVFJZIn0seyJFeHRyYUxhYmVsIjoiQ2FuY2VsIiwiRXh0cmFOYW1lIjoiQ2FuY2VsIiwiVG90YWxQcmljZSI6MzAwLCJEYWlseVByaWNlIjoxNTAsIkN1cnJlbmN5IjoiVFJZIn0seyJFeHRyYUxhYmVsIjoiV2ludGVyX1RpcmUiLCJFeHRyYU5hbWUiOiJXaW50ZXJfVGlyZSIsIlRvdGFsUHJpY2UiOjU3MCwiRGFpbHlQcmljZSI6Mjg1LCJDdXJyZW5jeSI6IlRSWSJ9XSwiUmV6SUQiOiJZMy1BQUE5MTU0MUY3In19",
+                "service": "integration"
+            },
+            "isVirtual": false,
+            "max": 1,
+            "min": 1,
+            "name": "Car Rental",
+            "parentProductCode": null,
+            "searchID": "eyJ0IjoiY2FyIiwiZCI6eyJjIjp7InAiOiJkYWlseSIsImNpbyI6MTgzMTMyLCJjb28iOjE4MzEzMiwiY2lEdCI6IjIwMjYtMDgtMDVUMTA6MDA6MDArMDM6MDAiLCJjb0R0IjoiMjAyNi0wOC0wN1QxMDowMDowMCswMzowMCIsImNpbCI6eyJsYXQiOjQxLjAwODIzNzYsImxvbiI6MjguOTc4MzU4OX0sImNvbCI6eyJsYXQiOjQxLjAwODIzNzYsImxvbiI6MjguOTc4MzU4OX0sImwiOiJ0ciIsImRjIjoiVFJZIiwicGMiOiJUUlkiLCJwdCI6ImNyZWRpdENhcmQiLCJvIjo2ODM2LCJhIjoiMzAtNjUiLCJjb3UiOiJUUiIsImNjIjoiYnVxMnp0IiwiY2giOiJNb3ppbGxhLzUuMCAoTWFjaW50b3NoOyBJbnRlbCBNYWMgT1MgWCAxMF8xNV83KSBBcHBsZVdlYktpdC82MDUuMS4xNSAoS0hUTUwsIGxpa2UgR2Vja28pIFZlcnNpb24vMjYuNS4yIFNhZmFyaS82MDUuMS4xNSIsImNpcCI6Ijc4LjE4Ni4xNzEuMjI2IiwidiI6InYzIn19fQ",
+            "type": "car",
+            "children": null,
+            "details": {
+                "car": {
+                    "ageVerificationRequired": false,
+                    "applicableForFullCredit": false,
+                    "applicableForLimitedCredit": false,
+                    "appointment": {
+                        "checkInDateTime": "2026-08-05T10:00:00.000+03:00",
+                        "checkInOffice": {
+                            "address": {
+                                "adm1": "İstanbul",
+                                "adm2": "Kadıköy",
+                                "country": "TR",
+                                "street": "Acıbadem, Onur Sokak, 6D Kurtuluş, Ofis Ve İşyeri, Kadıköy / İstanbul"
+                            },
+                            "coordinates": {
+                                "lat": 41.001758,
+                                "lon": 29.033722
+                            },
+                            "deliveryType": {
+                                "id": 3,
+                                "name": "Ofis"
+                            },
+                            "email": "istanbulkadikoy@ziraatfilo.com.tr, rezervasyonmerkezi@ziraatfilo.com.tr",
+                            "iataCode": "",
+                            "id": 183132,
+                            "openingHours": [
+                                {
+                                    "close": "19:30",
+                                    "dayOfWeek": 1,
+                                    "open": "08:00"
+                                },
+                                {
+                                    "close": "19:30",
+                                    "dayOfWeek": 2,
+                                    "open": "08:00"
+                                },
+                                {
+                                    "close": "19:30",
+                                    "dayOfWeek": 3,
+                                    "open": "08:00"
+                                },
+                                {
+                                    "close": "19:30",
+                                    "dayOfWeek": 4,
+                                    "open": "08:00"
+                                },
+                                {
+                                    "close": "19:30",
+                                    "dayOfWeek": 5,
+                                    "open": "08:00"
+                                },
+                                {
+                                    "close": "19:30",
+                                    "dayOfWeek": 6,
+                                    "open": "08:00"
+                                },
+                                {
+                                    "close": "19:30",
+                                    "dayOfWeek": 7,
+                                    "open": "08:00"
+                                }
+                            ],
+                            "phones": [
+                                {
+                                    "cc": "",
+                                    "number": "8503039476"
+                                }
+                            ],
+                            "rating": {
+                                "participants": 10,
+                                "point": 4.6
+                            }
+                        },
+                        "checkOutDateTime": "2026-08-07T10:00:00.000+03:00",
+                        "checkOutOffice": {
+                            "address": {
+                                "adm1": "İstanbul",
+                                "adm2": "Kadıköy",
+                                "country": "TR",
+                                "street": "Acıbadem, Onur Sokak, 6D Kurtuluş, Ofis Ve İşyeri, Kadıköy / İstanbul"
+                            },
+                            "coordinates": {
+                                "lat": 41.001758,
+                                "lon": 29.033722
+                            },
+                            "deliveryType": {
+                                "id": 3,
+                                "name": "Ofis"
+                            },
+                            "email": "istanbulkadikoy@ziraatfilo.com.tr, rezervasyonmerkezi@ziraatfilo.com.tr",
+                            "iataCode": "",
+                            "id": 183132,
+                            "openingHours": [
+                                {
+                                    "close": "19:30",
+                                    "dayOfWeek": 1,
+                                    "open": "08:00"
+                                },
+                                {
+                                    "close": "19:30",
+                                    "dayOfWeek": 2,
+                                    "open": "08:00"
+                                },
+                                {
+                                    "close": "19:30",
+                                    "dayOfWeek": 3,
+                                    "open": "08:00"
+                                },
+                                {
+                                    "close": "19:30",
+                                    "dayOfWeek": 4,
+                                    "open": "08:00"
+                                },
+                                {
+                                    "close": "19:30",
+                                    "dayOfWeek": 5,
+                                    "open": "08:00"
+                                },
+                                {
+                                    "close": "19:30",
+                                    "dayOfWeek": 6,
+                                    "open": "08:00"
+                                },
+                                {
+                                    "close": "19:30",
+                                    "dayOfWeek": 7,
+                                    "open": "08:00"
+                                }
+                            ],
+                            "phones": [
+                                {
+                                    "cc": "",
+                                    "number": "8503039476"
+                                }
+                            ],
+                            "rating": {
+                                "participants": 10,
+                                "point": 4.6
+                            }
+                        }
+                    },
+                    "brand": {
+                        "id": 68,
+                        "name": "Kia"
+                    },
+                    "carRuleInformation": null,
+                    "class": {
+                        "id": 1,
+                        "name": "Ekonomi"
+                    },
+                    "customClassName": "economy",
+                    "findeksRequired": false,
+                    "fuel": {
+                        "id": 1,
+                        "name": "Benzin"
+                    },
+                    "images": [
+                        {
+                            "size": "mobile",
+                            "url": "https://integration-static.yolcu360.com/vehicle/17243f7a-772a-4f64-909f-acd97c681a6d.png"
+                        },
+                        {
+                            "size": "tablet",
+                            "url": "https://integration-static.yolcu360.com/vehicle/a690d4ae-e011-482d-bd9d-2e8e8546f6b0.png"
+                        },
+                        {
+                            "size": "desktop",
+                            "url": "https://integration-static.yolcu360.com/vehicle/589659d3-81d3-4ad1-901d-24c557a1776a.png"
+                        },
+                        {
+                            "size": "prime",
+                            "url": "https://integration-static.yolcu360.com/vehicle/b25e6c39-4c02-450e-8d0c-9f2fec765119.png"
+                        }
+                    ],
+                    "model": {
+                        "id": 419,
+                        "name": "Picanto"
+                    },
+                    "passportRequired": false,
+                    "rentalConditions": {
+                        "termsConditionPDF": "https://integration-static.yolcu360.com/rental_condition/d192358a-522b-4fa6-8200-f71e74c452b4.pdf"
+                    },
+                    "rules": [
+                        {
+                            "details": {
+                                "deposit": {
+                                    "amount": 450000,
+                                    "currency": "TRY"
+                                }
+                            },
+                            "name": "deposit",
+                            "type": "deposit"
+                        },
+                        {
+                            "details": {
+                                "rangeLimit": {
+                                    "amount": 1000,
+                                    "period": "total",
+                                    "unit": "km",
+                                    "unlimited": false
+                                }
+                            },
+                            "name": "rangeLimit",
+                            "type": "rangeLimit"
+                        },
+                        {
+                            "details": {
+                                "minDriverAge": 21
+                            },
+                            "name": "minDriverAge",
+                            "type": "minDriverAge"
+                        },
+                        {
+                            "details": {
+                                "minLicenseYear": 1
+                            },
+                            "name": "minLicenseYear",
+                            "type": "minLicenseYear"
+                        }
+                    ],
+                    "seatCount": 5,
+                    "segment": {
+                        "id": 5,
+                        "name": "A"
+                    },
+                    "sippCode": "EXAR",
+                    "transmission": {
+                        "id": 2,
+                        "name": "Otomatik"
+                    },
+                    "vendor": {
+                        "displayName": "Ziraatfilo",
+                        "id": 827,
+                        "information": {
+                            "contactAddress": "Sanayi mah. E80 Bağlantı yolu bulvarı No:20/227 Pendik / İstanbul",
+                            "contactEmail": "rezervasyonmerkezi@ziraatfilo.com.tr",
+                            "contactPhone": "0216 369 93 93",
+                            "mernisNo": "623103864400001"
+                        },
+                        "logo": {
+                            "url": "https://integration-static.yolcu360.com/supplier/b1adb8a2-3955-45e5-8c8f-c2be906c58c5.png"
+                        },
+                        "name": "ziraatfilo"
+                    }
+                }
+            },
+            "period": {
+                "amount": 2,
+                "type": "daily"
+            },
+            "posAliases": null,
+            "pricing": {
+                "display": {
+                    "currency": "TRY",
+                    "fee": {
+                        "amount": {
+                            "amount": 482090,
+                            "currency": "TRY"
+                        },
+                        "charge": "partial",
+                        "children": [
+                            {
+                                "amount": {
+                                    "amount": 497000,
+                                    "currency": "TRY"
+                                },
+                                "charge": "advance",
+                                "children": null,
+                                "description": "Car Rental Service",
+                                "type": "net"
+                            },
+                            {
+                                "amount": {
+                                    "amount": -14910,
+                                    "currency": "TRY"
+                                },
+                                "charge": "advance",
+                                "children": null,
+                                "description": "22707",
+                                "type": "campaign"
+                            }
+                        ],
+                        "description": "Fee",
+                        "type": "fee"
+                    },
+                    "net": {
+                        "amount": {
+                            "amount": 497000,
+                            "currency": "TRY"
+                        },
+                        "charge": "advance",
+                        "children": null,
+                        "description": "Car Rental Service",
+                        "type": "net"
+                    },
+                    "otherPrices": null,
+                    "paymentTotal": {
+                        "amount": {
+                            "amount": 499590,
+                            "currency": "TRY"
+                        },
+                        "charge": "advance",
+                        "children": [
+                            {
+                                "amount": {
+                                    "amount": 497000,
+                                    "currency": "TRY"
+                                },
+                                "charge": "advance",
+                                "children": null,
+                                "description": "Car Rental Service",
+                                "type": "net"
+                            },
+                            {
+                                "amount": {
+                                    "amount": 17500,
+                                    "currency": "TRY"
+                                },
+                                "charge": "advance",
+                                "children": null,
+                                "description": "Service Fee",
+                                "type": "serviceFee"
+                            },
+                            {
+                                "amount": {
+                                    "amount": -14910,
+                                    "currency": "TRY"
+                                },
+                                "charge": "advance",
+                                "children": null,
+                                "description": "22707",
+                                "type": "campaign"
+                            }
+                        ],
+                        "description": "Payment Total"
+                    },
+                    "preCommissionFee": {
+                        "amount": {
+                            "amount": 482090,
+                            "currency": "TRY"
+                        },
+                        "charge": "partial",
+                        "children": [
+                            {
+                                "amount": {
+                                    "amount": 497000,
+                                    "currency": "TRY"
+                                },
+                                "charge": "advance",
+                                "children": null,
+                                "description": "Car Rental Service",
+                                "type": "net"
+                            },
+                            {
+                                "amount": {
+                                    "amount": -14910,
+                                    "currency": "TRY"
+                                },
+                                "charge": "advance",
+                                "children": null,
+                                "description": "22707",
+                                "type": "campaign"
+                            }
+                        ],
+                        "description": "Pre Commission Fee"
+                    },
+                    "preDiscountTotal": {
+                        "amount": {
+                            "amount": 514500,
+                            "currency": "TRY"
+                        },
+                        "charge": "partial",
+                        "children": [
+                            {
+                                "amount": {
+                                    "amount": 497000,
+                                    "currency": "TRY"
+                                },
+                                "charge": "advance",
+                                "children": null,
+                                "description": "Car Rental Service",
+                                "type": "net"
+                            },
+                            {
+                                "amount": {
+                                    "amount": 17500,
+                                    "currency": "TRY"
+                                },
+                                "charge": "advance",
+                                "children": null,
+                                "description": "Service Fee",
+                                "type": "serviceFee"
+                            }
+                        ],
+                        "description": "Pre Discount Total Price"
+                    },
+                    "serviceFee": {
+                        "amount": {
+                            "amount": 17500,
+                            "currency": "TRY"
+                        },
+                        "charge": "advance",
+                        "children": null,
+                        "description": "Service Fee",
+                        "type": "serviceFee"
+                    },
+                    "total": {
+                        "amount": {
+                            "amount": 499590,
+                            "currency": "TRY"
+                        },
+                        "charge": "partial",
+                        "children": [
+                            {
+                                "amount": {
+                                    "amount": 497000,
+                                    "currency": "TRY"
+                                },
+                                "charge": "advance",
+                                "children": null,
+                                "description": "Car Rental Service",
+                                "type": "net"
+                            },
+                            {
+                                "amount": {
+                                    "amount": 17500,
+                                    "currency": "TRY"
+                                },
+                                "charge": "advance",
+                                "children": null,
+                                "description": "Service Fee",
+                                "type": "serviceFee"
+                            },
+                            {
+                                "amount": {
+                                    "amount": -14910,
+                                    "currency": "TRY"
+                                },
+                                "charge": "advance",
+                                "children": null,
+                                "description": "22707",
+                                "type": "campaign"
+                            }
+                        ],
+                        "description": "Total"
+                    },
+                    "totalDiscount": {
+                        "amount": {
+                            "amount": 14910,
+                            "currency": "TRY"
+                        },
+                        "charge": "advance",
+                        "children": [
+                            {
+                                "amount": {
+                                    "amount": 14910,
+                                    "currency": "TRY"
+                                },
+                                "charge": "advance",
+                                "children": null,
+                                "description": "22707",
+                                "type": "campaign"
+                            }
+                        ],
+                        "description": "Total Discount",
+                        "type": "campaign"
+                    },
+                    "vendorTotal": {
+                        "amount": {
+                            "amount": 0,
+                            "currency": "TRY"
+                        },
+                        "charge": "vendor",
+                        "children": null,
+                        "description": "Vendor Total"
+                    }
+                },
+                "payment": {
+                    "currency": "TRY",
+                    "fee": {
+                        "amount": {
+                            "amount": 482090,
+                            "currency": "TRY"
+                        },
+                        "charge": "partial",
+                        "children": [
+                            {
+                                "amount": {
+                                    "amount": 497000,
+                                    "currency": "TRY"
+                                },
+                                "charge": "advance",
+                                "children": null,
+                                "description": "Car Rental Service",
+                                "type": "net"
+                            },
+                            {
+                                "amount": {
+                                    "amount": -14910,
+                                    "currency": "TRY"
+                                },
+                                "charge": "advance",
+                                "children": null,
+                                "description": "22707",
+                                "type": "campaign"
+                            }
+                        ],
+                        "description": "Fee",
+                        "type": "fee"
+                    },
+                    "net": {
+                        "amount": {
+                            "amount": 497000,
+                            "currency": "TRY"
+                        },
+                        "charge": "advance",
+                        "children": null,
+                        "description": "Car Rental Service",
+                        "type": "net"
+                    },
+                    "otherPrices": null,
+                    "paymentTotal": {
+                        "amount": {
+                            "amount": 499590,
+                            "currency": "TRY"
+                        },
+                        "charge": "advance",
+                        "children": [
+                            {
+                                "amount": {
+                                    "amount": 497000,
+                                    "currency": "TRY"
+                                },
+                                "charge": "advance",
+                                "children": null,
+                                "description": "Car Rental Service",
+                                "type": "net"
+                            },
+                            {
+                                "amount": {
+                                    "amount": 17500,
+                                    "currency": "TRY"
+                                },
+                                "charge": "advance",
+                                "children": null,
+                                "description": "Service Fee",
+                                "type": "serviceFee"
+                            },
+                            {
+                                "amount": {
+                                    "amount": -14910,
+                                    "currency": "TRY"
+                                },
+                                "charge": "advance",
+                                "children": null,
+                                "description": "22707",
+                                "type": "campaign"
+                            }
+                        ],
+                        "description": "Payment Total"
+                    },
+                    "preCommissionFee": {
+                        "amount": {
+                            "amount": 482090,
+                            "currency": "TRY"
+                        },
+                        "charge": "partial",
+                        "children": [
+                            {
+                                "amount": {
+                                    "amount": 497000,
+                                    "currency": "TRY"
+                                },
+                                "charge": "advance",
+                                "children": null,
+                                "description": "Car Rental Service",
+                                "type": "net"
+                            },
+                            {
+                                "amount": {
+                                    "amount": -14910,
+                                    "currency": "TRY"
+                                },
+                                "charge": "advance",
+                                "children": null,
+                                "description": "22707",
+                                "type": "campaign"
+                            }
+                        ],
+                        "description": "Pre Commission Fee"
+                    },
+                    "preDiscountTotal": {
+                        "amount": {
+                            "amount": 514500,
+                            "currency": "TRY"
+                        },
+                        "charge": "partial",
+                        "children": [
+                            {
+                                "amount": {
+                                    "amount": 497000,
+                                    "currency": "TRY"
+                                },
+                                "charge": "advance",
+                                "children": null,
+                                "description": "Car Rental Service",
+                                "type": "net"
+                            },
+                            {
+                                "amount": {
+                                    "amount": 17500,
+                                    "currency": "TRY"
+                                },
+                                "charge": "advance",
+                                "children": null,
+                                "description": "Service Fee",
+                                "type": "serviceFee"
+                            }
+                        ],
+                        "description": "Pre Discount Total Price"
+                    },
+                    "serviceFee": {
+                        "amount": {
+                            "amount": 17500,
+                            "currency": "TRY"
+                        },
+                        "charge": "advance",
+                        "children": null,
+                        "description": "Service Fee",
+                        "type": "serviceFee"
+                    },
+                    "total": {
+                        "amount": {
+                            "amount": 499590,
+                            "currency": "TRY"
+                        },
+                        "charge": "partial",
+                        "children": [
+                            {
+                                "amount": {
+                                    "amount": 497000,
+                                    "currency": "TRY"
+                                },
+                                "charge": "advance",
+                                "children": null,
+                                "description": "Car Rental Service",
+                                "type": "net"
+                            },
+                            {
+                                "amount": {
+                                    "amount": 17500,
+                                    "currency": "TRY"
+                                },
+                                "charge": "advance",
+                                "children": null,
+                                "description": "Service Fee",
+                                "type": "serviceFee"
+                            },
+                            {
+                                "amount": {
+                                    "amount": -14910,
+                                    "currency": "TRY"
+                                },
+                                "charge": "advance",
+                                "children": null,
+                                "description": "22707",
+                                "type": "campaign"
+                            }
+                        ],
+                        "description": "Total"
+                    },
+                    "totalDiscount": {
+                        "amount": {
+                            "amount": 14910,
+                            "currency": "TRY"
+                        },
+                        "charge": "advance",
+                        "children": [
+                            {
+                                "amount": {
+                                    "amount": 14910,
+                                    "currency": "TRY"
+                                },
+                                "charge": "advance",
+                                "children": null,
+                                "description": "22707",
+                                "type": "campaign"
+                            }
+                        ],
+                        "description": "Total Discount",
+                        "type": "campaign"
+                    },
+                    "vendorTotal": {
+                        "amount": {
+                            "amount": 0,
+                            "currency": "TRY"
+                        },
+                        "charge": "vendor",
+                        "children": null,
+                        "description": "Vendor Total"
+                    }
+                }
+            }

@@ -1,0 +1,20 @@
+{
+    "name": "Düzce, Türkiye",
+    "countryCode": "TR",
+    "cityName": "Düzce",
+    "lat": 40.83872,
+    "lng": 31.162609,
+    "viewport": {
+        "northeast": {
+            "lat": 40.886112,
+            "lng": 31.188368
+        },
+        "southwest": {
+            "lat": 40.820133,
+            "lng": 31.116829
+        }
+    },
+    "timezone": [
+        "Europe/Istanbul"
+    ]
+}
