@@ -16,6 +16,10 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        PickupDateTextBox.Text = DateTime.Today.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+        ReturnDateTextBox.Text = DateTime.Today.AddDays(2).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+        PickupTimeTextBox.Text = "10:00";
+        ReturnTimeTextBox.Text = "18:00";
         ConfigureResultsGrid();
         _smsReceiverService.SmsReceived += SmsReceiverService_SmsReceived;
         InitializeSmsReceiver();
@@ -53,7 +57,7 @@ public partial class MainWindow : Window
             _browserAutomationService = new BrowserAutomationService();
             _browserAutomationService.ProgressChanged -= BrowserAutomationService_LoginProgressChanged;
             _browserAutomationService.ProgressChanged += BrowserAutomationService_LoginProgressChanged;
-            await _browserAutomationService.InitializeAsync(headless: false);
+            await _browserAutomationService.InitializeAsync(headless: false, restoreSession: false);
 
             StatusTextBlock.Text = "Yolcu360 giriş ekranı dolduruluyor...";
             await _browserAutomationService.LoginWithPhoneAsync(phoneNumber);
@@ -77,11 +81,14 @@ public partial class MainWindow : Window
                 StatusTextBlock.Text = "SMS doğrulama bekleniyor...";
                 var code = await _smsReceiverService.WaitForCodeAsync(TimeSpan.FromMinutes(2));
                 await _browserAutomationService.FillSmsVerificationCodeAsync(code);
-                StatusTextBlock.Text = "SMS kodu yazıldı.";
+                await Task.Delay(3_000);
+                await _browserAutomationService.SaveCurrentSessionAsync();
+                StatusTextBlock.Text = "Giriş tamamlandı, oturum kaydedildi.";
             }
             else
             {
-                StatusTextBlock.Text = "SMS doğrulama ekranı bulunamadı.";
+                await _browserAutomationService.SaveCurrentSessionAsync();
+                StatusTextBlock.Text = "Giriş durumu kaydedildi.";
             }
         }
         catch (Exception ex)
@@ -114,17 +121,20 @@ public partial class MainWindow : Window
                     DateTimeStyles.None,
                     out var returnDate))
             {
-                SearchStatusTextBlock.Text = "Tarih formatı geçersiz. Örnek: 2026-08-10";
+                SearchStatusTextBlock.Text = "Tarih formatı gecersiz. Ornek: 2026-08-10";
                 return;
             }
+
+            var pickupTime = PickupTimeTextBox.Text?.Trim() ?? "10:00";
+            var returnTime = ReturnTimeTextBox.Text?.Trim() ?? "18:00";
 
             var filter = new SearchFilter
             {
                 PickupLocation = PickupLocationTextBox.Text?.Trim() ?? string.Empty,
-                PickupDate = pickupDate,
-                ReturnDate = returnDate,
-                PickupTime = PickupTimeTextBox.Text?.Trim() ?? "10:00",
-                ReturnTime = ReturnTimeTextBox.Text?.Trim() ?? "18:00",
+                PickupDate = pickupDate.Date,
+                ReturnDate = returnDate.Date,
+                PickupTime = pickupTime,
+                ReturnTime = returnTime,
                 TransmissionType = GetComboBoxTag(TransmissionComboBox),
                 FuelType = GetComboBoxTag(FuelComboBox)
             };

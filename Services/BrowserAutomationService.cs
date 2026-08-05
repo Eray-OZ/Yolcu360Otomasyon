@@ -1,4 +1,3 @@
-using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using PuppeteerSharp;
@@ -9,7 +8,7 @@ namespace Yolcu360Otomasyon.Services;
 public sealed class BrowserAutomationService : IAsyncDisposable
 {
     private const string Yolcu360HomeUrl = "https://www.yolcu360.com/";
-    private const string LoginDebugDirectory = "/Users/erayoz/Codes/Staj/Yolcu360Otomasyon/LoginDebug";
+    private const string SessionStateFilePath = "/Users/erayoz/Codes/Staj/Yolcu360Otomasyon/session_state.json";
 
     private IBrowser? _browser;
     private IPage? _page;
@@ -53,7 +52,7 @@ public sealed class BrowserAutomationService : IAsyncDisposable
 
     // ─── Başlatma ─────────────────────────────────────────────────────────────
 
-    public async Task InitializeAsync(bool headless = true)
+    public async Task InitializeAsync(bool headless = true, bool restoreSession = true)
     {
         if (_browser is not null && _page is not null)
             return;
@@ -73,6 +72,9 @@ public sealed class BrowserAutomationService : IAsyncDisposable
             Width  = 1440,
             Height = 900
         });
+
+        if (restoreSession)
+            await TryRestoreSessionAsync();
     }
 
     // ─── Login ────────────────────────────────────────────────────────────────
@@ -96,10 +98,6 @@ public sealed class BrowserAutomationService : IAsyncDisposable
         var normalizedPhone = NormalizePhoneNumber(phoneNumber);
         await NativeSetInputAsync(Selectors.LoginPagePhoneInput, normalizedPhone);
 
-        var debugCapture = new LoginDebugCapture();
-        await CaptureLoginPageSnapshotAsync(normalizedPhone, debugCapture);
-        AttachLoginNetworkCapture(page, debugCapture);
-
         var continueClicked = await page.EvaluateExpressionAsync<bool>(
             """
             (() => {
@@ -114,8 +112,7 @@ public sealed class BrowserAutomationService : IAsyncDisposable
         if (!continueClicked)
             throw new InvalidOperationException("Login sayfasında 'Devam Et' butonu bulunamadı.");
 
-        await WaitAsync(4_000);
-        await PersistLoginDebugCaptureAsync(debugCapture);
+        await WaitAsync(2_000);
     }
 
     public async Task<bool> IsSmsVerificationRequiredAsync()
@@ -1377,134 +1374,103 @@ public sealed class BrowserAutomationService : IAsyncDisposable
         return $"URL: {url}. Sayfa: {text}";
     }
 
-    private async Task CaptureLoginPageSnapshotAsync(string normalizedPhone, LoginDebugCapture capture)
+    public async Task SaveCurrentSessionAsync()
     {
         var page = GetPage();
-
-        capture.Timestamp = DateTimeOffset.Now;
-        capture.CurrentUrl = page.Url;
-        capture.UserAgent = await page.EvaluateExpressionAsync<string>("navigator.userAgent");
-        capture.PhoneNumber = normalizedPhone;
-        capture.Cookies = await page.GetCookiesAsync();
-        capture.Snapshot = await page.EvaluateExpressionAsync<LoginDebugSnapshot>(
-            """
-            (() => {
-                const safeStorageRead = storage => {
-                    try {
-                        const result = {};
-                        for (let i = 0; i < storage.length; i++) {
-                            const key = storage.key(i);
-                            result[key] = storage.getItem(key);
-                        }
-                        return result;
-                    } catch {
-                        return {};
-                    }
-                };
-
-                return {
-                    url: location.href,
-                    title: document.title,
-                    webdriver: navigator.webdriver ?? null,
-                    language: navigator.language || '',
-                    languages: Array.from(navigator.languages || []),
-                    platform: navigator.platform || '',
-                    vendor: navigator.vendor || '',
-                    hardwareConcurrency: navigator.hardwareConcurrency || 0,
-                    deviceMemory: navigator.deviceMemory || 0,
-                    screen: {
-                        width: window.screen?.width || 0,
-                        height: window.screen?.height || 0,
-                        availWidth: window.screen?.availWidth || 0,
-                        availHeight: window.screen?.availHeight || 0,
-                        colorDepth: window.screen?.colorDepth || 0,
-                        pixelDepth: window.screen?.pixelDepth || 0
-                    },
-                    viewport: {
-                        width: window.innerWidth || 0,
-                        height: window.innerHeight || 0,
-                        devicePixelRatio: window.devicePixelRatio || 0
-                    },
-                    bodyText: (document.body?.innerText || '').slice(0, 2000),
-                    phoneInputValue: document.querySelector('#phn-input')?.value || '',
-                    localStorage: safeStorageRead(window.localStorage),
-                    sessionStorage: safeStorageRead(window.sessionStorage)
-                };
-            })();
-            """);
-    }
-
-    private static void AttachLoginNetworkCapture(IPage page, LoginDebugCapture capture)
-    {
-        page.Request += (_, e) =>
+        var state = new SessionState
         {
-            if (!IsLoginVerificationRequest(e.Request.Url))
-                return;
-
-            lock (capture.SyncRoot)
-            {
-                capture.Requests.Add(new LoginNetworkEntry
-                {
-                    Stage = "request",
-                    Url = e.Request.Url,
-                    Method = e.Request.Method.ToString(),
-                    Headers = new Dictionary<string, string>(e.Request.Headers),
-                    Body = e.Request.PostData ?? string.Empty,
-                    Timestamp = DateTimeOffset.Now
-                });
-            }
+            SavedAt = DateTimeOffset.Now,
+            CurrentUrl = page.Url,
+            Cookies = await page.GetCookiesAsync(),
+            LocalStorage = await ReadStorageAsync("localStorage"),
+            SessionStorage = await ReadStorageAsync("sessionStorage")
         };
 
-        page.Response += async (_, e) =>
-        {
-            if (!IsLoginVerificationRequest(e.Response.Url))
-                return;
-
-            string body;
-            try
-            {
-                body = await e.Response.TextAsync();
-            }
-            catch (Exception ex)
-            {
-                body = $"<body okunamadi: {ex.Message}>";
-            }
-
-            lock (capture.SyncRoot)
-            {
-                capture.Requests.Add(new LoginNetworkEntry
-                {
-                    Stage = "response",
-                    Url = e.Response.Url,
-                    Method = e.Response.Request.Method.ToString(),
-                    Status = (int)e.Response.Status,
-                    StatusText = e.Response.StatusText,
-                    Headers = new Dictionary<string, string>(e.Response.Headers),
-                    Body = body,
-                    Timestamp = DateTimeOffset.Now
-                });
-            }
-        };
-    }
-
-    private static bool IsLoginVerificationRequest(string url)
-    {
-        return url.Contains("/accounts-api/auth/login/phone/code/recaptcha", StringComparison.OrdinalIgnoreCase);
-    }
-
-    private static async Task PersistLoginDebugCaptureAsync(LoginDebugCapture capture)
-    {
-        Directory.CreateDirectory(LoginDebugDirectory);
-
-        var safeTimestamp = capture.Timestamp.ToString("yyyyMMdd_HHmmss");
-        var targetPath = Path.Combine(LoginDebugDirectory, $"login_debug_{safeTimestamp}.json");
-        var json = JsonSerializer.Serialize(capture, new JsonSerializerOptions
+        var json = JsonSerializer.Serialize(state, new JsonSerializerOptions
         {
             WriteIndented = true
         });
 
-        await File.WriteAllTextAsync(targetPath, json, Encoding.UTF8);
-        Console.WriteLine($"[LOGIN-DEBUG] Kaydedildi: {targetPath}");
+        await File.WriteAllTextAsync(SessionStateFilePath, json);
+        Report("Oturum kaydedildi.");
+    }
+
+    private async Task TryRestoreSessionAsync()
+    {
+        if (!File.Exists(SessionStateFilePath))
+            return;
+
+        SessionState? state;
+
+        try
+        {
+            var json = await File.ReadAllTextAsync(SessionStateFilePath);
+            state = JsonSerializer.Deserialize<SessionState>(json);
+        }
+        catch
+        {
+            return;
+        }
+
+        if (state is null)
+            return;
+
+        var page = GetPage();
+        await page.GoToAsync(Yolcu360HomeUrl, WaitUntilNavigation.Networkidle2);
+
+        if (state.Cookies.Length > 0)
+            await page.SetCookieAsync(state.Cookies);
+
+        await WriteStorageAsync("localStorage", state.LocalStorage);
+        await WriteStorageAsync("sessionStorage", state.SessionStorage);
+        await page.ReloadAsync(new NavigationOptions
+        {
+            WaitUntil = [WaitUntilNavigation.Networkidle2]
+        });
+
+        Report("Kaydedilmiş oturum yüklendi.");
+    }
+
+    private async Task<Dictionary<string, string?>> ReadStorageAsync(string storageName)
+    {
+        var page = GetPage();
+        return await page.EvaluateFunctionAsync<Dictionary<string, string?>>(
+            """
+            (storageName) => {
+                const storage = window[storageName];
+                const result = {};
+                if (!storage) return result;
+
+                for (let index = 0; index < storage.length; index++) {
+                    const key = storage.key(index);
+                    result[key] = storage.getItem(key);
+                }
+
+                return result;
+            }
+            """,
+            storageName);
+    }
+
+    private async Task WriteStorageAsync(string storageName, Dictionary<string, string?> values)
+    {
+        var page = GetPage();
+        await page.EvaluateFunctionAsync(
+            """
+            (storageName, values) => {
+                const storage = window[storageName];
+                if (!storage) return;
+
+                storage.clear();
+
+                for (const [key, value] of Object.entries(values || {})) {
+                    if (value === null || value === undefined) continue;
+                    storage.setItem(key, value);
+                }
+            }
+            """,
+            storageName,
+            values);
     }
 
     private static Task WaitAsync(int ms) => Task.Delay(ms);
@@ -1634,111 +1600,13 @@ public sealed class BrowserAutomationService : IAsyncDisposable
         public int Index { get; init; }
     }
 
-    private sealed class LoginDebugCapture
+    private sealed class SessionState
     {
-        [JsonIgnore]
-        public object SyncRoot { get; } = new();
-
-        public DateTimeOffset Timestamp { get; set; }
-        public string CurrentUrl { get; set; } = "";
-        public string UserAgent { get; set; } = "";
-        public string PhoneNumber { get; set; } = "";
-        public CookieParam[] Cookies { get; set; } = [];
-        public LoginDebugSnapshot? Snapshot { get; set; }
-        public List<LoginNetworkEntry> Requests { get; set; } = [];
-    }
-
-    private sealed class LoginDebugSnapshot
-    {
-        [JsonPropertyName("url")]
-        public string Url { get; init; } = "";
-
-        [JsonPropertyName("title")]
-        public string Title { get; init; } = "";
-
-        [JsonPropertyName("webdriver")]
-        public bool? Webdriver { get; init; }
-
-        [JsonPropertyName("language")]
-        public string Language { get; init; } = "";
-
-        [JsonPropertyName("languages")]
-        public string[] Languages { get; init; } = [];
-
-        [JsonPropertyName("platform")]
-        public string Platform { get; init; } = "";
-
-        [JsonPropertyName("vendor")]
-        public string Vendor { get; init; } = "";
-
-        [JsonPropertyName("hardwareConcurrency")]
-        public int HardwareConcurrency { get; init; }
-
-        [JsonPropertyName("deviceMemory")]
-        public decimal DeviceMemory { get; init; }
-
-        [JsonPropertyName("screen")]
-        public LoginScreenInfo? Screen { get; init; }
-
-        [JsonPropertyName("viewport")]
-        public LoginViewportInfo? Viewport { get; init; }
-
-        [JsonPropertyName("bodyText")]
-        public string BodyText { get; init; } = "";
-
-        [JsonPropertyName("phoneInputValue")]
-        public string PhoneInputValue { get; init; } = "";
-
-        [JsonPropertyName("localStorage")]
+        public DateTimeOffset SavedAt { get; init; }
+        public string CurrentUrl { get; init; } = "";
+        public CookieParam[] Cookies { get; init; } = [];
         public Dictionary<string, string?> LocalStorage { get; init; } = [];
-
-        [JsonPropertyName("sessionStorage")]
         public Dictionary<string, string?> SessionStorage { get; init; } = [];
-    }
-
-    private sealed class LoginScreenInfo
-    {
-        [JsonPropertyName("width")]
-        public int Width { get; init; }
-
-        [JsonPropertyName("height")]
-        public int Height { get; init; }
-
-        [JsonPropertyName("availWidth")]
-        public int AvailWidth { get; init; }
-
-        [JsonPropertyName("availHeight")]
-        public int AvailHeight { get; init; }
-
-        [JsonPropertyName("colorDepth")]
-        public int ColorDepth { get; init; }
-
-        [JsonPropertyName("pixelDepth")]
-        public int PixelDepth { get; init; }
-    }
-
-    private sealed class LoginViewportInfo
-    {
-        [JsonPropertyName("width")]
-        public int Width { get; init; }
-
-        [JsonPropertyName("height")]
-        public int Height { get; init; }
-
-        [JsonPropertyName("devicePixelRatio")]
-        public decimal DevicePixelRatio { get; init; }
-    }
-
-    private sealed class LoginNetworkEntry
-    {
-        public string Stage { get; init; } = "";
-        public string Url { get; init; } = "";
-        public string Method { get; init; } = "";
-        public int Status { get; init; }
-        public string StatusText { get; init; } = "";
-        public Dictionary<string, string> Headers { get; init; } = [];
-        public string Body { get; init; } = "";
-        public DateTimeOffset Timestamp { get; init; }
     }
 
     public async ValueTask DisposeAsync()

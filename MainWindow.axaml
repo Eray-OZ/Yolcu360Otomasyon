@@ -2,130 +2,492 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        mc:Ignorable="d"
+        d:DesignWidth="1360"
+        d:DesignHeight="860"
         x:Class="Yolcu360Otomasyon.MainWindow"
         Title="Yolcu360 Otomasyon"
-        Width="1200"
-        Height="760">
-    <Grid RowDefinitions="Auto,Auto,*" Margin="24" RowSpacing="18">
-        <StackPanel Spacing="12">
-            <TextBlock Text="Yolcu360 Giriş"
-                       FontSize="24"
-                       FontWeight="SemiBold" />
+        Width="1360"
+        Height="860"
+        Background="#F4F7FB">
+    <Window.Styles>
+        <Style Selector="TextBox">
+            <Setter Property="MinHeight" Value="42" />
+            <Setter Property="Padding" Value="12,10" />
+            <Setter Property="Background" Value="White" />
+            <Setter Property="Foreground" Value="#132235" />
+            <Setter Property="CaretBrush" Value="#132235" />
+            <Setter Property="BorderBrush" Value="#D6DFEA" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="10" />
+        </Style>
 
-            <StackPanel Spacing="6">
-                <TextBlock Text="Telefon numarası" />
-                <TextBox x:Name="PhoneNumberTextBox"
-                         PlaceholderText="5xxxxxxxxx" />
-            </StackPanel>
+        <Style Selector="TextBox:focus">
+            <Setter Property="Background" Value="White" />
+            <Setter Property="Foreground" Value="#132235" />
+            <Setter Property="BorderBrush" Value="#0F62FE" />
+        </Style>
 
-            <StackPanel Orientation="Horizontal" Spacing="12">
-                <Button x:Name="LoginButton"
-                        Content="SMS ile Giriş Yap"
-                        Click="LoginButton_Click" />
+        <Style Selector="TextBox:pointerover">
+            <Setter Property="Background" Value="White" />
+            <Setter Property="Foreground" Value="#132235" />
+        </Style>
 
-                <TextBlock x:Name="StatusTextBlock"
-                           VerticalAlignment="Center"
-                           Text="Hazır" />
-            </StackPanel>
-        </StackPanel>
+        <Style Selector="TextBox /template/ ScrollViewer">
+            <Setter Property="Background" Value="White" />
+        </Style>
 
-        <Border Grid.Row="1"
-                BorderThickness="1"
-                BorderBrush="#D0D7DE"
-                Padding="16">
-            <StackPanel Spacing="12">
-                <TextBlock Text="Arama ve Filtreleme"
-                           FontSize="18"
-                           FontWeight="SemiBold" />
+        <Style Selector="TextBox /template/ Border">
+            <Setter Property="Background" Value="White" />
+        </Style>
 
-                <Grid ColumnDefinitions="*,*,*" ColumnSpacing="12">
-                    <StackPanel Spacing="6">
-                        <TextBlock Text="Alış yeri" />
-                        <TextBox x:Name="PickupLocationTextBox"
-                                 PlaceholderText="Düzce" />
+        <Style Selector="ComboBox">
+            <Setter Property="MinHeight" Value="42" />
+            <Setter Property="Padding" Value="12,8" />
+            <Setter Property="Background" Value="White" />
+            <Setter Property="Foreground" Value="#132235" />
+            <Setter Property="BorderBrush" Value="#D6DFEA" />
+        </Style>
+
+        <Style Selector="ComboBox:focus">
+            <Setter Property="Background" Value="White" />
+            <Setter Property="Foreground" Value="#132235" />
+            <Setter Property="BorderBrush" Value="#0F62FE" />
+        </Style>
+
+        <Style Selector="DatePicker">
+            <Setter Property="MinHeight" Value="42" />
+            <Setter Property="Background" Value="White" />
+            <Setter Property="Foreground" Value="#132235" />
+            <Setter Property="BorderBrush" Value="#D6DFEA" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="Padding" Value="12,8" />
+        </Style>
+
+        <Style Selector="DatePicker:focus">
+            <Setter Property="Background" Value="White" />
+            <Setter Property="Foreground" Value="#132235" />
+            <Setter Property="BorderBrush" Value="#0F62FE" />
+        </Style>
+
+        <Style Selector="DatePicker TextBlock">
+            <Setter Property="Foreground" Value="#132235" />
+        </Style>
+
+        <Style Selector="Calendar">
+            <Setter Property="Background" Value="White" />
+            <Setter Property="Foreground" Value="#132235" />
+        </Style>
+
+        <Style Selector="Calendar /template/ Border">
+            <Setter Property="Background" Value="White" />
+            <Setter Property="BorderBrush" Value="#D6DFEA" />
+        </Style>
+
+        <Style Selector="CalendarDayButton">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="#132235" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="MinWidth" Value="36" />
+            <Setter Property="MinHeight" Value="32" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+
+        <Style Selector="CalendarDayButton:pointerover">
+            <Setter Property="Background" Value="#EEF4FF" />
+            <Setter Property="Foreground" Value="#0F62FE" />
+            <Setter Property="BorderBrush" Value="#CFE0FF" />
+        </Style>
+
+        <Style Selector="CalendarDayButton:selected">
+            <Setter Property="Background" Value="#0F62FE" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="BorderBrush" Value="#0F62FE" />
+        </Style>
+
+        <Style Selector="CalendarDayButton:disabled">
+            <Setter Property="Foreground" Value="#A4B1C0" />
+        </Style>
+
+        <Style Selector="CalendarButton">
+            <Setter Property="Foreground" Value="#132235" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+        </Style>
+
+        <Style Selector="CalendarButton:pointerover">
+            <Setter Property="Background" Value="#EEF4FF" />
+            <Setter Property="Foreground" Value="#0F62FE" />
+        </Style>
+
+        <Style Selector="DatePickerPresenter">
+            <Setter Property="Background" Value="White" />
+            <Setter Property="BorderBrush" Value="#D6DFEA" />
+        </Style>
+
+        <Style Selector="PopupRoot">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+
+        <Style Selector="Button">
+            <Setter Property="MinHeight" Value="42" />
+            <Setter Property="Padding" Value="18,10" />
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+
+        <Style Selector="DataGrid">
+            <Setter Property="Background" Value="White" />
+            <Setter Property="Foreground" Value="#132235" />
+            <Setter Property="BorderBrush" Value="#D6DFEA" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="RowHeight" Value="46" />
+            <Setter Property="HeadersVisibility" Value="Column" />
+            <Setter Property="GridLinesVisibility" Value="Horizontal" />
+        </Style>
+
+        <Style Selector="DataGridColumnHeader">
+            <Setter Property="Background" Value="#EEF3F9" />
+            <Setter Property="Foreground" Value="#233143" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Padding" Value="12,10" />
+        </Style>
+
+        <Style Selector="DataGridRow">
+            <Setter Property="Background" Value="White" />
+            <Setter Property="Foreground" Value="#132235" />
+        </Style>
+
+        <Style Selector="DataGridRow:pointerover">
+            <Setter Property="Background" Value="#F8FBFF" />
+            <Setter Property="Foreground" Value="#132235" />
+        </Style>
+
+        <Style Selector="DataGridCell">
+            <Setter Property="Foreground" Value="#132235" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="#E8EEF5" />
+            <Setter Property="Padding" Value="10,8" />
+        </Style>
+
+        <Style Selector="DataGridCell:current">
+            <Setter Property="Foreground" Value="#132235" />
+            <Setter Property="Background" Value="#EEF4FF" />
+        </Style>
+
+        <Style Selector="DataGridCell TextBlock">
+            <Setter Property="Foreground" Value="#132235" />
+        </Style>
+    </Window.Styles>
+
+    <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                  VerticalScrollBarVisibility="Auto">
+        <Grid Margin="28"
+              RowDefinitions="Auto,Auto,*"
+              RowSpacing="20">
+            <Border Background="#0F172A"
+                    CornerRadius="10"
+                    Padding="28">
+                <Grid ColumnDefinitions="*,360"
+                      ColumnSpacing="24">
+                    <StackPanel Spacing="10">
+                        <TextBlock Text="Yolcu360 Operasyon Paneli"
+                                   FontSize="30"
+                                   FontWeight="Bold"
+                                   Foreground="White" />
+
+                        <TextBlock Text="Giriş, arama ve sonuç akışını tek ekranda yönetin."
+                                   FontSize="15"
+                                   Foreground="#C7D2E4" />
+
+                        <StackPanel Orientation="Horizontal"
+                                    Spacing="10"
+                                    Margin="0,10,0,0">
+                            <Border Background="#172554"
+                                    CornerRadius="999"
+                                    Padding="12,6">
+                                <TextBlock Text="Canlı Tarayıcı"
+                                           Foreground="#DBEAFE"
+                                           FontWeight="SemiBold"
+                                           FontSize="12" />
+                            </Border>
+
+                            <Border Background="#1E293B"
+                                    CornerRadius="999"
+                                    Padding="12,6">
+                                <TextBlock Text="SMS Dinleyici"
+                                           Foreground="#E2E8F0"
+                                           FontWeight="SemiBold"
+                                           FontSize="12" />
+                            </Border>
+                        </StackPanel>
                     </StackPanel>
 
-                    <StackPanel Grid.Column="1" Spacing="6">
-                        <TextBlock Text="Alış tarihi" />
-                        <TextBox x:Name="PickupDateTextBox"
-                                 PlaceholderText="2026-08-10" />
-                    </StackPanel>
+                    <Border Grid.Column="1"
+                            Background="#111C31"
+                            CornerRadius="10"
+                            Padding="18">
+                        <StackPanel Spacing="8"
+                                    VerticalAlignment="Center">
+                            <TextBlock Text="Durum"
+                                       Foreground="#8FA4C7"
+                                       FontSize="12"
+                                       FontWeight="SemiBold" />
 
-                    <StackPanel Grid.Column="2" Spacing="6">
-                        <TextBlock Text="Dönüş tarihi" />
-                        <TextBox x:Name="ReturnDateTextBox"
-                                 PlaceholderText="2026-08-12" />
-                    </StackPanel>
+                            <TextBlock Text="Otomasyon hazır"
+                                       Foreground="White"
+                                       FontSize="22"
+                                       FontWeight="Bold" />
+
+                            <TextBlock Text="Giriş ve arama adımları bu ekrandan yönetilir."
+                                       Foreground="#C7D2E4"
+                                       TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
                 </Grid>
+            </Border>
 
-                <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="12">
-                    <StackPanel Spacing="6">
-                        <TextBlock Text="Alış saati" />
-                        <TextBox x:Name="PickupTimeTextBox"
-                                 Text="10:00" />
+            <Grid Grid.Row="1"
+                  ColumnDefinitions="380,*"
+                  ColumnSpacing="20">
+                <Border Background="White"
+                        BorderBrush="#D9E2EC"
+                        BorderThickness="1"
+                        CornerRadius="10"
+                        Padding="22">
+                    <StackPanel Spacing="16">
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="Giriş"
+                                       FontSize="22"
+                                       FontWeight="Bold"
+                                       Foreground="#122033" />
+                            <TextBlock Text="Telefon numarasıyla oturumu başlatın."
+                                       Foreground="#5F7187" />
+                        </StackPanel>
+
+                        <StackPanel Spacing="6">
+                            <TextBlock Text="Telefon numarası"
+                                       Foreground="#243446"
+                                       FontWeight="SemiBold" />
+                            <TextBox x:Name="PhoneNumberTextBox"
+                                     PlaceholderText="5xxxxxxxxx" />
+                        </StackPanel>
+
+                        <Button x:Name="LoginButton"
+                                Content="SMS ile Giriş Yap"
+                                Click="LoginButton_Click"
+                                Background="#0F62FE"
+                                Foreground="White" />
+
+                        <Border Background="#F6F9FC"
+                                BorderBrush="#E2EAF2"
+                                BorderThickness="1"
+                                CornerRadius="10"
+                                Padding="14">
+                            <StackPanel Spacing="6">
+                                <TextBlock Text="Giriş durumu"
+                                           FontSize="12"
+                                           FontWeight="SemiBold"
+                                           Foreground="#6A7B90" />
+                                <TextBlock x:Name="StatusTextBlock"
+                                           Text="Hazır"
+                                           TextWrapping="Wrap"
+                                           Foreground="#132235"
+                                           FontWeight="SemiBold" />
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
+                </Border>
 
-                    <StackPanel Grid.Column="1" Spacing="6">
-                        <TextBlock Text="Dönüş saati" />
-                        <TextBox x:Name="ReturnTimeTextBox"
-                                 Text="18:00" />
+                <Border Grid.Column="1"
+                        Background="White"
+                        BorderBrush="#D9E2EC"
+                        BorderThickness="1"
+                        CornerRadius="10"
+                        Padding="22">
+                    <StackPanel Spacing="18">
+                        <Grid ColumnDefinitions="*,Auto"
+                              ColumnSpacing="18">
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="Arama ve Filtreleme"
+                                           FontSize="22"
+                                           FontWeight="Bold"
+                                           Foreground="#122033" />
+                                <TextBlock Text="Alış noktası, tarih ve araç filtreleriyle sonuçları listeleyin."
+                                           Foreground="#5F7187" />
+                            </StackPanel>
+
+                            <Border Grid.Column="1"
+                                    Background="#F6F9FC"
+                                    BorderBrush="#E2EAF2"
+                                    BorderThickness="1"
+                                    CornerRadius="10"
+                                    Padding="14,10"
+                                    MinWidth="300">
+                                <TextBlock x:Name="SearchStatusTextBlock"
+                                           Text="Arama hazır"
+                                           VerticalAlignment="Center"
+                                           TextWrapping="Wrap"
+                                           Foreground="#132235"
+                                           FontWeight="SemiBold" />
+                            </Border>
+                        </Grid>
+
+                        <StackPanel Spacing="14">
+                            <StackPanel Spacing="6">
+                                <TextBlock Text="Alış yeri"
+                                           Foreground="#243446"
+                                           FontWeight="SemiBold" />
+                                <TextBox x:Name="PickupLocationTextBox"
+                                         PlaceholderText="Düzce" />
+                            </StackPanel>
+
+                            <Grid ColumnDefinitions="*,*"
+                                  ColumnSpacing="14">
+                                <StackPanel Spacing="6">
+                                    <TextBlock Text="Alış tarihi"
+                                               Foreground="#243446"
+                                               FontWeight="SemiBold" />
+                                    <TextBox x:Name="PickupDateTextBox"
+                                             PlaceholderText="2026-08-10" />
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="1"
+                                            Spacing="6">
+                                    <TextBlock Text="Dönüş tarihi"
+                                               Foreground="#243446"
+                                               FontWeight="SemiBold" />
+                                    <TextBox x:Name="ReturnDateTextBox"
+                                             PlaceholderText="2026-08-12" />
+                                </StackPanel>
+                            </Grid>
+
+                            <Grid ColumnDefinitions="*,*"
+                                  ColumnSpacing="14">
+                                <StackPanel Spacing="6">
+                                    <TextBlock Text="Alış saati"
+                                               Foreground="#243446"
+                                               FontWeight="SemiBold" />
+                                    <TextBox x:Name="PickupTimeTextBox"
+                                             PlaceholderText="10:00" />
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="1"
+                                            Spacing="6">
+                                    <TextBlock Text="Dönüş saati"
+                                               Foreground="#243446"
+                                               FontWeight="SemiBold" />
+                                    <TextBox x:Name="ReturnTimeTextBox"
+                                             PlaceholderText="18:00" />
+                                </StackPanel>
+                            </Grid>
+
+                            <Grid ColumnDefinitions="*,*"
+                                  ColumnSpacing="14">
+                                <StackPanel Spacing="6">
+                                    <TextBlock Text="Vites"
+                                               Foreground="#243446"
+                                               FontWeight="SemiBold" />
+                                    <ComboBox x:Name="TransmissionComboBox"
+                                              SelectedIndex="0">
+                                        <ComboBoxItem Content="Farketmez" Tag="" />
+                                        <ComboBoxItem Content="Otomatik" Tag="otomatik" />
+                                        <ComboBoxItem Content="Manuel" Tag="manuel" />
+                                    </ComboBox>
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="1"
+                                        Spacing="6">
+                                    <TextBlock Text="Yakıt"
+                                           Foreground="#243446"
+                                           FontWeight="SemiBold" />
+                                    <ComboBox x:Name="FuelComboBox"
+                                              SelectedIndex="0">
+                                        <ComboBoxItem Content="Farketmez" Tag="" />
+                                        <ComboBoxItem Content="Dizel" Tag="dizel" />
+                                        <ComboBoxItem Content="Benzin" Tag="benzin" />
+                                    </ComboBox>
+                                </StackPanel>
+                            </Grid>
+                        </StackPanel>
+
+                        <StackPanel Orientation="Horizontal"
+                                    Spacing="12">
+                            <Button x:Name="SearchButton"
+                                    Content="Ara"
+                                    Click="SearchButton_Click"
+                                    Width="160"
+                                    Background="#0F62FE"
+                                    Foreground="White" />
+
+                            <Border Background="#EEF4FF"
+                                    BorderBrush="#D8E5FF"
+                                    BorderThickness="1"
+                                    CornerRadius="10"
+                                    Padding="14,10"
+                                    VerticalAlignment="Center">
+                                <TextBlock Text="Sonuçlar aşağıda listelenir."
+                                           Foreground="#35558A"
+                                           FontWeight="SemiBold" />
+                            </Border>
+                        </StackPanel>
                     </StackPanel>
-
-                    <StackPanel Grid.Column="2" Spacing="6">
-                        <TextBlock Text="Vites" />
-                        <ComboBox x:Name="TransmissionComboBox"
-                                  SelectedIndex="0">
-                            <ComboBoxItem Content="Farketmez" Tag="" />
-                            <ComboBoxItem Content="Otomatik" Tag="otomatik" />
-                            <ComboBoxItem Content="Manuel" Tag="manuel" />
-                        </ComboBox>
-                    </StackPanel>
-
-                    <StackPanel Grid.Column="3" Spacing="6">
-                        <TextBlock Text="Yakıt" />
-                        <ComboBox x:Name="FuelComboBox"
-                                  SelectedIndex="0">
-                            <ComboBoxItem Content="Farketmez" Tag="" />
-                            <ComboBoxItem Content="Dizel" Tag="dizel" />
-                            <ComboBoxItem Content="Benzin" Tag="benzin" />
-                        </ComboBox>
-                    </StackPanel>
-                </Grid>
-
-                <StackPanel Orientation="Horizontal" Spacing="12">
-                    <Button x:Name="SearchButton"
-                            Content="Ara"
-                            Click="SearchButton_Click" />
-
-                    <TextBlock x:Name="SearchStatusTextBlock"
-                               VerticalAlignment="Center"
-                               Text="Arama hazır" />
-                </StackPanel>
-            </StackPanel>
-        </Border>
-
-        <Border Grid.Row="2"
-                BorderThickness="1"
-                BorderBrush="#D0D7DE"
-                Padding="16">
-            <Grid RowDefinitions="Auto,*" RowSpacing="12">
-                <TextBlock Text="Arama Sonuçları"
-                           FontSize="18"
-                           FontWeight="SemiBold" />
-
-                <DataGrid x:Name="ResultsDataGrid"
-                          Grid.Row="1"
-                          AutoGenerateColumns="True"
-                          IsReadOnly="True"
-                          CanUserResizeColumns="True"
-                          CanUserSortColumns="True"
-                          GridLinesVisibility="All"
-                          VerticalAlignment="Stretch"
-                          HorizontalAlignment="Stretch"
-                          Height="320"
-                          MinHeight="320" />
+                </Border>
             </Grid>
-        </Border>
-    </Grid>
+
+            <Border Grid.Row="2"
+                    Background="White"
+                    BorderBrush="#D9E2EC"
+                    BorderThickness="1"
+                    CornerRadius="10"
+                    Padding="22">
+                <Grid RowDefinitions="Auto,*"
+                      RowSpacing="16">
+                    <Grid ColumnDefinitions="*,Auto"
+                          ColumnSpacing="18">
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="Arama Sonuçları"
+                                       FontSize="22"
+                                       FontWeight="Bold"
+                                       Foreground="#122033" />
+                            <TextBlock Text="Liste doğrudan tarayıcıdan okunan sonuçlarla güncellenir."
+                                       Foreground="#5F7187" />
+                        </StackPanel>
+
+                        <Border Grid.Column="1"
+                                Background="#F6F9FC"
+                                BorderBrush="#E2EAF2"
+                                BorderThickness="1"
+                                CornerRadius="10"
+                                Padding="14,10"
+                                VerticalAlignment="Center">
+                            <TextBlock Text="Canlı sonuç görünümü"
+                                       Foreground="#48627F"
+                                       FontWeight="SemiBold" />
+                        </Border>
+                    </Grid>
+
+                    <Border Grid.Row="1"
+                            Background="#FBFDFF"
+                            BorderBrush="#E2EAF2"
+                            BorderThickness="1"
+                            CornerRadius="10"
+                            Padding="0">
+                        <DataGrid x:Name="ResultsDataGrid"
+                                  AutoGenerateColumns="True"
+                                  IsReadOnly="True"
+                                  CanUserResizeColumns="True"
+                                  CanUserSortColumns="True"
+                                  VerticalAlignment="Stretch"
+                                  HorizontalAlignment="Stretch"
+                                  MinHeight="420" />
+                    </Border>
+                </Grid>
+            </Border>
+        </Grid>
+    </ScrollViewer>
 </Window>
