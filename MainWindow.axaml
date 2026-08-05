@@ -9,32 +9,19 @@
         Height="760">
     <Grid RowDefinitions="Auto,Auto,*" Margin="24" RowSpacing="18">
         <StackPanel Spacing="12">
-            <TextBlock Text="Yolcu360 Login"
+            <TextBlock Text="Yolcu360 Giriş"
                        FontSize="24"
                        FontWeight="SemiBold" />
 
-            <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
-                <StackPanel Spacing="6">
-                    <TextBlock Text="E-posta" />
-                    <TextBox x:Name="EmailTextBox"
-                             PlaceholderText="mail@example.com" />
-                </StackPanel>
-
-                <StackPanel Grid.Column="1" Spacing="6">
-                    <TextBlock Text="Şifre" />
-                    <TextBox x:Name="PasswordTextBox"
-                             PasswordChar="*"
-                             PlaceholderText="Yolcu360 şifresi" />
-                </StackPanel>
-            </Grid>
+            <StackPanel Spacing="6">
+                <TextBlock Text="Telefon numarası" />
+                <TextBox x:Name="PhoneNumberTextBox"
+                         PlaceholderText="5xxxxxxxxx" />
+            </StackPanel>
 
             <StackPanel Orientation="Horizontal" Spacing="12">
-                <Button x:Name="SaveLoginInfoButton"
-                        Content="Bilgileri Kaydet"
-                        Click="SaveLoginInfoButton_Click" />
-
                 <Button x:Name="LoginButton"
-                        Content="Giriş Yap"
+                        Content="SMS ile Giriş Yap"
                         Click="LoginButton_Click" />
 
                 <TextBlock x:Name="StatusTextBlock"

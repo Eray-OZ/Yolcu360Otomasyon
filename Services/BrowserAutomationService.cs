@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using PuppeteerSharp;
@@ -8,6 +9,7 @@ namespace Yolcu360Otomasyon.Services;
 public sealed class BrowserAutomationService : IAsyncDisposable
 {
     private const string Yolcu360HomeUrl = "https://www.yolcu360.com/";
+    private const string LoginDebugDirectory = "/Users/erayoz/Codes/Staj/Yolcu360Otomasyon/LoginDebug";
 
     private IBrowser? _browser;
     private IPage? _page;
@@ -19,10 +21,8 @@ public sealed class BrowserAutomationService : IAsyncDisposable
     private static class Selectors
     {
         // Login
-        public const string LoginButton        = "button[data-testid='login-button']";
-        public const string EmailInput         = "input[type='email']";
-        public const string PasswordInput      = "input[type='password']";
-        public const string SubmitLoginButton  = "button[type='submit']";
+        public const string LoginPagePhoneInput = "#phn-input";
+        public const string LoginPageContinueButton = "button";
 
         // Arama formu — canlı HTML'den doğrulanmış
         public const string PickupLocationInput = "#inputPickUpLocation";
@@ -77,30 +77,283 @@ public sealed class BrowserAutomationService : IAsyncDisposable
 
     // ─── Login ────────────────────────────────────────────────────────────────
 
-    public async Task LoginAsync(AppUser user)
+    public async Task LoginWithPhoneAsync(string phoneNumber)
     {
         var page = GetPage();
 
-        await page.GoToAsync(Yolcu360HomeUrl, WaitUntilNavigation.Networkidle2);
+        if (string.IsNullOrWhiteSpace(phoneNumber))
+            throw new InvalidOperationException("Telefon numarası boş bırakılamaz.");
 
-        await page.WaitForSelectorAsync(Selectors.LoginButton);
-        await page.ClickAsync(Selectors.LoginButton);
+        await page.GoToAsync("https://www.yolcu360.com/login?redirect=%2F", WaitUntilNavigation.Networkidle2);
+        await CloseInitialPopupAsync();
 
-        await page.WaitForSelectorAsync(Selectors.EmailInput);
-        await NativeSetInputAsync(Selectors.EmailInput, user.Email);
+        await page.WaitForSelectorAsync(Selectors.LoginPagePhoneInput, new WaitForSelectorOptions
+        {
+            Visible = true,
+            Timeout = 30_000
+        });
 
-        await page.WaitForSelectorAsync(Selectors.PasswordInput);
-        await NativeSetInputAsync(Selectors.PasswordInput, user.Password);
+        var normalizedPhone = NormalizePhoneNumber(phoneNumber);
+        await NativeSetInputAsync(Selectors.LoginPagePhoneInput, normalizedPhone);
 
-        await page.WaitForSelectorAsync(Selectors.SubmitLoginButton);
+        var debugCapture = new LoginDebugCapture();
+        await CaptureLoginPageSnapshotAsync(normalizedPhone, debugCapture);
+        AttachLoginNetworkCapture(page, debugCapture);
 
-        await Task.WhenAll(
-            page.ClickAsync(Selectors.SubmitLoginButton),
-            page.WaitForNavigationAsync(new NavigationOptions
-            {
-                WaitUntil = [WaitUntilNavigation.Networkidle2],
-                Timeout   = 60_000
-            }));
+        var continueClicked = await page.EvaluateExpressionAsync<bool>(
+            """
+            (() => {
+                const buttons = Array.from(document.querySelectorAll('button'));
+                const button = buttons.find(current => (current.textContent || '').replace(/\s+/g, ' ').trim() === 'Devam Et');
+                if (!button) return false;
+                button.click();
+                return true;
+            })();
+            """);
+
+        if (!continueClicked)
+            throw new InvalidOperationException("Login sayfasında 'Devam Et' butonu bulunamadı.");
+
+        await WaitAsync(4_000);
+        await PersistLoginDebugCaptureAsync(debugCapture);
+    }
+
+    public async Task<bool> IsSmsVerificationRequiredAsync()
+    {
+        var page = GetPage();
+
+        try
+        {
+            return await page.EvaluateExpressionAsync<bool>(
+                """
+                (() => {
+                    const text = document.body.innerText.toLocaleLowerCase('tr-TR');
+                    const otpInputs = Array.from(document.querySelectorAll('input'))
+                        .filter(input => {
+                            const rect = input.getBoundingClientRect();
+                            const style = window.getComputedStyle(input);
+                            if (rect.width <= 0 || rect.height <= 0) return false;
+                            if (style.display === 'none' || style.visibility === 'hidden') return false;
+
+                            const attrs = `${input.id} ${input.name} ${input.placeholder} ${input.autocomplete} ${input.inputMode} ${input.type}`.toLocaleLowerCase('tr-TR');
+                            return attrs.includes('otp')
+                                || attrs.includes('code')
+                                || attrs.includes('kod')
+                                || input.maxLength === 1;
+                        });
+
+                    return otpInputs.length > 0
+                        || text.includes('doğrulama kodu')
+                        || text.includes('sms doğrulama')
+                        || text.includes('tek kullanımlık')
+                        || text.includes('verification code');
+                })();
+                """);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    public async Task FillSmsVerificationCodeAsync(string code)
+    {
+        var page = GetPage();
+
+        if (string.IsNullOrWhiteSpace(code))
+            throw new InvalidOperationException("SMS doğrulama kodu boş.");
+
+        Report($"SMS kodu giriliyor: {code}");
+
+        try
+        {
+            await page.WaitForFunctionAsync(
+                """
+                () => {
+                    const visible = el => {
+                        const rect = el.getBoundingClientRect();
+                        const style = window.getComputedStyle(el);
+                        return rect.width > 0 &&
+                            rect.height > 0 &&
+                            style.display !== 'none' &&
+                            style.visibility !== 'hidden';
+                    };
+
+                    const text = (document.body.innerText || '').toLocaleLowerCase('tr-TR');
+                    const inputs = Array.from(document.querySelectorAll('input, [contenteditable="true"]')).filter(visible);
+                    return inputs.length > 0
+                        || text.includes('doğrulama kodu')
+                        || text.includes('sms doğrulama')
+                        || text.includes('telefonunuza')
+                        || text.includes('6 haneli');
+                }
+                """,
+                new WaitForFunctionOptions { Timeout = 30_000 });
+        }
+        catch (WaitTaskTimeoutException)
+        {
+            throw new InvalidOperationException("SMS doğrulama ekranı zamanında açılmadı.");
+        }
+
+        await WaitAsync(1_000);
+
+        var filled = await page.EvaluateFunctionAsync<bool>(
+            """
+            (code) => {
+                const normalize = value => (value || '').toLocaleLowerCase('tr-TR');
+                const visible = el => {
+                    const rect = el.getBoundingClientRect();
+                    const style = window.getComputedStyle(el);
+                    return rect.width > 0 &&
+                        rect.height > 0 &&
+                        style.display !== 'none' &&
+                        style.visibility !== 'hidden';
+                };
+
+                const setValue = (el, value) => {
+                    const prototype = el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement
+                        ? Object.getPrototypeOf(el)
+                        : null;
+                    const descriptor = prototype ? Object.getOwnPropertyDescriptor(prototype, 'value') : null;
+                    if (descriptor?.set) {
+                        descriptor.set.call(el, value);
+                    } else if ('value' in el) {
+                        el.value = value;
+                    } else {
+                        el.textContent = value;
+                    }
+                };
+
+                const dispatchInput = el => {
+                    el.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true }));
+                    el.dispatchEvent(new Event('input', { bubbles: true }));
+                    el.dispatchEvent(new Event('change', { bubbles: true }));
+                    el.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true }));
+                    el.dispatchEvent(new KeyboardEvent('keypress', { bubbles: true }));
+                    el.dispatchEvent(new Event('blur', { bubbles: true }));
+                };
+
+                const allInputs = Array.from(document.querySelectorAll('input, [contenteditable="true"]')).filter(visible);
+                const otpLikeInputs = allInputs.filter(input => {
+                    const attrs = normalize(`${input.id} ${input.name} ${input.placeholder} ${input.autocomplete} ${input.inputMode} ${input.type} ${input.className} ${input.getAttribute?.('aria-label') || ''}`);
+                    return attrs.includes('otp')
+                        || attrs.includes('code')
+                        || attrs.includes('kod')
+                        || attrs.includes('pin')
+                        || attrs.includes('verify')
+                        || attrs.includes('dogrulama')
+                        || attrs.includes('sms')
+                        || input.maxLength === 1;
+                });
+
+                const singleCharInputs = otpLikeInputs.filter(input => input.maxLength === 1);
+                if (singleCharInputs.length >= code.length)
+                {
+                    singleCharInputs.slice(0, code.length).forEach((input, index) => {
+                        input.focus();
+                        input.click?.();
+                        setValue(input, code[index]);
+                        dispatchInput(input);
+                    });
+                    return true;
+                }
+
+                const singleInput = otpLikeInputs.find(input => input.maxLength !== 1)
+                    || allInputs.find(input => {
+                        const attrs = normalize(`${input.id} ${input.name} ${input.placeholder} ${input.autocomplete} ${input.inputMode} ${input.type} ${input.className} ${input.getAttribute?.('aria-label') || ''}`);
+                        return attrs.includes('otp')
+                            || attrs.includes('code')
+                            || attrs.includes('kod')
+                            || attrs.includes('pin')
+                            || attrs.includes('verify')
+                            || attrs.includes('dogrulama')
+                            || attrs.includes('sms');
+                    });
+
+                if (singleInput)
+                {
+                    singleInput.focus();
+                    singleInput.click?.();
+                    setValue(singleInput, code);
+                    dispatchInput(singleInput);
+                    return true;
+                }
+
+                const fallbackInput = allInputs.find(input => {
+                    const type = normalize(input.type);
+                    return type === 'tel' || type === 'text' || type === 'number';
+                });
+
+                if (fallbackInput)
+                {
+                    fallbackInput.focus();
+                    fallbackInput.click?.();
+                    setValue(fallbackInput, code);
+                    dispatchInput(fallbackInput);
+                    return true;
+                }
+
+                return false;
+            }
+            """,
+            code);
+
+        if (!filled)
+            throw new InvalidOperationException("SMS doğrulama alanı bulunamadı.");
+
+        await WaitAsync(500);
+
+        try
+        {
+            var clicked = await page.EvaluateExpressionAsync<bool>(
+                """
+                (() => {
+                    const normalize = value => (value || '').replace(/\s+/g, ' ').trim().toLocaleLowerCase('tr-TR');
+                    const visible = el => {
+                        const rect = el.getBoundingClientRect();
+                        const style = window.getComputedStyle(el);
+                        return rect.width > 0 &&
+                            rect.height > 0 &&
+                            style.display !== 'none' &&
+                            style.visibility !== 'hidden' &&
+                            !el.disabled;
+                    };
+
+                    const exactTexts = ['doğrula', 'onayla', 'devam et', 'giriş yap', 'verify', 'continue'];
+                    const partialTexts = ['doğrula', 'onay', 'devam', 'verify', 'continue'];
+
+                    const candidates = Array.from(document.querySelectorAll('button, [role="button"], input[type="submit"], input[type="button"]'))
+                        .filter(visible)
+                        .map(element => {
+                            const text = normalize(element.textContent || element.value || element.getAttribute('aria-label') || element.getAttribute('title') || '');
+                            return { element, text };
+                        })
+                        .filter(item => item.text.length > 0);
+
+                    const exactMatch = candidates.find(item => exactTexts.includes(item.text));
+                    if (exactMatch) {
+                        exactMatch.element.click();
+                        return true;
+                    }
+
+                    const partialMatch = candidates.find(item => partialTexts.some(text => item.text.includes(text)));
+                    if (partialMatch) {
+                        partialMatch.element.click();
+                        return true;
+                    }
+
+                    return false;
+                })();
+                """);
+
+            Report(clicked
+                ? "SMS doğrulama butonu tıklandı."
+                : "SMS doğrulama butonu bulunamadı.");
+        }
+        catch
+        {
+            // Doğrulama butonu yoksa alan doldurulmuş olarak bırakılır.
+        }
     }
 
     // ─── Ana Arama Akışı ──────────────────────────────────────────────────────
@@ -1063,6 +1316,19 @@ public sealed class BrowserAutomationService : IAsyncDisposable
             """);
     }
 
+    private static string NormalizePhoneNumber(string phoneNumber)
+    {
+        var digits = new string(phoneNumber.Where(char.IsDigit).ToArray());
+
+        if (digits.StartsWith("90", StringComparison.Ordinal) && digits.Length == 12)
+            digits = digits[2..];
+
+        if (digits.StartsWith("0", StringComparison.Ordinal) && digits.Length == 11)
+            digits = digits[1..];
+
+        return digits;
+    }
+
     private void Report(string message) => ProgressChanged?.Invoke(message);
 
     private async Task ShowDebugAsync(string message)
@@ -1109,6 +1375,136 @@ public sealed class BrowserAutomationService : IAsyncDisposable
             text = text[..240];
 
         return $"URL: {url}. Sayfa: {text}";
+    }
+
+    private async Task CaptureLoginPageSnapshotAsync(string normalizedPhone, LoginDebugCapture capture)
+    {
+        var page = GetPage();
+
+        capture.Timestamp = DateTimeOffset.Now;
+        capture.CurrentUrl = page.Url;
+        capture.UserAgent = await page.EvaluateExpressionAsync<string>("navigator.userAgent");
+        capture.PhoneNumber = normalizedPhone;
+        capture.Cookies = await page.GetCookiesAsync();
+        capture.Snapshot = await page.EvaluateExpressionAsync<LoginDebugSnapshot>(
+            """
+            (() => {
+                const safeStorageRead = storage => {
+                    try {
+                        const result = {};
+                        for (let i = 0; i < storage.length; i++) {
+                            const key = storage.key(i);
+                            result[key] = storage.getItem(key);
+                        }
+                        return result;
+                    } catch {
+                        return {};
+                    }
+                };
+
+                return {
+                    url: location.href,
+                    title: document.title,
+                    webdriver: navigator.webdriver ?? null,
+                    language: navigator.language || '',
+                    languages: Array.from(navigator.languages || []),
+                    platform: navigator.platform || '',
+                    vendor: navigator.vendor || '',
+                    hardwareConcurrency: navigator.hardwareConcurrency || 0,
+                    deviceMemory: navigator.deviceMemory || 0,
+                    screen: {
+                        width: window.screen?.width || 0,
+                        height: window.screen?.height || 0,
+                        availWidth: window.screen?.availWidth || 0,
+                        availHeight: window.screen?.availHeight || 0,
+                        colorDepth: window.screen?.colorDepth || 0,
+                        pixelDepth: window.screen?.pixelDepth || 0
+                    },
+                    viewport: {
+                        width: window.innerWidth || 0,
+                        height: window.innerHeight || 0,
+                        devicePixelRatio: window.devicePixelRatio || 0
+                    },
+                    bodyText: (document.body?.innerText || '').slice(0, 2000),
+                    phoneInputValue: document.querySelector('#phn-input')?.value || '',
+                    localStorage: safeStorageRead(window.localStorage),
+                    sessionStorage: safeStorageRead(window.sessionStorage)
+                };
+            })();
+            """);
+    }
+
+    private static void AttachLoginNetworkCapture(IPage page, LoginDebugCapture capture)
+    {
+        page.Request += (_, e) =>
+        {
+            if (!IsLoginVerificationRequest(e.Request.Url))
+                return;
+
+            lock (capture.SyncRoot)
+            {
+                capture.Requests.Add(new LoginNetworkEntry
+                {
+                    Stage = "request",
+                    Url = e.Request.Url,
+                    Method = e.Request.Method.ToString(),
+                    Headers = new Dictionary<string, string>(e.Request.Headers),
+                    Body = e.Request.PostData ?? string.Empty,
+                    Timestamp = DateTimeOffset.Now
+                });
+            }
+        };
+
+        page.Response += async (_, e) =>
+        {
+            if (!IsLoginVerificationRequest(e.Response.Url))
+                return;
+
+            string body;
+            try
+            {
+                body = await e.Response.TextAsync();
+            }
+            catch (Exception ex)
+            {
+                body = $"<body okunamadi: {ex.Message}>";
+            }
+
+            lock (capture.SyncRoot)
+            {
+                capture.Requests.Add(new LoginNetworkEntry
+                {
+                    Stage = "response",
+                    Url = e.Response.Url,
+                    Method = e.Response.Request.Method.ToString(),
+                    Status = (int)e.Response.Status,
+                    StatusText = e.Response.StatusText,
+                    Headers = new Dictionary<string, string>(e.Response.Headers),
+                    Body = body,
+                    Timestamp = DateTimeOffset.Now
+                });
+            }
+        };
+    }
+
+    private static bool IsLoginVerificationRequest(string url)
+    {
+        return url.Contains("/accounts-api/auth/login/phone/code/recaptcha", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static async Task PersistLoginDebugCaptureAsync(LoginDebugCapture capture)
+    {
+        Directory.CreateDirectory(LoginDebugDirectory);
+
+        var safeTimestamp = capture.Timestamp.ToString("yyyyMMdd_HHmmss");
+        var targetPath = Path.Combine(LoginDebugDirectory, $"login_debug_{safeTimestamp}.json");
+        var json = JsonSerializer.Serialize(capture, new JsonSerializerOptions
+        {
+            WriteIndented = true
+        });
+
+        await File.WriteAllTextAsync(targetPath, json, Encoding.UTF8);
+        Console.WriteLine($"[LOGIN-DEBUG] Kaydedildi: {targetPath}");
     }
 
     private static Task WaitAsync(int ms) => Task.Delay(ms);
@@ -1236,6 +1632,113 @@ public sealed class BrowserAutomationService : IAsyncDisposable
 
         [JsonPropertyName("index")]
         public int Index { get; init; }
+    }
+
+    private sealed class LoginDebugCapture
+    {
+        [JsonIgnore]
+        public object SyncRoot { get; } = new();
+
+        public DateTimeOffset Timestamp { get; set; }
+        public string CurrentUrl { get; set; } = "";
+        public string UserAgent { get; set; } = "";
+        public string PhoneNumber { get; set; } = "";
+        public CookieParam[] Cookies { get; set; } = [];
+        public LoginDebugSnapshot? Snapshot { get; set; }
+        public List<LoginNetworkEntry> Requests { get; set; } = [];
+    }
+
+    private sealed class LoginDebugSnapshot
+    {
+        [JsonPropertyName("url")]
+        public string Url { get; init; } = "";
+
+        [JsonPropertyName("title")]
+        public string Title { get; init; } = "";
+
+        [JsonPropertyName("webdriver")]
+        public bool? Webdriver { get; init; }
+
+        [JsonPropertyName("language")]
+        public string Language { get; init; } = "";
+
+        [JsonPropertyName("languages")]
+        public string[] Languages { get; init; } = [];
+
+        [JsonPropertyName("platform")]
+        public string Platform { get; init; } = "";
+
+        [JsonPropertyName("vendor")]
+        public string Vendor { get; init; } = "";
+
+        [JsonPropertyName("hardwareConcurrency")]
+        public int HardwareConcurrency { get; init; }
+
+        [JsonPropertyName("deviceMemory")]
+        public decimal DeviceMemory { get; init; }
+
+        [JsonPropertyName("screen")]
+        public LoginScreenInfo? Screen { get; init; }
+
+        [JsonPropertyName("viewport")]
+        public LoginViewportInfo? Viewport { get; init; }
+
+        [JsonPropertyName("bodyText")]
+        public string BodyText { get; init; } = "";
+
+        [JsonPropertyName("phoneInputValue")]
+        public string PhoneInputValue { get; init; } = "";
+
+        [JsonPropertyName("localStorage")]
+        public Dictionary<string, string?> LocalStorage { get; init; } = [];
+
+        [JsonPropertyName("sessionStorage")]
+        public Dictionary<string, string?> SessionStorage { get; init; } = [];
+    }
+
+    private sealed class LoginScreenInfo
+    {
+        [JsonPropertyName("width")]
+        public int Width { get; init; }
+
+        [JsonPropertyName("height")]
+        public int Height { get; init; }
+
+        [JsonPropertyName("availWidth")]
+        public int AvailWidth { get; init; }
+
+        [JsonPropertyName("availHeight")]
+        public int AvailHeight { get; init; }
+
+        [JsonPropertyName("colorDepth")]
+        public int ColorDepth { get; init; }
+
+        [JsonPropertyName("pixelDepth")]
+        public int PixelDepth { get; init; }
+    }
+
+    private sealed class LoginViewportInfo
+    {
+        [JsonPropertyName("width")]
+        public int Width { get; init; }
+
+        [JsonPropertyName("height")]
+        public int Height { get; init; }
+
+        [JsonPropertyName("devicePixelRatio")]
+        public decimal DevicePixelRatio { get; init; }
+    }
+
+    private sealed class LoginNetworkEntry
+    {
+        public string Stage { get; init; } = "";
+        public string Url { get; init; } = "";
+        public string Method { get; init; } = "";
+        public int Status { get; init; }
+        public string StatusText { get; init; } = "";
+        public Dictionary<string, string> Headers { get; init; } = [];
+        public string Body { get; init; } = "";
+        public DateTimeOffset Timestamp { get; init; }
     }
 
     public async ValueTask DisposeAsync()

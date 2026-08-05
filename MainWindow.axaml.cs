@@ -4,7 +4,6 @@ using Avalonia.Data;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
 using Yolcu360Otomasyon.Models;
-using Yolcu360Otomasyon.Configuration;
 using Yolcu360Otomasyon.Services;
 
 namespace Yolcu360Otomasyon;
@@ -12,78 +11,81 @@ namespace Yolcu360Otomasyon;
 public partial class MainWindow : Window
 {
     private BrowserAutomationService? _browserAutomationService;
+    private readonly SmsReceiverService _smsReceiverService = new();
 
     public MainWindow()
     {
         InitializeComponent();
         ConfigureResultsGrid();
+        _smsReceiverService.SmsReceived += SmsReceiverService_SmsReceived;
+        InitializeSmsReceiver();
     }
 
-    private async void SaveLoginInfoButton_Click(object? sender, RoutedEventArgs e)
+    private async void InitializeSmsReceiver()
     {
-        SaveLoginInfoButton.IsEnabled = false;
-        StatusTextBlock.Text = "Login bilgileri kaydediliyor...";
-
         try
         {
-            var email = EmailTextBox.Text?.Trim() ?? string.Empty;
-            var password = PasswordTextBox.Text ?? string.Empty;
-
-            if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
-            {
-                StatusTextBlock.Text = "E-posta ve şifre boş olamaz.";
-                return;
-            }
-
-            var connectionString = AppSettings.GetConnectionString();
-            var database = new DatabaseService(connectionString);
-
-            await database.SaveLoginUserAsync(email, password);
-
-            StatusTextBlock.Text = "Login bilgileri veritabanına kaydedildi.";
-            PasswordTextBox.Text = string.Empty;
+            await _smsReceiverService.StartAsync();
+            StatusTextBlock.Text = $"SMS alıcısı hazır. URL: http://192.168.1.161:{_smsReceiverService.Port}/sms";
         }
         catch (Exception ex)
         {
-            // Veritabanı veya secrets hatasını ekranda kısa gösterir.
-            StatusTextBlock.Text = $"Kayıt hatası: {ex.Message}";
-        }
-        finally
-        {
-            SaveLoginInfoButton.IsEnabled = true;
+            StatusTextBlock.Text = $"SMS alıcısı başlatılamadı: {ex.Message}";
         }
     }
 
     private async void LoginButton_Click(object? sender, RoutedEventArgs e)
     {
         LoginButton.IsEnabled = false;
-        StatusTextBlock.Text = "Veritabanından kullanıcı okunuyor...";
+        StatusTextBlock.Text = "Telefon numarası kontrol ediliyor...";
 
         try
         {
-            var connectionString = AppSettings.GetConnectionString();
-            var database = new DatabaseService(connectionString);
-            var user = await database.GetDefaultUserAsync();
-
-            if (user is null)
+            var phoneNumber = PhoneNumberTextBox.Text?.Trim() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(phoneNumber))
             {
-                StatusTextBlock.Text = "users tablosunda kayıtlı kullanıcı yok.";
+                StatusTextBlock.Text = "Telefon numarası boş olamaz.";
                 return;
             }
 
             StatusTextBlock.Text = "Tarayıcı başlatılıyor...";
 
             _browserAutomationService = new BrowserAutomationService();
-            await _browserAutomationService.InitializeAsync(headless: true);
+            _browserAutomationService.ProgressChanged -= BrowserAutomationService_LoginProgressChanged;
+            _browserAutomationService.ProgressChanged += BrowserAutomationService_LoginProgressChanged;
+            await _browserAutomationService.InitializeAsync(headless: false);
 
-            StatusTextBlock.Text = "Yolcu360 giriş işlemi yapılıyor...";
-            await _browserAutomationService.LoginAsync(user);
+            StatusTextBlock.Text = "Yolcu360 giriş ekranı dolduruluyor...";
+            await _browserAutomationService.LoginWithPhoneAsync(phoneNumber);
 
-            StatusTextBlock.Text = "Giriş tamamlandı.";
+            StatusTextBlock.Text = "SMS doğrulama ekranı bekleniyor...";
+
+            var smsVerificationDetected = false;
+            for (var attempt = 0; attempt < 15; attempt++)
+            {
+                if (await _browserAutomationService.IsSmsVerificationRequiredAsync())
+                {
+                    smsVerificationDetected = true;
+                    break;
+                }
+
+                await Task.Delay(1_000);
+            }
+
+            if (smsVerificationDetected)
+            {
+                StatusTextBlock.Text = "SMS doğrulama bekleniyor...";
+                var code = await _smsReceiverService.WaitForCodeAsync(TimeSpan.FromMinutes(2));
+                await _browserAutomationService.FillSmsVerificationCodeAsync(code);
+                StatusTextBlock.Text = "SMS kodu yazıldı.";
+            }
+            else
+            {
+                StatusTextBlock.Text = "SMS doğrulama ekranı bulunamadı.";
+            }
         }
         catch (Exception ex)
         {
-            // Hata mesajını kısa tutup kullanıcıya anlaşılır şekilde gösterir.
             StatusTextBlock.Text = $"Login hatası: {ex.Message}";
         }
         finally
@@ -178,6 +180,22 @@ public partial class MainWindow : Window
         });
     }
 
+    private void BrowserAutomationService_LoginProgressChanged(string message)
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            StatusTextBlock.Text = message;
+        });
+    }
+
+    private void SmsReceiverService_SmsReceived(string message)
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            StatusTextBlock.Text = $"SMS alındı: {message}";
+        });
+    }
+
     private void ConfigureResultsGrid()
     {
         ResultsDataGrid.AutoGenerateColumns = false;
@@ -244,6 +262,8 @@ public partial class MainWindow : Window
     {
         if (_browserAutomationService is not null)
             await _browserAutomationService.DisposeAsync();
+
+        await _smsReceiverService.DisposeAsync();
 
         base.OnClosed(e);
     }
