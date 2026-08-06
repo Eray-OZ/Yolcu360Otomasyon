@@ -1,81 +1,274 @@
+using Microsoft.EntityFrameworkCore;
 using MySqlConnector;
+using Yolcu360Otomasyon.Data;
 using Yolcu360Otomasyon.Models;
 
 namespace Yolcu360Otomasyon.Services;
 
 public sealed class DatabaseService
 {
-    private readonly string _connectionString;
+    private readonly DbContextOptions<AppDbContext> _options;
+    private readonly SemaphoreSlim _schemaLock = new(1, 1);
+    private bool _schemaReady;
 
     public DatabaseService(string connectionString)
     {
-        _connectionString = connectionString;
+        _options = new DbContextOptionsBuilder<AppDbContext>()
+            .UseMySql(connectionString, ServerVersion.AutoDetect(connectionString))
+            .Options;
     }
 
-    public async Task<AppUser?> GetDefaultUserAsync()
+    public async Task EnsureDatabaseAsync()
     {
-        await using var connection = new MySqlConnection(_connectionString);
+        await EnsureSchemaAsync();
+    }
+
+    private async Task EnsureSchemaAsync()
+    {
+        if (_schemaReady)
+            return;
+
+        await _schemaLock.WaitAsync();
+        try
+        {
+            if (_schemaReady)
+                return;
+
+            await using var context = new AppDbContext(_options);
+            await context.Database.ExecuteSqlRawAsync("DROP TABLE IF EXISTS users;");
+            await context.Database.ExecuteSqlRawAsync("""
+                CREATE TABLE IF NOT EXISTS kullanicilar (
+                    Id INT NOT NULL AUTO_INCREMENT,
+                    Email VARCHAR(255) NOT NULL,
+                    Password VARCHAR(255) NOT NULL,
+                    PhoneNumber VARCHAR(32) NOT NULL,
+                    SessionStatePath VARCHAR(512) NOT NULL,
+                    CreatedAt DATETIME(6) NOT NULL,
+                    UpdatedAt DATETIME(6) NOT NULL,
+                    CONSTRAINT PK_kullanicilar PRIMARY KEY (Id),
+                    CONSTRAINT UX_kullanicilar_Email UNIQUE (Email)
+                );
+                """);
+
+            await context.Database.ExecuteSqlRawAsync("""
+                CREATE TABLE IF NOT EXISTS koleksiyonlar (
+                    Id INT NOT NULL AUTO_INCREMENT,
+                    KullaniciId INT NOT NULL,
+                    OzelAd VARCHAR(255) NOT NULL,
+                    OlusturmaTarihi DATETIME(6) NOT NULL,
+                    CONSTRAINT PK_koleksiyonlar PRIMARY KEY (Id),
+                    CONSTRAINT FK_koleksiyonlar_kullanicilar_KullaniciId
+                        FOREIGN KEY (KullaniciId) REFERENCES kullanicilar (Id)
+                        ON DELETE CASCADE
+                );
+                """);
+
+            await context.Database.ExecuteSqlRawAsync("""
+                CREATE TABLE IF NOT EXISTS araclar (
+                    Id INT NOT NULL AUTO_INCREMENT,
+                    KoleksiyonId INT NOT NULL,
+                    Baslik VARCHAR(255) NOT NULL,
+                    AltBaslik VARCHAR(255) NULL,
+                    Fiyat VARCHAR(64) NOT NULL,
+                    GunlukFiyat VARCHAR(64) NULL,
+                    Vites VARCHAR(64) NULL,
+                    Yakit VARCHAR(64) NULL,
+                    Sirket VARCHAR(128) NULL,
+                    TeslimBilgisi VARCHAR(255) NULL,
+                    IslemMetni VARCHAR(128) NULL,
+                    Baglanti VARCHAR(1024) NULL,
+                    CONSTRAINT PK_araclar PRIMARY KEY (Id),
+                    CONSTRAINT FK_araclar_koleksiyonlar_KoleksiyonId
+                        FOREIGN KEY (KoleksiyonId) REFERENCES koleksiyonlar (Id)
+                        ON DELETE CASCADE
+                );
+                """);
+
+            await EnsureIndexAsync(context, "koleksiyonlar", "IX_koleksiyonlar_KullaniciId", "KullaniciId");
+            await EnsureIndexAsync(context, "araclar", "IX_araclar_KoleksiyonId", "KoleksiyonId");
+
+            _schemaReady = true;
+        }
+        finally
+        {
+            _schemaLock.Release();
+        }
+    }
+
+    private static async Task EnsureIndexAsync(AppDbContext context, string tableName, string indexName, string columnName)
+    {
+        await using var connection = new MySqlConnection(context.Database.GetConnectionString());
         await connection.OpenAsync();
 
-        // Giriş için ilk kayıtlı kullanıcıyı alır.
-        const string sql = """
-            SELECT id, email, password
-            FROM users
-            ORDER BY id
-            LIMIT 1;
+        await using var existsCommand = connection.CreateCommand();
+        existsCommand.CommandText = """
+            SELECT COUNT(*)
+            FROM information_schema.statistics
+            WHERE table_schema = DATABASE()
+              AND table_name = @tableName
+              AND index_name = @indexName;
             """;
+        existsCommand.Parameters.AddWithValue("@tableName", tableName);
+        existsCommand.Parameters.AddWithValue("@indexName", indexName);
 
-        await using var command = new MySqlCommand(sql, connection);
-        await using var reader = await command.ExecuteReaderAsync();
+        var exists = Convert.ToInt32(await existsCommand.ExecuteScalarAsync()) > 0;
+        if (exists)
+            return;
 
-        if (!await reader.ReadAsync())
-            return null;
+        await using var createCommand = connection.CreateCommand();
+        createCommand.CommandText = $"CREATE INDEX {indexName} ON {tableName} ({columnName});";
+        await createCommand.ExecuteNonQueryAsync();
+    }
 
-        return new AppUser
+    public async Task<AppUser?> GetUserByCredentialsAsync(string email, string password)
+    {
+        await EnsureSchemaAsync();
+        await using var context = new AppDbContext(_options);
+
+        return await context.Kullanicilar
+            .AsNoTracking()
+            .FirstOrDefaultAsync(user => user.Email == email && user.Password == password);
+    }
+
+    public async Task<AppUser?> GetUserByEmailAsync(string email)
+    {
+        await EnsureSchemaAsync();
+        await using var context = new AppDbContext(_options);
+
+        return await context.Kullanicilar
+            .AsNoTracking()
+            .FirstOrDefaultAsync(user => user.Email == email);
+    }
+
+    public async Task SaveOrUpdateUserAsync(string email, string password, string phoneNumber, string sessionStatePath)
+    {
+        await EnsureSchemaAsync();
+        await using var context = new AppDbContext(_options);
+        var existingUser = await context.Kullanicilar.FirstOrDefaultAsync(user => user.Email == email);
+        var now = DateTime.UtcNow;
+
+        if (existingUser is null)
         {
-            Id = reader.GetInt32("id"),
-            Email = reader.GetString("email"),
-            Password = reader.GetString("password")
+            context.Kullanicilar.Add(new AppUser
+            {
+                Email = email,
+                Password = password,
+                PhoneNumber = phoneNumber,
+                SessionStatePath = sessionStatePath,
+                CreatedAt = now,
+                UpdatedAt = now
+            });
+        }
+        else
+        {
+            existingUser.Password = password;
+            existingUser.PhoneNumber = phoneNumber;
+            existingUser.SessionStatePath = sessionStatePath;
+            existingUser.UpdatedAt = now;
+        }
+
+        await context.SaveChangesAsync();
+    }
+
+    public async Task<bool> UserExistsAsync(string email)
+    {
+        await EnsureSchemaAsync();
+        await using var context = new AppDbContext(_options);
+        return await context.Kullanicilar.AsNoTracking().AnyAsync(user => user.Email == email);
+    }
+
+    public async Task<int> SaveCollectionAsync(int kullaniciId, string ozelAd, IReadOnlyCollection<SearchResultItem> items)
+    {
+        await EnsureSchemaAsync();
+        await using var context = new AppDbContext(_options);
+
+        var kullaniciVarMi = await context.Kullanicilar
+            .AsNoTracking()
+            .AnyAsync(item => item.Id == kullaniciId);
+
+        if (!kullaniciVarMi)
+            throw new InvalidOperationException("Aktif kullanıcı kaydı veritabanında bulunamadı.");
+
+        var koleksiyon = new Koleksiyon
+        {
+            KullaniciId = kullaniciId,
+            OzelAd = ozelAd,
+            OlusturmaTarihi = DateTime.UtcNow,
+            Araclar = items.Select(item => new Arac
+            {
+                Baslik = item.Title,
+                AltBaslik = item.Subtitle,
+                Fiyat = item.Price,
+                GunlukFiyat = item.DailyPrice,
+                Vites = item.Transmission,
+                Yakit = item.FuelType,
+                Sirket = item.Supplier,
+                TeslimBilgisi = item.PickupInfo,
+                IslemMetni = item.ActionText,
+                Baglanti = item.Url
+            }).ToList()
         };
+
+        context.Koleksiyonlar.Add(koleksiyon);
+        await context.SaveChangesAsync();
+        return koleksiyon.Id;
     }
 
-    public async Task SaveLoginUserAsync(string email, string password)
+    public async Task<List<KoleksiyonListItem>> GetCollectionsAsync(int kullaniciId)
     {
-        await using var connection = new MySqlConnection(_connectionString);
-        await connection.OpenAsync();
+        await EnsureSchemaAsync();
+        await using var context = new AppDbContext(_options);
 
-        // Login bilgileri için tabloyu ilk kullanımda hazırlar.
-        const string createTableSql = """
-            CREATE TABLE IF NOT EXISTS users (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                email VARCHAR(255) NOT NULL,
-                password VARCHAR(255) NOT NULL,
-                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-            );
-            """;
+        return await context.Koleksiyonlar
+            .AsNoTracking()
+            .Where(item => item.KullaniciId == kullaniciId)
+            .OrderByDescending(item => item.OlusturmaTarihi)
+            .Select(item => new KoleksiyonListItem
+            {
+                Id = item.Id,
+                OzelAd = item.OzelAd,
+                AracSayisi = item.Araclar.Count,
+                OlusturmaTarihi = item.OlusturmaTarihi
+            })
+            .ToListAsync();
+    }
 
-        await using (var createCommand = new MySqlCommand(createTableSql, connection))
-        {
-            await createCommand.ExecuteNonQueryAsync();
-        }
+    public async Task<List<SearchResultItem>> GetCollectionVehiclesAsync(int koleksiyonId)
+    {
+        await EnsureSchemaAsync();
+        await using var context = new AppDbContext(_options);
 
-        // Tek aktif login kaydı tutmak için önce eski kayıtlar temizlenir.
-        const string clearSql = "DELETE FROM users;";
+        return await context.Araclar
+            .AsNoTracking()
+            .Where(item => item.KoleksiyonId == koleksiyonId)
+            .OrderBy(item => item.Id)
+            .Select(item => new SearchResultItem
+            {
+                Title = item.Baslik,
+                Subtitle = item.AltBaslik,
+                Price = item.Fiyat,
+                DailyPrice = item.GunlukFiyat,
+                Transmission = item.Vites,
+                FuelType = item.Yakit,
+                Supplier = item.Sirket,
+                PickupInfo = item.TeslimBilgisi,
+                ActionText = item.IslemMetni,
+                Url = item.Baglanti
+            })
+            .ToListAsync();
+    }
 
-        await using (var clearCommand = new MySqlCommand(clearSql, connection))
-        {
-            await clearCommand.ExecuteNonQueryAsync();
-        }
+    public async Task DeleteCollectionAsync(int koleksiyonId, int kullaniciId)
+    {
+        await EnsureSchemaAsync();
+        await using var context = new AppDbContext(_options);
+        var koleksiyon = await context.Koleksiyonlar
+            .FirstOrDefaultAsync(item => item.Id == koleksiyonId && item.KullaniciId == kullaniciId);
 
-        const string insertSql = """
-            INSERT INTO users (email, password)
-            VALUES (@email, @password);
-            """;
+        if (koleksiyon is null)
+            return;
 
-        await using var insertCommand = new MySqlCommand(insertSql, connection);
-        insertCommand.Parameters.AddWithValue("@email", email);
-        insertCommand.Parameters.AddWithValue("@password", password);
-
-        await insertCommand.ExecuteNonQueryAsync();
+        context.Koleksiyonlar.Remove(koleksiyon);
+        await context.SaveChangesAsync();
     }
 }

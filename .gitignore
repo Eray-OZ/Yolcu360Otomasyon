@@ -4,3 +4,10 @@ obj
 bin
 chrome-user-profile
 session_state.json
+key.json
+sessions
+popup.html
+smscodeButton.html
+results.html
+captchaHeader.txt
+autoComplete.html

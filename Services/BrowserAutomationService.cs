@@ -10,7 +10,7 @@ public sealed class BrowserAutomationService : IAsyncDisposable
 {
     private const string Yolcu360HomeUrl = "https://www.yolcu360.com/";
     private const string LoginRecaptchaEndpoint = "/api/v1/accounts-api/auth/login/phone/code/recaptcha/";
-    private const string SessionStateFilePath = "/Users/erayoz/Codes/Staj/Yolcu360Otomasyon/session_state.json";
+    private const string DefaultSessionStateFilePath = "/Users/erayoz/Codes/Staj/Yolcu360Otomasyon/session_state.json";
     private const string ChromeExecutablePath = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
     private const string ChromeSourceUserDataDir = "/Users/erayoz/Library/Application Support/Google/Chrome";
     private const string ChromeUserDataDir = "/Users/erayoz/Codes/Staj/Yolcu360Otomasyon/chrome-user-profile";
@@ -18,8 +18,16 @@ public sealed class BrowserAutomationService : IAsyncDisposable
 
     private IBrowser? _browser;
     private IPage? _page;
+    private readonly string _sessionStateFilePath;
 
     public event Action<string>? ProgressChanged;
+
+    public BrowserAutomationService(string? sessionStateFilePath = null)
+    {
+        _sessionStateFilePath = string.IsNullOrWhiteSpace(sessionStateFilePath)
+            ? DefaultSessionStateFilePath
+            : sessionStateFilePath;
+    }
 
     // ─── Selector Sabitleri ───────────────────────────────────────────────────
     // Yolcu360 sayfa yapısı değişirse ilk olarak bu bölüm güncellenir.
@@ -64,6 +72,7 @@ public sealed class BrowserAutomationService : IAsyncDisposable
             return;
 
         PrepareChromeProfileSnapshot();
+        ClearChromeSingletonArtifacts();
 
         var executablePath = File.Exists(ChromeExecutablePath) ? ChromeExecutablePath : null;
         if (executablePath is null)
@@ -139,6 +148,39 @@ public sealed class BrowserAutomationService : IAsyncDisposable
             Directory.Delete(targetDefaultProfile, recursive: true);
 
         CopyDirectory(sourceDefaultProfile, targetDefaultProfile);
+    }
+
+    private static void ClearChromeSingletonArtifacts()
+    {
+        var paths = new[]
+        {
+            Path.Combine(ChromeUserDataDir, "SingletonLock"),
+            Path.Combine(ChromeUserDataDir, "SingletonSocket"),
+            Path.Combine(ChromeUserDataDir, "SingletonCookie"),
+            Path.Combine(ChromeUserDataDir, ChromeProfileDirectory, "SingletonLock"),
+            Path.Combine(ChromeUserDataDir, ChromeProfileDirectory, "SingletonSocket"),
+            Path.Combine(ChromeUserDataDir, ChromeProfileDirectory, "SingletonCookie")
+        };
+
+        foreach (var path in paths)
+        {
+            try
+            {
+                if (File.Exists(path))
+                {
+                    File.Delete(path);
+                    continue;
+                }
+
+                if (Directory.Exists(path))
+                    Directory.Delete(path, recursive: true);
+            }
+            catch
+            {
+                // Chrome bazen kilit dosyalarını serbest bırakmadan kapanır.
+                // Başlatmayı engellememesi için burada sessizce devam edilir.
+            }
+        }
     }
 
     private static void CopyDirectory(string sourceDir, string targetDir)
@@ -715,6 +757,26 @@ public sealed class BrowserAutomationService : IAsyncDisposable
                             .replace(/\s+/g, ' ')
                             .trim();
 
+                        const getMainText = el => {
+                            const firstBlock = el.querySelector('div > div:first-child');
+                            return normalize(firstBlock?.textContent || '');
+                        };
+
+                        const getScore = (el, locationText) => {
+                            const fullText = normalize(el.textContent || '');
+                            const mainText = getMainText(el);
+
+                            if (mainText === locationText) return 0;
+                            if (fullText === locationText) return 1;
+                            if (mainText.startsWith(locationText + ' ')) return 2;
+                            if (fullText.startsWith(locationText + ' ')) return 3;
+                            if (mainText.startsWith(locationText)) return 4;
+                            if (fullText.startsWith(locationText)) return 5;
+                            if (mainText.includes(locationText)) return 6;
+                            if (fullText.includes(locationText)) return 7;
+                            return 8;
+                        };
+
                         const locationText = normalize({{locationJson}});
 
                         const allItems = Array.from(document.querySelectorAll('.search-autocomplete .location-item'));
@@ -732,10 +794,8 @@ public sealed class BrowserAutomationService : IAsyncDisposable
                                     rect.right > inputRect.left;
                             })
                             .sort((a, b) => {
-                                const aText = normalize(a.textContent || '');
-                                const bText = normalize(b.textContent || '');
-                                const aScore = aText === locationText ? 0 : aText.startsWith(locationText) ? 1 : aText.includes(locationText) ? 2 : 3;
-                                const bScore = bText === locationText ? 0 : bText.startsWith(locationText) ? 1 : bText.includes(locationText) ? 2 : 3;
+                                const aScore = getScore(a, locationText);
+                                const bScore = getScore(b, locationText);
                                 if (aScore !== bScore) return aScore - bScore;
                                 const ar = a.getBoundingClientRect();
                                 const br = b.getBoundingClientRect();
@@ -1704,6 +1764,10 @@ public sealed class BrowserAutomationService : IAsyncDisposable
     public async Task SaveCurrentSessionAsync()
     {
         var page = GetPage();
+        var directory = Path.GetDirectoryName(_sessionStateFilePath);
+        if (!string.IsNullOrWhiteSpace(directory))
+            Directory.CreateDirectory(directory);
+
         var state = new SessionState
         {
             SavedAt = DateTimeOffset.Now,
@@ -1718,20 +1782,20 @@ public sealed class BrowserAutomationService : IAsyncDisposable
             WriteIndented = true
         });
 
-        await File.WriteAllTextAsync(SessionStateFilePath, json);
+        await File.WriteAllTextAsync(_sessionStateFilePath, json);
         Report("Oturum kaydedildi.");
     }
 
     private async Task TryRestoreSessionAsync()
     {
-        if (!File.Exists(SessionStateFilePath))
+        if (!File.Exists(_sessionStateFilePath))
             return;
 
         SessionState? state;
 
         try
         {
-            var json = await File.ReadAllTextAsync(SessionStateFilePath);
+            var json = await File.ReadAllTextAsync(_sessionStateFilePath);
             state = JsonSerializer.Deserialize<SessionState>(json);
         }
         catch
@@ -1757,6 +1821,8 @@ public sealed class BrowserAutomationService : IAsyncDisposable
 
         Report("Kaydedilmiş oturum yüklendi.");
     }
+
+    public bool HasSavedSession() => File.Exists(_sessionStateFilePath);
 
     private async Task<Dictionary<string, string?>> ReadStorageAsync(string storageName)
     {

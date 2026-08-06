@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace Yolcu360Otomasyon.Configuration;
 
@@ -10,9 +11,10 @@ public static class AppSettings
 
     public static string GetConnectionString()
     {
-        // Önce user-secrets, sonra environment variable okunur.
+        // Önce user-secrets, sonra environment variable, sonra local key.json okunur.
         var connectionString = ReadUserSecret(ConnectionStringKey)
-            ?? Environment.GetEnvironmentVariable(EnvironmentKey);
+            ?? Environment.GetEnvironmentVariable(EnvironmentKey)
+            ?? ReadLocalKeyFile();
 
         if (string.IsNullOrWhiteSpace(connectionString))
         {
@@ -43,6 +45,47 @@ public static class AppSettings
             && connectionStrings.TryGetProperty("Yolcu360Database", out var nestedValue))
         {
             return nestedValue.GetString();
+        }
+
+        return null;
+    }
+
+    private static string? ReadLocalKeyFile()
+    {
+        var current = new DirectoryInfo(AppContext.BaseDirectory);
+
+        while (current is not null)
+        {
+            var keyPath = Path.Combine(current.FullName, "key.json");
+            if (File.Exists(keyPath))
+            {
+                var raw = File.ReadAllText(keyPath);
+
+                try
+                {
+                    using var document = JsonDocument.Parse(raw);
+                    if (document.RootElement.TryGetProperty("ConnectionStrings", out var connectionStrings))
+                    {
+                        if (connectionStrings.TryGetProperty("Yolcu360Database", out var yolcu360Value))
+                            return yolcu360Value.GetString();
+
+                        if (connectionStrings.TryGetProperty("DefaultConnection", out var defaultValue))
+                            return defaultValue.GetString();
+                    }
+                }
+                catch (JsonException)
+                {
+                    var match = Regex.Match(
+                        raw,
+                        "\"DefaultConnection\"\\s*:\\s*\"(?<value>[^\"]+)\"",
+                        RegexOptions.IgnoreCase);
+
+                    if (match.Success)
+                        return match.Groups["value"].Value;
+                }
+            }
+
+            current = current.Parent;
         }
 
         return null;
