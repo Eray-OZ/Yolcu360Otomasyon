@@ -405,7 +405,7 @@ public sealed class BrowserAutomationService : IAsyncDisposable
         Report("Sayfa etkileşime hazırlanıyor...");
         await WarmUpHydrationAsync();
         Report("Başlangıç popup'ı için bekleniyor...");
-        await WaitAsync(10_000);
+        await WaitAsync(2_500);
         await CloseInitialPopupAsync();
 
         // 3. Alış yeri
@@ -560,7 +560,7 @@ public sealed class BrowserAutomationService : IAsyncDisposable
                 await ShowDebugAsync("Sayfa yenilendi, anasayfaya dönülüyor...");
                 await page.GoToAsync(Yolcu360HomeUrl, WaitUntilNavigation.Networkidle2);
                 await WarmUpHydrationAsync();
-                await WaitAsync(10_000);
+                await WaitAsync(2_500);
                 await CloseInitialPopupAsync();
                 await page.WaitForSelectorAsync(Selectors.PickupLocationInput, new WaitForSelectorOptions
                 {

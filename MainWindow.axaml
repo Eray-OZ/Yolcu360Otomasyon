@@ -140,6 +140,57 @@
             <Setter Property="FontWeight" Value="SemiBold" />
         </Style>
 
+        <Style Selector="Button.primary">
+            <Setter Property="Background" Value="#0F62FE" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="BorderBrush" Value="#0F62FE" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Opacity" Value="1" />
+        </Style>
+
+        <Style Selector="Button.primary:pointerover">
+            <Setter Property="Background" Value="#0B57E3" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="BorderBrush" Value="#0B57E3" />
+            <Setter Property="Opacity" Value="1" />
+        </Style>
+
+        <Style Selector="Button.primary:pressed">
+            <Setter Property="Background" Value="#0847BC" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="BorderBrush" Value="#0847BC" />
+            <Setter Property="Opacity" Value="1" />
+        </Style>
+
+        <Style Selector="Button.primary:disabled">
+            <Setter Property="Background" Value="#9DBCFB" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="BorderBrush" Value="#9DBCFB" />
+            <Setter Property="Opacity" Value="1" />
+        </Style>
+
+        <Style Selector="Button.primary /template/ ContentPresenter">
+            <Setter Property="TextElement.Foreground" Value="White" />
+        </Style>
+
+        <Style Selector="Button.primary /template/ Border">
+            <Setter Property="Background" Value="#0F62FE" />
+            <Setter Property="BorderBrush" Value="#0F62FE" />
+            <Setter Property="Opacity" Value="1" />
+        </Style>
+
+        <Style Selector="Button.primary:pointerover /template/ Border">
+            <Setter Property="Background" Value="#0B57E3" />
+            <Setter Property="BorderBrush" Value="#0B57E3" />
+            <Setter Property="Opacity" Value="1" />
+        </Style>
+
+        <Style Selector="Button.primary:pressed /template/ Border">
+            <Setter Property="Background" Value="#0847BC" />
+            <Setter Property="BorderBrush" Value="#0847BC" />
+            <Setter Property="Opacity" Value="1" />
+        </Style>
+
         <Style Selector="DataGrid">
             <Setter Property="Background" Value="White" />
             <Setter Property="Foreground" Value="#132235" />
@@ -192,7 +243,7 @@
             <Border Background="#0F172A"
                     CornerRadius="10"
                     Padding="28">
-                <Grid ColumnDefinitions="*,360"
+                <Grid ColumnDefinitions="*"
                       ColumnSpacing="24">
                     <StackPanel Spacing="10">
                         <TextBlock Text="Yolcu360 Operasyon Paneli"
@@ -227,27 +278,6 @@
                         </StackPanel>
                     </StackPanel>
 
-                    <Border Grid.Column="1"
-                            Background="#111C31"
-                            CornerRadius="10"
-                            Padding="18">
-                        <StackPanel Spacing="8"
-                                    VerticalAlignment="Center">
-                            <TextBlock Text="Durum"
-                                       Foreground="#8FA4C7"
-                                       FontSize="12"
-                                       FontWeight="SemiBold" />
-
-                            <TextBlock Text="Otomasyon hazır"
-                                       Foreground="White"
-                                       FontSize="22"
-                                       FontWeight="Bold" />
-
-                            <TextBlock Text="Giriş ve arama adımları bu ekrandan yönetilir."
-                                       Foreground="#C7D2E4"
-                                       TextWrapping="Wrap" />
-                        </StackPanel>
-                    </Border>
                 </Grid>
             </Border>
 
@@ -278,28 +308,17 @@
                         </StackPanel>
 
                         <Button x:Name="LoginButton"
+                                Classes="primary"
                                 Content="SMS ile Giriş Yap"
                                 Click="LoginButton_Click"
-                                Background="#0F62FE"
-                                Foreground="White" />
+                                />
 
-                        <Border Background="#F6F9FC"
-                                BorderBrush="#E2EAF2"
-                                BorderThickness="1"
-                                CornerRadius="10"
-                                Padding="14">
-                            <StackPanel Spacing="6">
-                                <TextBlock Text="Giriş durumu"
-                                           FontSize="12"
-                                           FontWeight="SemiBold"
-                                           Foreground="#6A7B90" />
-                                <TextBlock x:Name="StatusTextBlock"
-                                           Text="Hazır"
-                                           TextWrapping="Wrap"
-                                           Foreground="#132235"
-                                           FontWeight="SemiBold" />
-                            </StackPanel>
-                        </Border>
+                        <TextBlock x:Name="StatusTextBlock"
+                                   IsVisible="False"
+                                   Text="Hazır"
+                                   TextWrapping="Wrap"
+                                   Foreground="#132235"
+                                   FontWeight="SemiBold" />
                     </StackPanel>
                 </Border>
 
@@ -310,7 +329,7 @@
                         CornerRadius="10"
                         Padding="22">
                     <StackPanel Spacing="18">
-                        <Grid ColumnDefinitions="*,Auto"
+                        <Grid ColumnDefinitions="*"
                               ColumnSpacing="18">
                             <StackPanel Spacing="4">
                                 <TextBlock Text="Arama ve Filtreleme"
@@ -320,22 +339,15 @@
                                 <TextBlock Text="Alış noktası, tarih ve araç filtreleriyle sonuçları listeleyin."
                                            Foreground="#5F7187" />
                             </StackPanel>
-
-                            <Border Grid.Column="1"
-                                    Background="#F6F9FC"
-                                    BorderBrush="#E2EAF2"
-                                    BorderThickness="1"
-                                    CornerRadius="10"
-                                    Padding="14,10"
-                                    MinWidth="300">
-                                <TextBlock x:Name="SearchStatusTextBlock"
-                                           Text="Arama hazır"
-                                           VerticalAlignment="Center"
-                                           TextWrapping="Wrap"
-                                           Foreground="#132235"
-                                           FontWeight="SemiBold" />
-                            </Border>
                         </Grid>
+
+                        <TextBlock x:Name="SearchStatusTextBlock"
+                                   IsVisible="False"
+                                   Text=""
+                                   VerticalAlignment="Center"
+                                   TextWrapping="Wrap"
+                                   Foreground="#132235"
+                                   FontWeight="SemiBold" />
 
                         <StackPanel Spacing="14">
                             <StackPanel Spacing="6">
@@ -386,13 +398,15 @@
                                 </StackPanel>
                             </Grid>
 
-                            <Grid ColumnDefinitions="*,*"
-                                  ColumnSpacing="14">
+                            <Grid ColumnDefinitions="Auto,Auto"
+                                  ColumnSpacing="8"
+                                  HorizontalAlignment="Left">
                                 <StackPanel Spacing="6">
                                     <TextBlock Text="Vites"
                                                Foreground="#243446"
                                                FontWeight="SemiBold" />
                                     <ComboBox x:Name="TransmissionComboBox"
+                                              Width="180"
                                               SelectedIndex="0">
                                         <ComboBoxItem Content="Farketmez" Tag="" />
                                         <ComboBoxItem Content="Otomatik" Tag="otomatik" />
@@ -401,11 +415,12 @@
                                 </StackPanel>
 
                                 <StackPanel Grid.Column="1"
-                                        Spacing="6">
+                                            Spacing="6">
                                     <TextBlock Text="Yakıt"
-                                           Foreground="#243446"
-                                           FontWeight="SemiBold" />
+                                               Foreground="#243446"
+                                               FontWeight="SemiBold" />
                                     <ComboBox x:Name="FuelComboBox"
+                                              Width="180"
                                               SelectedIndex="0">
                                         <ComboBoxItem Content="Farketmez" Tag="" />
                                         <ComboBoxItem Content="Dizel" Tag="dizel" />
@@ -418,22 +433,10 @@
                         <StackPanel Orientation="Horizontal"
                                     Spacing="12">
                             <Button x:Name="SearchButton"
+                                    Classes="primary"
                                     Content="Ara"
                                     Click="SearchButton_Click"
-                                    Width="160"
-                                    Background="#0F62FE"
-                                    Foreground="White" />
-
-                            <Border Background="#EEF4FF"
-                                    BorderBrush="#D8E5FF"
-                                    BorderThickness="1"
-                                    CornerRadius="10"
-                                    Padding="14,10"
-                                    VerticalAlignment="Center">
-                                <TextBlock Text="Sonuçlar aşağıda listelenir."
-                                           Foreground="#35558A"
-                                           FontWeight="SemiBold" />
-                            </Border>
+                                    Width="160" />
                         </StackPanel>
                     </StackPanel>
                 </Border>
@@ -447,7 +450,7 @@
                     Padding="22">
                 <Grid RowDefinitions="Auto,*"
                       RowSpacing="16">
-                    <Grid ColumnDefinitions="*,Auto"
+                    <Grid ColumnDefinitions="*"
                           ColumnSpacing="18">
                         <StackPanel Spacing="4">
                             <TextBlock Text="Arama Sonuçları"
@@ -457,18 +460,6 @@
                             <TextBlock Text="Liste doğrudan tarayıcıdan okunan sonuçlarla güncellenir."
                                        Foreground="#5F7187" />
                         </StackPanel>
-
-                        <Border Grid.Column="1"
-                                Background="#F6F9FC"
-                                BorderBrush="#E2EAF2"
-                                BorderThickness="1"
-                                CornerRadius="10"
-                                Padding="14,10"
-                                VerticalAlignment="Center">
-                            <TextBlock Text="Canlı sonuç görünümü"
-                                       Foreground="#48627F"
-                                       FontWeight="SemiBold" />
-                        </Border>
                     </Grid>
 
                     <Border Grid.Row="1"
