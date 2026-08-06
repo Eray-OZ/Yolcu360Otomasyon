@@ -31,6 +31,13 @@ public sealed class AppDbContext : DbContext
         koleksiyon.ToTable("koleksiyonlar");
         koleksiyon.HasKey(item => item.Id);
         koleksiyon.Property(item => item.OzelAd).HasMaxLength(255).IsRequired();
+        koleksiyon.Property(item => item.AlisYeri).HasMaxLength(255).IsRequired();
+        koleksiyon.Property(item => item.AlisTarihi).IsRequired();
+        koleksiyon.Property(item => item.DonusTarihi).IsRequired();
+        koleksiyon.Property(item => item.AlisSaati).HasMaxLength(16).IsRequired();
+        koleksiyon.Property(item => item.DonusSaati).HasMaxLength(16).IsRequired();
+        koleksiyon.Property(item => item.SecilenVitesFiltresi).HasMaxLength(64).IsRequired(false);
+        koleksiyon.Property(item => item.SecilenYakitFiltresi).HasMaxLength(64).IsRequired(false);
         koleksiyon.Property(item => item.OlusturmaTarihi).IsRequired();
         koleksiyon
             .HasOne(item => item.Kullanici)

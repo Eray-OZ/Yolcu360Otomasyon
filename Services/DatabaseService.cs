@@ -55,6 +55,13 @@ public sealed class DatabaseService
                     Id INT NOT NULL AUTO_INCREMENT,
                     KullaniciId INT NOT NULL,
                     OzelAd VARCHAR(255) NOT NULL,
+                    AlisYeri VARCHAR(255) NOT NULL,
+                    AlisTarihi DATETIME(6) NOT NULL,
+                    DonusTarihi DATETIME(6) NOT NULL,
+                    AlisSaati VARCHAR(16) NOT NULL,
+                    DonusSaati VARCHAR(16) NOT NULL,
+                    SecilenVitesFiltresi VARCHAR(64) NULL,
+                    SecilenYakitFiltresi VARCHAR(64) NULL,
                     OlusturmaTarihi DATETIME(6) NOT NULL,
                     CONSTRAINT PK_koleksiyonlar PRIMARY KEY (Id),
                     CONSTRAINT FK_koleksiyonlar_kullanicilar_KullaniciId
@@ -82,6 +89,24 @@ public sealed class DatabaseService
                         FOREIGN KEY (KoleksiyonId) REFERENCES koleksiyonlar (Id)
                         ON DELETE CASCADE
                 );
+                """);
+
+            await EnsureColumnAsync(context, "koleksiyonlar", "AlisYeri", "VARCHAR(255) NOT NULL DEFAULT ''");
+            await EnsureColumnAsync(context, "koleksiyonlar", "AlisTarihi", "DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6)");
+            await EnsureColumnAsync(context, "koleksiyonlar", "DonusTarihi", "DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6)");
+            await EnsureColumnAsync(context, "koleksiyonlar", "AlisSaati", "VARCHAR(16) NOT NULL DEFAULT ''");
+            await EnsureColumnAsync(context, "koleksiyonlar", "DonusSaati", "VARCHAR(16) NOT NULL DEFAULT ''");
+            await EnsureColumnAsync(context, "koleksiyonlar", "SecilenVitesFiltresi", "VARCHAR(64) NULL");
+            await EnsureColumnAsync(context, "koleksiyonlar", "SecilenYakitFiltresi", "VARCHAR(64) NULL");
+            await context.Database.ExecuteSqlRawAsync("""
+                UPDATE koleksiyonlar
+                SET SecilenVitesFiltresi = ''
+                WHERE SecilenVitesFiltresi IS NULL;
+                """);
+            await context.Database.ExecuteSqlRawAsync("""
+                UPDATE koleksiyonlar
+                SET SecilenYakitFiltresi = ''
+                WHERE SecilenYakitFiltresi IS NULL;
                 """);
 
             await EnsureIndexAsync(context, "koleksiyonlar", "IX_koleksiyonlar_KullaniciId", "KullaniciId");
@@ -118,6 +143,31 @@ public sealed class DatabaseService
         await using var createCommand = connection.CreateCommand();
         createCommand.CommandText = $"CREATE INDEX {indexName} ON {tableName} ({columnName});";
         await createCommand.ExecuteNonQueryAsync();
+    }
+
+    private static async Task EnsureColumnAsync(AppDbContext context, string tableName, string columnName, string definitionSql)
+    {
+        await using var connection = new MySqlConnection(context.Database.GetConnectionString());
+        await connection.OpenAsync();
+
+        await using var existsCommand = connection.CreateCommand();
+        existsCommand.CommandText = """
+            SELECT COUNT(*)
+            FROM information_schema.columns
+            WHERE table_schema = DATABASE()
+              AND table_name = @tableName
+              AND column_name = @columnName;
+            """;
+        existsCommand.Parameters.AddWithValue("@tableName", tableName);
+        existsCommand.Parameters.AddWithValue("@columnName", columnName);
+
+        var exists = Convert.ToInt32(await existsCommand.ExecuteScalarAsync()) > 0;
+        if (exists)
+            return;
+
+        await using var alterCommand = connection.CreateCommand();
+        alterCommand.CommandText = $"ALTER TABLE {tableName} ADD COLUMN {columnName} {definitionSql};";
+        await alterCommand.ExecuteNonQueryAsync();
     }
 
     public async Task<AppUser?> GetUserByCredentialsAsync(string email, string password)
@@ -177,7 +227,7 @@ public sealed class DatabaseService
         return await context.Kullanicilar.AsNoTracking().AnyAsync(user => user.Email == email);
     }
 
-    public async Task<int> SaveCollectionAsync(int kullaniciId, string ozelAd, IReadOnlyCollection<SearchResultItem> items)
+    public async Task<int> SaveCollectionAsync(int kullaniciId, string ozelAd, SearchFilter filter, IReadOnlyCollection<SearchResultItem> items)
     {
         await EnsureSchemaAsync();
         await using var context = new AppDbContext(_options);
@@ -193,6 +243,13 @@ public sealed class DatabaseService
         {
             KullaniciId = kullaniciId,
             OzelAd = ozelAd,
+            AlisYeri = filter.PickupLocation,
+            AlisTarihi = filter.PickupDate,
+            DonusTarihi = filter.ReturnDate,
+            AlisSaati = filter.PickupTime,
+            DonusSaati = filter.ReturnTime,
+            SecilenVitesFiltresi = filter.TransmissionType,
+            SecilenYakitFiltresi = filter.FuelType,
             OlusturmaTarihi = DateTime.UtcNow,
             Araclar = items.Select(item => new Arac
             {
@@ -227,6 +284,13 @@ public sealed class DatabaseService
             {
                 Id = item.Id,
                 OzelAd = item.OzelAd,
+                AlisYeri = item.AlisYeri,
+                AlisTarihi = item.AlisTarihi,
+                DonusTarihi = item.DonusTarihi,
+                AlisSaati = item.AlisSaati,
+                DonusSaati = item.DonusSaati,
+                SecilenVitesFiltresi = item.SecilenVitesFiltresi ?? string.Empty,
+                SecilenYakitFiltresi = item.SecilenYakitFiltresi ?? string.Empty,
                 AracSayisi = item.Araclar.Count,
                 OlusturmaTarihi = item.OlusturmaTarihi
             })

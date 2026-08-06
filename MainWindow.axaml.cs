@@ -4,6 +4,8 @@ using Avalonia.Controls;
 using Avalonia.Data;
 using Avalonia.Interactivity;
 using Avalonia.Controls.Selection;
+using Avalonia.Layout;
+using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using Yolcu360Otomasyon.Configuration;
@@ -21,6 +23,8 @@ public partial class MainWindow : Window
     private List<SearchResultItem> _latestResults = new();
     private List<SearchResultItem> _selectedCollectionVehicles = new();
     private KoleksiyonListItem? _selectedCollection;
+    private List<KoleksiyonListItem> _selectedCollections = new();
+    private SearchFilter? _latestSearchFilter;
 
     public MainWindow()
     {
@@ -31,7 +35,6 @@ public partial class MainWindow : Window
         ReturnTimeTextBox.Text = "18:00";
         ConfigureResultsGrid();
         ConfigureCollectionsGrid();
-        ConfigureHistoryVehiclesGrid();
         _smsReceiverService.SmsReceived += SmsReceiverService_SmsReceived;
         _ = _databaseService.EnsureDatabaseAsync();
         InitializeSmsReceiver();
@@ -277,6 +280,7 @@ public partial class MainWindow : Window
                 TransmissionType = GetComboBoxTag(TransmissionComboBox),
                 FuelType = GetComboBoxTag(FuelComboBox)
             };
+            _latestSearchFilter = filter;
 
             if (string.IsNullOrWhiteSpace(filter.PickupLocation))
             {
@@ -378,6 +382,12 @@ public partial class MainWindow : Window
             return;
         }
 
+        if (_latestSearchFilter is null)
+        {
+            SearchStatusTextBlock.Text = "Önce geçerli bir arama yapılmalı.";
+            return;
+        }
+
         var ozelAd = CollectionNameTextBox.Text?.Trim() ?? string.Empty;
         if (string.IsNullOrWhiteSpace(ozelAd))
         {
@@ -388,7 +398,7 @@ public partial class MainWindow : Window
         SaveResultsButton.IsEnabled = false;
         try
         {
-            var collectionId = await _databaseService.SaveCollectionAsync(_activeUser.Id, ozelAd, _latestResults);
+            var collectionId = await _databaseService.SaveCollectionAsync(_activeUser.Id, ozelAd, _latestSearchFilter, _latestResults);
             CollectionNameTextBox.Text = string.Empty;
             SearchStatusTextBlock.Text = $"{_latestResults.Count} sonuç \"{ozelAd}\" adıyla kaydedildi.";
             await LoadHistoryAsync();
@@ -424,24 +434,28 @@ public partial class MainWindow : Window
 
     private async void CollectionsDataGrid_SelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
-        if (CollectionsDataGrid.SelectedItem is not KoleksiyonListItem selected)
+        _selectedCollections = CollectionsDataGrid.SelectedItems?.OfType<KoleksiyonListItem>().ToList()
+            ?? (CollectionsDataGrid.SelectedItem is KoleksiyonListItem single ? [single] : new List<KoleksiyonListItem>());
+
+        if (_selectedCollections.Count == 0)
         {
             _selectedCollection = null;
             _selectedCollectionVehicles = new List<SearchResultItem>();
-            HistoryVehiclesDataGrid.ItemsSource = null;
+            ClearSelectedCollectionSummary();
             return;
         }
 
-        _selectedCollection = selected;
-        _selectedCollectionVehicles = await _databaseService.GetCollectionVehiclesAsync(selected.Id);
-        HistoryVehiclesDataGrid.ItemsSource = null;
-        HistoryVehiclesDataGrid.ItemsSource = _selectedCollectionVehicles;
-        HistoryStatusTextBlock.Text = $"{selected.OzelAd} için {_selectedCollectionVehicles.Count} araç yüklendi.";
+        _selectedCollection = _selectedCollections[0];
+        _selectedCollectionVehicles = new List<SearchResultItem>();
+        UpdateSelectedCollectionSummary(_selectedCollections);
+        HistoryStatusTextBlock.Text = _selectedCollections.Count == 1
+            ? $"{_selectedCollections[0].OzelAd} kaydı seçildi."
+            : $"{_selectedCollections.Count} kayıt seçildi.";
     }
 
     private async void DeleteCollectionButton_Click(object? sender, RoutedEventArgs e)
     {
-        if (_activeUser is null || _selectedCollection is null)
+        if (_activeUser is null || _selectedCollections.Count == 0)
         {
             HistoryStatusTextBlock.Text = "Silmek için bir kayıt seçin.";
             return;
@@ -450,12 +464,15 @@ public partial class MainWindow : Window
         DeleteCollectionButton.IsEnabled = false;
         try
         {
-            await _databaseService.DeleteCollectionAsync(_selectedCollection.Id, _activeUser.Id);
+            foreach (var collection in _selectedCollections)
+                await _databaseService.DeleteCollectionAsync(collection.Id, _activeUser.Id);
+
             _selectedCollection = null;
+            _selectedCollections = new List<KoleksiyonListItem>();
             _selectedCollectionVehicles = new List<SearchResultItem>();
-            HistoryVehiclesDataGrid.ItemsSource = null;
+            ClearSelectedCollectionSummary();
             await LoadHistoryAsync();
-            HistoryStatusTextBlock.Text = "Kayıt silindi.";
+            HistoryStatusTextBlock.Text = "Seçili kayıtlar silindi.";
         }
         catch (Exception ex)
         {
@@ -469,7 +486,7 @@ public partial class MainWindow : Window
 
     private async void ExportPngButton_Click(object? sender, RoutedEventArgs e)
     {
-        if (_selectedCollection is null || _selectedCollectionVehicles.Count == 0)
+        if (_selectedCollections.Count == 0)
         {
             HistoryStatusTextBlock.Text = "PNG indirmek için bir kayıt seçin.";
             return;
@@ -478,7 +495,7 @@ public partial class MainWindow : Window
         ExportPngButton.IsEnabled = false;
         try
         {
-            var filePath = await ExportHistorySelectionAsPngAsync(_selectedCollection);
+            var filePath = await ExportHistorySelectionAsPngAsync(_selectedCollections);
             HistoryStatusTextBlock.Text = $"PNG kaydedildi: {filePath}";
         }
         catch (Exception ex)
@@ -503,13 +520,63 @@ public partial class MainWindow : Window
         if (collections.Count == 0)
         {
             _selectedCollection = null;
+            _selectedCollections = new List<KoleksiyonListItem>();
             _selectedCollectionVehicles = new List<SearchResultItem>();
-            HistoryVehiclesDataGrid.ItemsSource = null;
+            ClearSelectedCollectionSummary();
             HistoryStatusTextBlock.Text = "Kayıt bulunamadı.";
             return;
         }
 
+        if (_selectedCollection is null || collections.All(item => item.Id != _selectedCollection.Id))
+        {
+            CollectionsDataGrid.SelectedItem = collections[0];
+        }
+
         HistoryStatusTextBlock.Text = $"{collections.Count} kayıt listelendi.";
+    }
+
+    private void UpdateSelectedCollectionSummary(IReadOnlyList<KoleksiyonListItem> collections)
+    {
+        if (collections.Count == 1)
+        {
+            var collection = collections[0];
+            SelectedCollectionNameTextBlock.Text = collection.OzelAd;
+            SelectedCollectionLocationTextBlock.Text = collection.AlisYeri;
+            SelectedCollectionDateRangeTextBlock.Text =
+                $"{collection.AlisTarihi:dd.MM.yyyy} {collection.AlisSaati} - {collection.DonusTarihi:dd.MM.yyyy} {collection.DonusSaati}";
+
+            var transmission = string.IsNullOrWhiteSpace(collection.SecilenVitesFiltresi)
+                ? "Farketmez"
+                : collection.SecilenVitesFiltresi;
+            var fuel = string.IsNullOrWhiteSpace(collection.SecilenYakitFiltresi)
+                ? "Farketmez"
+                : collection.SecilenYakitFiltresi;
+            SelectedCollectionFiltersTextBlock.Text = $"Vites: {transmission} | Yakıt: {fuel}";
+            SelectedCollectionCountTextBlock.Text = collection.AracSayisi.ToString();
+            SelectedCollectionCreatedAtTextBlock.Text = collection.OlusturmaTarihi.ToLocalTime().ToString("dd.MM.yyyy HH:mm");
+            return;
+        }
+
+        SelectedCollectionNameTextBlock.Text = $"{collections.Count} kayıt seçildi";
+        SelectedCollectionLocationTextBlock.Text = string.Join(", ", collections.Select(item => item.AlisYeri).Distinct());
+        SelectedCollectionDateRangeTextBlock.Text =
+            $"{collections.Min(item => item.AlisTarihi):dd.MM.yyyy} - {collections.Max(item => item.DonusTarihi):dd.MM.yyyy}";
+        SelectedCollectionFiltersTextBlock.Text =
+            $"Vites: {string.Join(", ", collections.Select(item => string.IsNullOrWhiteSpace(item.SecilenVitesFiltresi) ? "Farketmez" : item.SecilenVitesFiltresi).Distinct())} | " +
+            $"Yakıt: {string.Join(", ", collections.Select(item => string.IsNullOrWhiteSpace(item.SecilenYakitFiltresi) ? "Farketmez" : item.SecilenYakitFiltresi).Distinct())}";
+        SelectedCollectionCountTextBlock.Text = collections.Sum(item => item.AracSayisi).ToString();
+        SelectedCollectionCreatedAtTextBlock.Text =
+            $"{collections.Min(item => item.OlusturmaTarihi).ToLocalTime():dd.MM.yyyy HH:mm} - {collections.Max(item => item.OlusturmaTarihi).ToLocalTime():dd.MM.yyyy HH:mm}";
+    }
+
+    private void ClearSelectedCollectionSummary()
+    {
+        SelectedCollectionNameTextBlock.Text = "-";
+        SelectedCollectionLocationTextBlock.Text = "-";
+        SelectedCollectionDateRangeTextBlock.Text = "-";
+        SelectedCollectionFiltersTextBlock.Text = "-";
+        SelectedCollectionCountTextBlock.Text = "-";
+        SelectedCollectionCreatedAtTextBlock.Text = "-";
     }
 
     private void ShowSearchSection()
@@ -601,7 +668,48 @@ public partial class MainWindow : Window
         {
             Header = "Kayıt Adı",
             Binding = new Binding(nameof(KoleksiyonListItem.OzelAd)),
-            Width = new DataGridLength(2, DataGridLengthUnitType.Star)
+            Width = new DataGridLength(1.8, DataGridLengthUnitType.Star)
+        });
+
+        CollectionsDataGrid.Columns.Add(new DataGridTextColumn
+        {
+            Header = "Alış Yeri",
+            Binding = new Binding(nameof(KoleksiyonListItem.AlisYeri)),
+            Width = new DataGridLength(1.4, DataGridLengthUnitType.Star)
+        });
+
+        CollectionsDataGrid.Columns.Add(new DataGridTextColumn
+        {
+            Header = "Tarih Aralığı",
+            Binding = new Binding(nameof(KoleksiyonListItem.AlisTarihi))
+            {
+                StringFormat = "dd.MM.yyyy"
+            },
+            Width = new DataGridLength(1.1, DataGridLengthUnitType.Star)
+        });
+
+        CollectionsDataGrid.Columns.Add(new DataGridTextColumn
+        {
+            Header = "Dönüş",
+            Binding = new Binding(nameof(KoleksiyonListItem.DonusTarihi))
+            {
+                StringFormat = "dd.MM.yyyy"
+            },
+            Width = new DataGridLength(1.1, DataGridLengthUnitType.Star)
+        });
+
+        CollectionsDataGrid.Columns.Add(new DataGridTextColumn
+        {
+            Header = "Vites",
+            Binding = new Binding(nameof(KoleksiyonListItem.SecilenVitesFiltresi)),
+            Width = new DataGridLength(1, DataGridLengthUnitType.Star)
+        });
+
+        CollectionsDataGrid.Columns.Add(new DataGridTextColumn
+        {
+            Header = "Yakıt",
+            Binding = new Binding(nameof(KoleksiyonListItem.SecilenYakitFiltresi)),
+            Width = new DataGridLength(1, DataGridLengthUnitType.Star)
         });
 
         CollectionsDataGrid.Columns.Add(new DataGridTextColumn
@@ -622,57 +730,14 @@ public partial class MainWindow : Window
         });
     }
 
-    private void ConfigureHistoryVehiclesGrid()
-    {
-        HistoryVehiclesDataGrid.AutoGenerateColumns = false;
-        HistoryVehiclesDataGrid.Columns.Clear();
-
-        HistoryVehiclesDataGrid.Columns.Add(new DataGridTextColumn
-        {
-            Header = "Araç",
-            Binding = new Binding(nameof(SearchResultItem.Title)),
-            Width = new DataGridLength(2, DataGridLengthUnitType.Star)
-        });
-
-        HistoryVehiclesDataGrid.Columns.Add(new DataGridTextColumn
-        {
-            Header = "Şirket",
-            Binding = new Binding(nameof(SearchResultItem.Supplier)),
-            Width = new DataGridLength(1.2, DataGridLengthUnitType.Star)
-        });
-
-        HistoryVehiclesDataGrid.Columns.Add(new DataGridTextColumn
-        {
-            Header = "Vites",
-            Binding = new Binding(nameof(SearchResultItem.Transmission)),
-            Width = new DataGridLength(1, DataGridLengthUnitType.Star)
-        });
-
-        HistoryVehiclesDataGrid.Columns.Add(new DataGridTextColumn
-        {
-            Header = "Yakıt",
-            Binding = new Binding(nameof(SearchResultItem.FuelType)),
-            Width = new DataGridLength(1, DataGridLengthUnitType.Star)
-        });
-
-        HistoryVehiclesDataGrid.Columns.Add(new DataGridTextColumn
-        {
-            Header = "Toplam Fiyat",
-            Binding = new Binding(nameof(SearchResultItem.Price)),
-            Width = new DataGridLength(1, DataGridLengthUnitType.Star)
-        });
-    }
-
-    private async Task<string> ExportHistorySelectionAsPngAsync(KoleksiyonListItem koleksiyon)
+    private async Task<string> ExportHistorySelectionAsPngAsync(IReadOnlyList<KoleksiyonListItem> collections)
     {
         await Dispatcher.UIThread.InvokeAsync(() =>
         {
-            HistoryStatusTextBlock.Text = $"{koleksiyon.OzelAd} PNG olarak hazırlanıyor...";
+            HistoryStatusTextBlock.Text = collections.Count == 1
+                ? $"{collections[0].OzelAd} PNG olarak hazırlanıyor..."
+                : $"{collections.Count} kayıt için PNG hazırlanıyor...";
         });
-
-        await Task.Delay(150);
-        await Dispatcher.UIThread.InvokeAsync(() => HistoryExportRoot.InvalidateVisual());
-        await Task.Delay(150);
 
         var downloadsDirectory = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
@@ -680,22 +745,162 @@ public partial class MainWindow : Window
 
         Directory.CreateDirectory(downloadsDirectory);
 
-        var safeName = string.Concat(koleksiyon.OzelAd.Select(ch => char.IsLetterOrDigit(ch) ? ch : '_'));
+        var baseName = collections.Count == 1 ? collections[0].OzelAd : $"{collections.Count}_kayit";
+        var safeName = string.Concat(baseName.Select(ch => char.IsLetterOrDigit(ch) ? ch : '_'));
         var filePath = Path.Combine(downloadsDirectory, $"{safeName}_{DateTime.Now:yyyyMMdd_HHmmss}.png");
 
         await Dispatcher.UIThread.InvokeAsync(() =>
         {
-            var bounds = HistoryExportRoot.Bounds;
-            var width = Math.Max(1, (int)Math.Ceiling(bounds.Width));
-            var height = Math.Max(1, (int)Math.Ceiling(bounds.Height));
+            const double reportWidth = 1440;
+            var report = BuildCollectionReportVisual(collections);
+            report.Measure(new Size(reportWidth, double.PositiveInfinity));
+            report.Arrange(new Rect(0, 0, reportWidth, report.DesiredSize.Height));
+
+            var width = Math.Max(1, (int)Math.Ceiling(report.Bounds.Width));
+            var height = Math.Max(1, (int)Math.Ceiling(report.Bounds.Height));
+
             using var bitmap = new RenderTargetBitmap(new PixelSize(width, height), new Vector(96, 96));
-            bitmap.Render(HistoryExportRoot);
+            bitmap.Render(report);
 
             using var stream = File.Create(filePath);
             bitmap.Save(stream, PngBitmapEncoderOptions.Default);
         });
 
         return filePath;
+    }
+
+    private static Control BuildCollectionReportVisual(IReadOnlyList<KoleksiyonListItem> collections)
+    {
+        var root = new Border
+        {
+            Width = 1440,
+            Background = new SolidColorBrush(Color.Parse("#F4F7FB")),
+            Padding = new Thickness(28)
+        };
+
+        var container = new StackPanel
+        {
+            Spacing = 18
+        };
+
+        container.Children.Add(new Border
+        {
+            Background = new SolidColorBrush(Color.Parse("#0F172A")),
+            CornerRadius = new CornerRadius(12),
+            Padding = new Thickness(24),
+            Child = new StackPanel
+            {
+                Spacing = 8,
+                Children =
+                {
+                    new TextBlock
+                    {
+                        Text = collections.Count == 1 ? collections[0].OzelAd : $"{collections.Count} Seçili Kayıt",
+                        FontSize = 30,
+                        FontWeight = FontWeight.Bold,
+                        Foreground = Brushes.White
+                    },
+                    new TextBlock
+                    {
+                        Text = $"Alış Yeri: {string.Join(", ", collections.Select(item => item.AlisYeri).Distinct())}",
+                        Foreground = new SolidColorBrush(Color.Parse("#D6E2F0"))
+                    },
+                    new TextBlock
+                    {
+                        Text = collections.Count == 1
+                            ? $"Tarih: {collections[0].AlisTarihi:dd.MM.yyyy} {collections[0].AlisSaati} - {collections[0].DonusTarihi:dd.MM.yyyy} {collections[0].DonusSaati}"
+                            : $"Tarih Aralığı: {collections.Min(item => item.AlisTarihi):dd.MM.yyyy} - {collections.Max(item => item.DonusTarihi):dd.MM.yyyy}",
+                        Foreground = new SolidColorBrush(Color.Parse("#D6E2F0"))
+                    },
+                    new TextBlock
+                    {
+                        Text =
+                            $"Filtreler: Vites = {string.Join(", ", collections.Select(item => FormatFilterValue(item.SecilenVitesFiltresi)).Distinct())}, " +
+                            $"Yakıt = {string.Join(", ", collections.Select(item => FormatFilterValue(item.SecilenYakitFiltresi)).Distinct())}",
+                        Foreground = new SolidColorBrush(Color.Parse("#D6E2F0"))
+                    },
+                    new TextBlock
+                    {
+                        Text = $"Araç Sayısı: {collections.Sum(item => item.AracSayisi)} | Oluşturulma: {collections.Min(item => item.OlusturmaTarihi).ToLocalTime():dd.MM.yyyy HH:mm}",
+                        Foreground = new SolidColorBrush(Color.Parse("#D6E2F0"))
+                    }
+                }
+            }
+        });
+
+        foreach (var collection in collections)
+            container.Children.Add(BuildSingleCollectionSummaryCard(collection));
+
+        root.Child = container;
+        return root;
+    }
+
+    private static Control BuildSingleCollectionSummaryCard(KoleksiyonListItem collection)
+    {
+        return new Border
+        {
+            Background = Brushes.White,
+            BorderBrush = new SolidColorBrush(Color.Parse("#D9E2EC")),
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(12),
+            Padding = new Thickness(22),
+            Child = new Grid
+            {
+                ColumnDefinitions = new ColumnDefinitions("*,*"),
+                RowDefinitions = new RowDefinitions("Auto,Auto,Auto"),
+                ColumnSpacing = 18,
+                RowSpacing = 14,
+                Children =
+                {
+                    CreateSummaryBlock("Kayıt Adı", collection.OzelAd, 0, 0),
+                    CreateSummaryBlock("Alış Yeri", collection.AlisYeri, 0, 1),
+                    CreateSummaryBlock(
+                        "Tarih Aralığı",
+                        $"{collection.AlisTarihi:dd.MM.yyyy} {collection.AlisSaati} - {collection.DonusTarihi:dd.MM.yyyy} {collection.DonusSaati}",
+                        1,
+                        0),
+                    CreateSummaryBlock(
+                        "Filtreler",
+                        $"Vites: {FormatFilterValue(collection.SecilenVitesFiltresi)} | Yakıt: {FormatFilterValue(collection.SecilenYakitFiltresi)}",
+                        1,
+                        1),
+                    CreateSummaryBlock("Araç Sayısı", collection.AracSayisi.ToString(), 2, 0),
+                    CreateSummaryBlock("Oluşturulma", collection.OlusturmaTarihi.ToLocalTime().ToString("dd.MM.yyyy HH:mm"), 2, 1)
+                }
+            }
+        };
+    }
+
+    private static Control CreateSummaryBlock(string title, string value, int row, int column)
+    {
+        var panel = new StackPanel
+        {
+            Spacing = 4,
+            Children =
+            {
+                new TextBlock
+                {
+                    Text = title,
+                    FontWeight = FontWeight.Bold,
+                    Foreground = new SolidColorBrush(Color.Parse("#122033"))
+                },
+                new TextBlock
+                {
+                    Text = string.IsNullOrWhiteSpace(value) ? "-" : value,
+                    Foreground = new SolidColorBrush(Color.Parse("#132235")),
+                    TextWrapping = TextWrapping.Wrap
+                }
+            }
+        };
+
+        Grid.SetRow(panel, row);
+        Grid.SetColumn(panel, column);
+        return panel;
+    }
+
+    private static string FormatFilterValue(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value) ? "Farketmez" : value;
     }
 
     protected override async void OnClosed(EventArgs e)
