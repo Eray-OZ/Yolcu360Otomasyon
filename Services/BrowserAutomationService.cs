@@ -10,6 +10,10 @@ public sealed class BrowserAutomationService : IAsyncDisposable
 {
     private const string Yolcu360HomeUrl = "https://www.yolcu360.com/";
     private const string SessionStateFilePath = "/Users/erayoz/Codes/Staj/Yolcu360Otomasyon/session_state.json";
+    private const string ChromeExecutablePath = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
+    private const string ChromeSourceUserDataDir = "/Users/erayoz/Library/Application Support/Google/Chrome";
+    private const string ChromeUserDataDir = "/Users/erayoz/Codes/Staj/Yolcu360Otomasyon/chrome-user-profile";
+    private const string ChromeProfileDirectory = "Default";
 
     private IBrowser? _browser;
     private IPage? _page;
@@ -58,25 +62,45 @@ public sealed class BrowserAutomationService : IAsyncDisposable
         if (_browser is not null && _page is not null)
             return;
 
-        await new BrowserFetcher().DownloadAsync();
+        PrepareChromeProfileSnapshot();
+
+        var executablePath = File.Exists(ChromeExecutablePath) ? ChromeExecutablePath : null;
+        if (executablePath is null)
+            await new BrowserFetcher().DownloadAsync();
 
         _browser = await Puppeteer.LaunchAsync(new LaunchOptions
         {
             Headless = headless,
+            ExecutablePath = executablePath,
+            UserDataDir = ChromeUserDataDir,
             Args = [
         "--no-sandbox",
         "--disable-setuid-sandbox",
+        "--no-first-run",
+        "--no-default-browser-check",
+        "--disable-default-apps",
         "--disable-blink-features=AutomationControlled",
         "--disable-features=IsolateOrigins,site-per-process",
+        $"--profile-directory={ChromeProfileDirectory}",
         "--flag-switches-begin",
         "--disable-site-isolation-trials",
         "--flag-switches-end"
-    ]
+    ],
+            DefaultViewport = new ViewPortOptions
+            {
+                Width = 1440,
+                Height = 900
+            }
         });
 
 
 
-        _page = await _browser.NewPageAsync();
+        var pages = await _browser.PagesAsync();
+        _page = pages.FirstOrDefault(page =>
+            !page.Url.StartsWith("chrome-extension://", StringComparison.OrdinalIgnoreCase))
+            ?? await _browser.NewPageAsync();
+
+        await _page.BringToFrontAsync();
 
         await _page.SetUserAgentAsync("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.5.2 Safari/605.1.15");
 
@@ -91,16 +115,48 @@ public sealed class BrowserAutomationService : IAsyncDisposable
         get: () => ['tr-TR', 'tr', 'en-US', 'en']
     });
 }");
-
-
-        await _page.SetViewportAsync(new ViewPortOptions
-        {
-            Width = 1440,
-            Height = 900
-        });
-
         if (restoreSession)
             await TryRestoreSessionAsync();
+    }
+
+    private static void PrepareChromeProfileSnapshot()
+    {
+        Directory.CreateDirectory(ChromeUserDataDir);
+
+        var sourceLocalState = Path.Combine(ChromeSourceUserDataDir, "Local State");
+        var targetLocalState = Path.Combine(ChromeUserDataDir, "Local State");
+        if (File.Exists(sourceLocalState))
+            File.Copy(sourceLocalState, targetLocalState, overwrite: true);
+
+        var sourceDefaultProfile = Path.Combine(ChromeSourceUserDataDir, ChromeProfileDirectory);
+        var targetDefaultProfile = Path.Combine(ChromeUserDataDir, ChromeProfileDirectory);
+
+        if (Directory.Exists(targetDefaultProfile))
+            Directory.Delete(targetDefaultProfile, recursive: true);
+
+        CopyDirectory(sourceDefaultProfile, targetDefaultProfile);
+    }
+
+    private static void CopyDirectory(string sourceDir, string targetDir)
+    {
+        if (!Directory.Exists(sourceDir))
+            throw new DirectoryNotFoundException($"Chrome profil klasörü bulunamadı: {sourceDir}");
+
+        Directory.CreateDirectory(targetDir);
+
+        foreach (var file in Directory.GetFiles(sourceDir))
+        {
+            var fileName = Path.GetFileName(file);
+            var targetFile = Path.Combine(targetDir, fileName);
+            File.Copy(file, targetFile, overwrite: true);
+        }
+
+        foreach (var directory in Directory.GetDirectories(sourceDir))
+        {
+            var directoryName = Path.GetFileName(directory);
+            var targetSubDirectory = Path.Combine(targetDir, directoryName);
+            CopyDirectory(directory, targetSubDirectory);
+        }
     }
 
     // ─── Login ────────────────────────────────────────────────────────────────
@@ -335,13 +391,33 @@ public sealed class BrowserAutomationService : IAsyncDisposable
         if (!filled)
             throw new InvalidOperationException("SMS doğrulama alanı bulunamadı.");
 
-        await WaitAsync(500);
+        await WaitAsync(700);
 
         try
         {
             var clicked = await page.EvaluateExpressionAsync<bool>(
                 """
                 (() => {
+                    const applyButton = document.querySelector('button[data-cms-key="button_apply"]');
+                    if (applyButton) {
+                        const rect = applyButton.getBoundingClientRect();
+                        const style = window.getComputedStyle(applyButton);
+                        const visible = rect.width > 0 &&
+                            rect.height > 0 &&
+                            style.display !== 'none' &&
+                            style.visibility !== 'hidden' &&
+                            !applyButton.disabled;
+
+                        if (visible) {
+                            applyButton.scrollIntoView({ block: 'center', inline: 'center' });
+                            ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click'].forEach(type => {
+                                applyButton.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, view: window }));
+                            });
+                            applyButton.click();
+                            return true;
+                        }
+                    }
+
                     const normalize = value => (value || '').replace(/\s+/g, ' ').trim().toLocaleLowerCase('tr-TR');
                     const visible = el => {
                         const rect = el.getBoundingClientRect();

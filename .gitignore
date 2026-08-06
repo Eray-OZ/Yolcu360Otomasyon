@@ -2,3 +2,5 @@ puppeteer_search.js
 yolcu360_search_form.html
 obj
 bin
+chrome-user-profile
+session_state.json
