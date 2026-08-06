@@ -91,6 +91,30 @@ public sealed class DatabaseService
                 );
                 """);
 
+            await context.Database.ExecuteSqlRawAsync("""
+                CREATE TABLE IF NOT EXISTS odemeler (
+                    Id INT NOT NULL AUTO_INCREMENT,
+                    KullaniciId INT NOT NULL,
+                    KoleksiyonId INT NOT NULL,
+                    ReferansNo VARCHAR(64) NOT NULL,
+                    KoleksiyonAdi VARCHAR(255) NOT NULL,
+                    Tutar DECIMAL(18,2) NOT NULL,
+                    ParaBirimi VARCHAR(8) NOT NULL,
+                    Durum VARCHAR(32) NOT NULL,
+                    Saglayici VARCHAR(64) NOT NULL,
+                    KartSahibi VARCHAR(128) NULL,
+                    KartSon4 VARCHAR(4) NULL,
+                    OdemeTarihi DATETIME(6) NOT NULL,
+                    CONSTRAINT PK_odemeler PRIMARY KEY (Id),
+                    CONSTRAINT FK_odemeler_kullanicilar_KullaniciId
+                        FOREIGN KEY (KullaniciId) REFERENCES kullanicilar (Id)
+                        ON DELETE CASCADE,
+                    CONSTRAINT FK_odemeler_koleksiyonlar_KoleksiyonId
+                        FOREIGN KEY (KoleksiyonId) REFERENCES koleksiyonlar (Id)
+                        ON DELETE CASCADE
+                );
+                """);
+
             await EnsureColumnAsync(context, "koleksiyonlar", "AlisYeri", "VARCHAR(255) NOT NULL DEFAULT ''");
             await EnsureColumnAsync(context, "koleksiyonlar", "AlisTarihi", "DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6)");
             await EnsureColumnAsync(context, "koleksiyonlar", "DonusTarihi", "DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6)");
@@ -108,9 +132,13 @@ public sealed class DatabaseService
                 SET SecilenYakitFiltresi = ''
                 WHERE SecilenYakitFiltresi IS NULL;
                 """);
+            await EnsureColumnAsync(context, "odemeler", "KartSahibi", "VARCHAR(128) NULL");
+            await EnsureColumnAsync(context, "odemeler", "KartSon4", "VARCHAR(4) NULL");
 
             await EnsureIndexAsync(context, "koleksiyonlar", "IX_koleksiyonlar_KullaniciId", "KullaniciId");
             await EnsureIndexAsync(context, "araclar", "IX_araclar_KoleksiyonId", "KoleksiyonId");
+            await EnsureIndexAsync(context, "odemeler", "IX_odemeler_KullaniciId", "KullaniciId");
+            await EnsureIndexAsync(context, "odemeler", "IX_odemeler_KoleksiyonId", "KoleksiyonId");
 
             _schemaReady = true;
         }
@@ -334,5 +362,114 @@ public sealed class DatabaseService
 
         context.Koleksiyonlar.Remove(koleksiyon);
         await context.SaveChangesAsync();
+    }
+
+    public async Task<List<OdemeHazirlikItem>> GetPaymentPreviewAsync(int kullaniciId, IReadOnlyCollection<int> koleksiyonIds)
+    {
+        await EnsureSchemaAsync();
+        await using var context = new AppDbContext(_options);
+
+        var collections = await context.Koleksiyonlar
+            .Include(item => item.Araclar)
+            .Where(item => item.KullaniciId == kullaniciId && koleksiyonIds.Contains(item.Id))
+            .ToListAsync();
+
+        return collections.Select(collection => new OdemeHazirlikItem
+        {
+            KoleksiyonId = collection.Id,
+            KoleksiyonAdi = collection.OzelAd,
+            Tutar = CalculatePaymentAmount(collection.Araclar)
+        }).ToList();
+    }
+
+    public async Task CreateFakePaymentsAsync(
+        int kullaniciId,
+        IReadOnlyCollection<int> koleksiyonIds,
+        string kartSahibi,
+        string kartSon4)
+    {
+        await EnsureSchemaAsync();
+        await using var context = new AppDbContext(_options);
+
+        var collections = await context.Koleksiyonlar
+            .Include(item => item.Araclar)
+            .Where(item => item.KullaniciId == kullaniciId && koleksiyonIds.Contains(item.Id))
+            .ToListAsync();
+
+        foreach (var collection in collections)
+        {
+            var tutar = CalculatePaymentAmount(collection.Araclar);
+            context.Odemeler.Add(new Odeme
+            {
+                KullaniciId = kullaniciId,
+                KoleksiyonId = collection.Id,
+                ReferansNo = $"IYZ-{DateTime.Now:yyyyMMddHHmmss}-{collection.Id}",
+                KoleksiyonAdi = collection.OzelAd,
+                Tutar = tutar,
+                ParaBirimi = "TRY",
+                Durum = "Basarili",
+                Saglayici = "iyzico-sim",
+                KartSahibi = kartSahibi,
+                KartSon4 = kartSon4,
+                OdemeTarihi = DateTime.UtcNow
+            });
+        }
+
+        await context.SaveChangesAsync();
+    }
+
+    public async Task<List<OdemeListItem>> GetPaymentsAsync(int kullaniciId)
+    {
+        await EnsureSchemaAsync();
+        await using var context = new AppDbContext(_options);
+
+        return await context.Odemeler
+            .AsNoTracking()
+            .Where(item => item.KullaniciId == kullaniciId)
+            .OrderByDescending(item => item.OdemeTarihi)
+            .Select(item => new OdemeListItem
+            {
+                Id = item.Id,
+                ReferansNo = item.ReferansNo,
+                KoleksiyonAdi = item.KoleksiyonAdi,
+                Tutar = item.Tutar,
+                ParaBirimi = item.ParaBirimi,
+                Durum = item.Durum,
+                Saglayici = item.Saglayici,
+                KartSahibi = item.KartSahibi,
+                KartSon4 = item.KartSon4,
+                OdemeTarihi = item.OdemeTarihi
+            })
+            .ToListAsync();
+    }
+
+    private static decimal CalculatePaymentAmount(IEnumerable<Arac> araclar)
+    {
+        var parsedPrices = araclar
+            .Select(item => ParseCurrency(item.Fiyat))
+            .Where(item => item > 0)
+            .ToList();
+
+        if (parsedPrices.Count == 0)
+            return 0m;
+
+        return parsedPrices.Min();
+    }
+
+    private static decimal ParseCurrency(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return 0m;
+
+        var cleaned = value
+            .Replace("TL", string.Empty, StringComparison.OrdinalIgnoreCase)
+            .Replace("TRY", string.Empty, StringComparison.OrdinalIgnoreCase)
+            .Replace(".", string.Empty)
+            .Replace(",", ".")
+            .Trim();
+
+        return decimal.TryParse(cleaned, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var result)
+            ? result
+            : 0m;
     }
 }

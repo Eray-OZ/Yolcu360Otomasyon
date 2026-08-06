@@ -15,4 +15,5 @@ public sealed class Koleksiyon
     public string? SecilenYakitFiltresi { get; set; }
     public DateTime OlusturmaTarihi { get; set; }
     public List<Arac> Araclar { get; set; } = new();
+    public List<Odeme> Odemeler { get; set; } = new();
 }

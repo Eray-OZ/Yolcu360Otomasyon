@@ -13,6 +13,7 @@ public sealed class AppDbContext : DbContext
     public DbSet<AppUser> Kullanicilar => Set<AppUser>();
     public DbSet<Koleksiyon> Koleksiyonlar => Set<Koleksiyon>();
     public DbSet<Arac> Araclar => Set<Arac>();
+    public DbSet<Odeme> Odemeler => Set<Odeme>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -61,6 +62,29 @@ public sealed class AppDbContext : DbContext
         arac
             .HasOne(item => item.Koleksiyon)
             .WithMany(item => item.Araclar)
+            .HasForeignKey(item => item.KoleksiyonId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        var odeme = modelBuilder.Entity<Odeme>();
+        odeme.ToTable("odemeler");
+        odeme.HasKey(item => item.Id);
+        odeme.Property(item => item.ReferansNo).HasMaxLength(64).IsRequired();
+        odeme.Property(item => item.KoleksiyonAdi).HasMaxLength(255).IsRequired();
+        odeme.Property(item => item.Tutar).HasPrecision(18, 2).IsRequired();
+        odeme.Property(item => item.ParaBirimi).HasMaxLength(8).IsRequired();
+        odeme.Property(item => item.Durum).HasMaxLength(32).IsRequired();
+        odeme.Property(item => item.Saglayici).HasMaxLength(64).IsRequired();
+        odeme.Property(item => item.KartSahibi).HasMaxLength(128).IsRequired(false);
+        odeme.Property(item => item.KartSon4).HasMaxLength(4).IsRequired(false);
+        odeme.Property(item => item.OdemeTarihi).IsRequired();
+        odeme
+            .HasOne(item => item.Kullanici)
+            .WithMany(item => item.Odemeler)
+            .HasForeignKey(item => item.KullaniciId)
+            .OnDelete(DeleteBehavior.Cascade);
+        odeme
+            .HasOne(item => item.Koleksiyon)
+            .WithMany(item => item.Odemeler)
             .HasForeignKey(item => item.KoleksiyonId)
             .OnDelete(DeleteBehavior.Cascade);
     }

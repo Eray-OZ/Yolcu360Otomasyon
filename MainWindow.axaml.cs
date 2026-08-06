@@ -24,6 +24,7 @@ public partial class MainWindow : Window
     private List<SearchResultItem> _selectedCollectionVehicles = new();
     private KoleksiyonListItem? _selectedCollection;
     private List<KoleksiyonListItem> _selectedCollections = new();
+    private List<OdemeHazirlikItem> _paymentPreviewItems = new();
     private SearchFilter? _latestSearchFilter;
 
     public MainWindow()
@@ -35,6 +36,7 @@ public partial class MainWindow : Window
         ReturnTimeTextBox.Text = "18:00";
         ConfigureResultsGrid();
         ConfigureCollectionsGrid();
+        ConfigurePaymentsGrid();
         _smsReceiverService.SmsReceived += SmsReceiverService_SmsReceived;
         _ = _databaseService.EnsureDatabaseAsync();
         InitializeSmsReceiver();
@@ -427,6 +429,12 @@ public partial class MainWindow : Window
         await LoadHistoryAsync();
     }
 
+    private async void PaymentsTabButton_Click(object? sender, RoutedEventArgs e)
+    {
+        ShowPaymentsSection();
+        await LoadPaymentsAsync();
+    }
+
     private void SearchTabButton_Click(object? sender, RoutedEventArgs e)
     {
         ShowSearchSection();
@@ -484,6 +492,93 @@ public partial class MainWindow : Window
         }
     }
 
+    private async void CreatePaymentButton_Click(object? sender, RoutedEventArgs e)
+    {
+        if (_activeUser is null || _selectedCollections.Count == 0)
+        {
+            HistoryStatusTextBlock.Text = "Ödeme oluşturmak için en az bir kayıt seçin.";
+            return;
+        }
+
+        CreatePaymentButton.IsEnabled = false;
+        try
+        {
+            _paymentPreviewItems = await _databaseService.GetPaymentPreviewAsync(
+                _activeUser.Id,
+                _selectedCollections.Select(item => item.Id).ToList());
+
+            if (_paymentPreviewItems.Count == 0)
+            {
+                HistoryStatusTextBlock.Text = "Ödeme için uygun kayıt bulunamadı.";
+                return;
+            }
+
+            PrepareCheckoutSummary();
+            ShowPaymentCheckoutSection();
+        }
+        catch (Exception ex)
+        {
+            HistoryStatusTextBlock.Text = $"Ödeme oluşturma hatası: {ex.Message}";
+        }
+        finally
+        {
+            CreatePaymentButton.IsEnabled = true;
+        }
+    }
+
+    private void BackFromCheckoutButton_Click(object? sender, RoutedEventArgs e)
+    {
+        ShowHistorySection();
+    }
+
+    private async void ConfirmPaymentButton_Click(object? sender, RoutedEventArgs e)
+    {
+        if (_activeUser is null || _paymentPreviewItems.Count == 0)
+        {
+            CheckoutStatusTextBlock.Text = "Ödeme için seçili kayıt bulunamadı.";
+            return;
+        }
+
+        var cardHolder = PaymentCardHolderTextBox.Text?.Trim() ?? string.Empty;
+        var cardNumber = NormalizeDigits(PaymentCardNumberTextBox.Text);
+        var expiryMonth = NormalizeDigits(PaymentExpiryMonthTextBox.Text);
+        var expiryYear = NormalizeDigits(PaymentExpiryYearTextBox.Text);
+        var cvv = NormalizeDigits(PaymentCvvTextBox.Text);
+
+        if (string.IsNullOrWhiteSpace(cardHolder) ||
+            cardNumber.Length != 16 ||
+            expiryMonth.Length != 2 ||
+            expiryYear.Length != 2 ||
+            cvv.Length is < 3 or > 4)
+        {
+            CheckoutStatusTextBlock.Text = "Kart bilgileri eksik veya geçersiz.";
+            return;
+        }
+
+        ConfirmPaymentButton.IsEnabled = false;
+        try
+        {
+            await _databaseService.CreateFakePaymentsAsync(
+                _activeUser.Id,
+                _paymentPreviewItems.Select(item => item.KoleksiyonId).ToList(),
+                cardHolder,
+                cardNumber[^4..]);
+
+            CheckoutStatusTextBlock.Text = "Ödeme başarıyla tamamlandı.";
+            ClearCheckoutForm();
+            ShowPaymentsSection();
+            await LoadPaymentsAsync();
+        }
+        catch (Exception ex)
+        {
+            CheckoutStatusTextBlock.Text = $"Ödeme hatası: {ex.Message}";
+        }
+        finally
+        {
+            ConfirmPaymentButton.IsEnabled = true;
+        }
+    }
+
     private async void ExportPngButton_Click(object? sender, RoutedEventArgs e)
     {
         if (_selectedCollections.Count == 0)
@@ -535,6 +630,39 @@ public partial class MainWindow : Window
         HistoryStatusTextBlock.Text = $"{collections.Count} kayıt listelendi.";
     }
 
+    private async Task LoadPaymentsAsync()
+    {
+        if (_activeUser is null)
+            return;
+
+        var payments = await _databaseService.GetPaymentsAsync(_activeUser.Id);
+        PaymentsDataGrid.ItemsSource = null;
+        PaymentsDataGrid.ItemsSource = payments;
+        PaymentsStatusTextBlock.Text = payments.Count == 0
+            ? "Ödeme kaydı bulunamadı."
+            : $"{payments.Count} ödeme kaydı listelendi.";
+    }
+
+    private void PrepareCheckoutSummary()
+    {
+        var total = _paymentPreviewItems.Sum(item => item.Tutar);
+        PaymentSummaryCollectionsTextBlock.Text = string.Join(Environment.NewLine, _paymentPreviewItems.Select(item =>
+            $"{item.KoleksiyonAdi} - {item.Tutar:N2} TL"));
+        PaymentSummaryCountTextBlock.Text = $"{_paymentPreviewItems.Count} kayıt seçildi";
+        PaymentSummaryTotalTextBlock.Text = $"{total:N2} TL";
+        CheckoutStatusTextBlock.Text = "Kart bilgilerini girip ödemeyi tamamlayın.";
+    }
+
+    private void ClearCheckoutForm()
+    {
+        PaymentCardHolderTextBox.Text = string.Empty;
+        PaymentCardNumberTextBox.Text = string.Empty;
+        PaymentExpiryMonthTextBox.Text = string.Empty;
+        PaymentExpiryYearTextBox.Text = string.Empty;
+        PaymentCvvTextBox.Text = string.Empty;
+        _paymentPreviewItems = new List<OdemeHazirlikItem>();
+    }
+
     private void UpdateSelectedCollectionSummary(IReadOnlyList<KoleksiyonListItem> collections)
     {
         if (collections.Count == 1)
@@ -584,8 +712,11 @@ public partial class MainWindow : Window
         SearchPanel.IsVisible = true;
         SearchResultsPanel.IsVisible = true;
         HistoryPanel.IsVisible = false;
+        PaymentsPanel.IsVisible = false;
+        PaymentCheckoutPanel.IsVisible = false;
         SearchTabButton.Classes.Set("primary", true);
         HistoryTabButton.Classes.Set("primary", false);
+        PaymentsTabButton.Classes.Set("primary", false);
     }
 
     private void ShowHistorySection()
@@ -593,8 +724,35 @@ public partial class MainWindow : Window
         SearchPanel.IsVisible = false;
         SearchResultsPanel.IsVisible = false;
         HistoryPanel.IsVisible = true;
+        PaymentsPanel.IsVisible = false;
+        PaymentCheckoutPanel.IsVisible = false;
         SearchTabButton.Classes.Set("primary", false);
         HistoryTabButton.Classes.Set("primary", true);
+        PaymentsTabButton.Classes.Set("primary", false);
+    }
+
+    private void ShowPaymentsSection()
+    {
+        SearchPanel.IsVisible = false;
+        SearchResultsPanel.IsVisible = false;
+        HistoryPanel.IsVisible = false;
+        PaymentsPanel.IsVisible = true;
+        PaymentCheckoutPanel.IsVisible = false;
+        SearchTabButton.Classes.Set("primary", false);
+        HistoryTabButton.Classes.Set("primary", false);
+        PaymentsTabButton.Classes.Set("primary", true);
+    }
+
+    private void ShowPaymentCheckoutSection()
+    {
+        SearchPanel.IsVisible = false;
+        SearchResultsPanel.IsVisible = false;
+        HistoryPanel.IsVisible = false;
+        PaymentsPanel.IsVisible = false;
+        PaymentCheckoutPanel.IsVisible = true;
+        SearchTabButton.Classes.Set("primary", false);
+        HistoryTabButton.Classes.Set("primary", false);
+        PaymentsTabButton.Classes.Set("primary", true);
     }
 
     private void ConfigureResultsGrid()
@@ -727,6 +885,74 @@ public partial class MainWindow : Window
                 StringFormat = "dd.MM.yyyy HH:mm"
             },
             Width = new DataGridLength(1.4, DataGridLengthUnitType.Star)
+        });
+    }
+
+    private void ConfigurePaymentsGrid()
+    {
+        PaymentsDataGrid.AutoGenerateColumns = false;
+        PaymentsDataGrid.Columns.Clear();
+
+        PaymentsDataGrid.Columns.Add(new DataGridTextColumn
+        {
+            Header = "Referans",
+            Binding = new Binding(nameof(OdemeListItem.ReferansNo)),
+            Width = new DataGridLength(1.6, DataGridLengthUnitType.Star)
+        });
+
+        PaymentsDataGrid.Columns.Add(new DataGridTextColumn
+        {
+            Header = "Kayıt",
+            Binding = new Binding(nameof(OdemeListItem.KoleksiyonAdi)),
+            Width = new DataGridLength(1.8, DataGridLengthUnitType.Star)
+        });
+
+        PaymentsDataGrid.Columns.Add(new DataGridTextColumn
+        {
+            Header = "Tutar",
+            Binding = new Binding(nameof(OdemeListItem.Tutar))
+            {
+                StringFormat = "N2"
+            },
+            Width = new DataGridLength(1, DataGridLengthUnitType.Star)
+        });
+
+        PaymentsDataGrid.Columns.Add(new DataGridTextColumn
+        {
+            Header = "PB",
+            Binding = new Binding(nameof(OdemeListItem.ParaBirimi)),
+            Width = new DataGridLength(0.7, DataGridLengthUnitType.Star)
+        });
+
+        PaymentsDataGrid.Columns.Add(new DataGridTextColumn
+        {
+            Header = "Durum",
+            Binding = new Binding(nameof(OdemeListItem.Durum)),
+            Width = new DataGridLength(1, DataGridLengthUnitType.Star)
+        });
+
+        PaymentsDataGrid.Columns.Add(new DataGridTextColumn
+        {
+            Header = "Sağlayıcı",
+            Binding = new Binding(nameof(OdemeListItem.Saglayici)),
+            Width = new DataGridLength(1.1, DataGridLengthUnitType.Star)
+        });
+
+        PaymentsDataGrid.Columns.Add(new DataGridTextColumn
+        {
+            Header = "Kart",
+            Binding = new Binding(nameof(OdemeListItem.KartSon4)),
+            Width = new DataGridLength(0.8, DataGridLengthUnitType.Star)
+        });
+
+        PaymentsDataGrid.Columns.Add(new DataGridTextColumn
+        {
+            Header = "Tarih",
+            Binding = new Binding(nameof(OdemeListItem.OdemeTarihi))
+            {
+                StringFormat = "dd.MM.yyyy HH:mm"
+            },
+            Width = new DataGridLength(1.3, DataGridLengthUnitType.Star)
         });
     }
 
@@ -901,6 +1127,11 @@ public partial class MainWindow : Window
     private static string FormatFilterValue(string? value)
     {
         return string.IsNullOrWhiteSpace(value) ? "Farketmez" : value;
+    }
+
+    private static string NormalizeDigits(string? value)
+    {
+        return new string((value ?? string.Empty).Where(char.IsDigit).ToArray());
     }
 
     protected override async void OnClosed(EventArgs e)

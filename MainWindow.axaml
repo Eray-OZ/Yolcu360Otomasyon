@@ -392,6 +392,10 @@
                                 Content="Geçmiş Kayıtlar"
                                 Width="180"
                                 Click="HistoryTabButton_Click" />
+                        <Button x:Name="PaymentsTabButton"
+                                Content="Ödemeler"
+                                Width="160"
+                                Click="PaymentsTabButton_Click" />
                     </StackPanel>
 
                     <Border Grid.Row="1"
@@ -605,6 +609,11 @@
                             <StackPanel Grid.Row="3"
                                         Orientation="Horizontal"
                                         Spacing="12">
+                                <Button x:Name="CreatePaymentButton"
+                                        Classes="primary"
+                                        Content="Sahte Ödeme Oluştur"
+                                        Width="190"
+                                        Click="CreatePaymentButton_Click" />
                                 <Button x:Name="DeleteCollectionButton"
                                         Content="Sil"
                                         Width="120"
@@ -696,6 +705,278 @@
                                 </Grid>
                             </Border>
 
+                        </Grid>
+                    </Border>
+
+                    <Border Grid.Row="1"
+                            Grid.RowSpan="2"
+                            x:Name="PaymentsPanel"
+                            IsVisible="False"
+                            Background="White"
+                            BorderBrush="#D9E2EC"
+                            BorderThickness="1"
+                            CornerRadius="10"
+                            Padding="22">
+                        <Grid RowDefinitions="Auto,Auto,*"
+                              RowSpacing="16">
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="Ödemeler"
+                                           FontSize="22"
+                                           FontWeight="Bold"
+                                           Foreground="#122033" />
+                                <TextBlock Text="Oluşturulan sahte iyzico ödeme kayıtları burada listelenir."
+                                           Foreground="#5F7187" />
+                            </StackPanel>
+
+                            <TextBlock x:Name="PaymentsStatusTextBlock"
+                                       Grid.Row="1"
+                                       Foreground="#132235"
+                                       FontWeight="SemiBold"
+                                       TextWrapping="Wrap" />
+
+                            <Border Grid.Row="2"
+                                    Background="#FBFDFF"
+                                    BorderBrush="#E2EAF2"
+                                    BorderThickness="1"
+                                    CornerRadius="10"
+                                    Padding="0">
+                                <DataGrid x:Name="PaymentsDataGrid"
+                                          AutoGenerateColumns="True"
+                                          IsReadOnly="True"
+                                          CanUserResizeColumns="True"
+                                          CanUserSortColumns="True"
+                                          MinHeight="420" />
+                            </Border>
+                        </Grid>
+                    </Border>
+
+                    <Border Grid.Row="1"
+                            Grid.RowSpan="2"
+                            x:Name="PaymentCheckoutPanel"
+                            IsVisible="False"
+                            Background="White"
+                            BorderBrush="#D9E2EC"
+                            BorderThickness="1"
+                            CornerRadius="10"
+                            Padding="0">
+                        <Grid Background="#F3F6FB"
+                              ColumnDefinitions="1.15*,0.95*">
+                            <Border Background="#115DF5"
+                                    Padding="30"
+                                    CornerRadius="10,0,0,10">
+                                <Grid RowDefinitions="Auto,Auto,*,Auto"
+                                      RowSpacing="18">
+                                    <StackPanel Spacing="8">
+                                        <Border Background="#2C74FF"
+                                                CornerRadius="999"
+                                                Padding="14,6"
+                                                HorizontalAlignment="Left">
+                                            <TextBlock Text="iyzico"
+                                                       FontSize="18"
+                                                       FontWeight="Bold"
+                                                       Foreground="White" />
+                                        </Border>
+                                        <TextBlock Text="Güvenli ödeme"
+                                                   FontSize="30"
+                                                   FontWeight="Bold"
+                                                   Foreground="White" />
+                                        <TextBlock Text="Seçtiğiniz kayıtlar için sahte ödeme adımı burada tamamlanır."
+                                                   Foreground="#DCE8FF"
+                                                   TextWrapping="Wrap" />
+                                    </StackPanel>
+
+                                    <Border Grid.Row="1"
+                                            Background="#FFFFFF"
+                                            CornerRadius="14"
+                                            Padding="18">
+                                        <StackPanel Spacing="10">
+                                            <TextBlock Text="Sepet Özeti"
+                                                       FontSize="18"
+                                                       FontWeight="Bold"
+                                                       Foreground="#122033" />
+                                            <TextBlock x:Name="PaymentSummaryCollectionsTextBlock"
+                                                       Text="-"
+                                                       Foreground="#35516B"
+                                                       TextWrapping="Wrap" />
+                                            <Border Background="#F3F7FF"
+                                                    CornerRadius="10"
+                                                    Padding="12">
+                                                <Grid ColumnDefinitions="*,Auto"
+                                                      RowDefinitions="Auto,Auto"
+                                                      RowSpacing="8">
+                                                    <TextBlock Text="Seçilen kayıt"
+                                                               Foreground="#48627A" />
+                                                    <TextBlock x:Name="PaymentSummaryCountTextBlock"
+                                                               Grid.Column="1"
+                                                               Text="-"
+                                                               Foreground="#122033"
+                                                               FontWeight="SemiBold" />
+                                                    <TextBlock Grid.Row="1"
+                                                               Text="Toplam"
+                                                               Foreground="#48627A"
+                                                               FontWeight="SemiBold" />
+                                                    <TextBlock x:Name="PaymentSummaryTotalTextBlock"
+                                                               Grid.Row="1"
+                                                               Grid.Column="1"
+                                                               Text="-"
+                                                               FontSize="24"
+                                                               FontWeight="Bold"
+                                                               Foreground="#115DF5" />
+                                                </Grid>
+                                            </Border>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <Border Grid.Row="2"
+                                            Background="#0D4AD0"
+                                            CornerRadius="14"
+                                            Padding="18">
+                                        <StackPanel Spacing="8">
+                                            <TextBlock Text="Test Kartı"
+                                                       FontSize="16"
+                                                       FontWeight="Bold"
+                                                       Foreground="White" />
+                                            <TextBlock Text="Kart No: 5528 7911 1111 1111"
+                                                       Foreground="#E8F0FF" />
+                                            <TextBlock Text="Son Kullanma: 12 / 28"
+                                                       Foreground="#E8F0FF" />
+                                            <TextBlock Text="CVV: 123"
+                                                       Foreground="#E8F0FF" />
+                                        </StackPanel>
+                                    </Border>
+
+                                    <TextBlock x:Name="CheckoutStatusTextBlock"
+                                               Grid.Row="3"
+                                               Text=""
+                                               Foreground="White"
+                                               FontWeight="SemiBold"
+                                               TextWrapping="Wrap" />
+                                </Grid>
+                            </Border>
+
+                            <Border Grid.Column="1"
+                                    Background="#FBFCFE"
+                                    Padding="30"
+                                    CornerRadius="0,10,10,0">
+                                <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,*"
+                                      RowSpacing="16">
+                                    <StackPanel Spacing="6">
+                                        <TextBlock Text="Kart ile Öde"
+                                                   FontSize="24"
+                                                   FontWeight="Bold"
+                                                   Foreground="#122033" />
+                                        <TextBlock Text="iyzico benzeri test ödeme formu"
+                                                   Foreground="#61758A"
+                                                   TextWrapping="Wrap" />
+                                    </StackPanel>
+
+                                    <Border Grid.Row="1"
+                                            Background="White"
+                                            BorderBrush="#D8E2EE"
+                                            BorderThickness="1"
+                                            CornerRadius="12"
+                                            Padding="14">
+                                        <StackPanel Spacing="12">
+                                            <TextBlock Text="Kart Üzerindeki Ad"
+                                                       Foreground="#243446"
+                                                       FontWeight="SemiBold" />
+                                        <TextBox x:Name="PaymentCardHolderTextBox"
+                                                 PlaceholderText="ERAY OZ" />
+                                        </StackPanel>
+                                    </Border>
+
+                                    <Border Grid.Row="2"
+                                            Background="White"
+                                            BorderBrush="#D8E2EE"
+                                            BorderThickness="1"
+                                            CornerRadius="12"
+                                            Padding="14">
+                                        <StackPanel Spacing="12">
+                                            <Grid ColumnDefinitions="*,Auto">
+                                                <TextBlock Text="Kart Numarası"
+                                                           Foreground="#243446"
+                                                           FontWeight="SemiBold" />
+                                                <TextBlock Grid.Column="1"
+                                                           Text="VISA / MasterCard"
+                                                           Foreground="#73879C"
+                                                           FontSize="12" />
+                                            </Grid>
+                                            <TextBox x:Name="PaymentCardNumberTextBox"
+                                                     PlaceholderText="5528 7911 1111 1111" />
+                                        </StackPanel>
+                                    </Border>
+
+                                    <Grid Grid.Row="3"
+                                          ColumnDefinitions="*,*"
+                                          ColumnSpacing="14">
+                                        <Border Background="White"
+                                                BorderBrush="#D8E2EE"
+                                                BorderThickness="1"
+                                                CornerRadius="12"
+                                                Padding="14">
+                                            <StackPanel Spacing="12">
+                                                <TextBlock Text="Son Kullanma"
+                                                           Foreground="#243446"
+                                                           FontWeight="SemiBold" />
+                                                <Grid ColumnDefinitions="*,Auto,*"
+                                                      ColumnSpacing="10">
+                                                    <TextBox x:Name="PaymentExpiryMonthTextBox"
+                                                             PlaceholderText="12" />
+                                                    <TextBlock Grid.Column="1"
+                                                               Text="/"
+                                                               VerticalAlignment="Center"
+                                                               FontSize="18"
+                                                               Foreground="#61758A" />
+                                                    <TextBox x:Name="PaymentExpiryYearTextBox"
+                                                             Grid.Column="2"
+                                                             PlaceholderText="28" />
+                                                </Grid>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <Border Grid.Column="1"
+                                                Background="White"
+                                                BorderBrush="#D8E2EE"
+                                                BorderThickness="1"
+                                                CornerRadius="12"
+                                                Padding="14">
+                                            <StackPanel Spacing="12">
+                                                <TextBlock Text="Güvenlik Kodu"
+                                                           Foreground="#243446"
+                                                           FontWeight="SemiBold" />
+                                                <TextBox x:Name="PaymentCvvTextBox"
+                                                         PlaceholderText="123" />
+                                            </StackPanel>
+                                        </Border>
+                                    </Grid>
+
+                                    <Border Grid.Row="4"
+                                            Background="#F4F7FC"
+                                            BorderBrush="#E2E9F2"
+                                            BorderThickness="1"
+                                            CornerRadius="12"
+                                            Padding="14">
+                                        <TextBlock Text="Bu ekran gerçek ödeme almaz. Girilen kart bilgileri yalnızca sahte ödeme kaydı oluşturmak için kullanılır."
+                                                   Foreground="#5F7187"
+                                                   TextWrapping="Wrap" />
+                                    </Border>
+
+                                    <StackPanel Grid.Row="5"
+                                                Orientation="Horizontal"
+                                                HorizontalAlignment="Stretch"
+                                                Spacing="12">
+                                        <Button x:Name="BackFromCheckoutButton"
+                                                Content="Geri"
+                                                Width="120"
+                                                Click="BackFromCheckoutButton_Click" />
+                                        <Button x:Name="ConfirmPaymentButton"
+                                                Classes="primary"
+                                                Content="Ödemeyi Tamamla"
+                                                Width="200"
+                                                Click="ConfirmPaymentButton_Click" />
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
                         </Grid>
                     </Border>
                 </Grid>
