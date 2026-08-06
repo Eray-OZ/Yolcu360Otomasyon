@@ -9,6 +9,7 @@ namespace Yolcu360Otomasyon.Services;
 public sealed class BrowserAutomationService : IAsyncDisposable
 {
     private const string Yolcu360HomeUrl = "https://www.yolcu360.com/";
+    private const string LoginRecaptchaEndpoint = "/api/v1/accounts-api/auth/login/phone/code/recaptcha/";
     private const string SessionStateFilePath = "/Users/erayoz/Codes/Staj/Yolcu360Otomasyon/session_state.json";
     private const string ChromeExecutablePath = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
     private const string ChromeSourceUserDataDir = "/Users/erayoz/Library/Application Support/Google/Chrome";
@@ -84,7 +85,7 @@ public sealed class BrowserAutomationService : IAsyncDisposable
         $"--profile-directory={ChromeProfileDirectory}",
         "--flag-switches-begin",
         "--disable-site-isolation-trials",
-        "--flag-switches-end"
+        "--flag-switches-end",
     ],
             DefaultViewport = new ViewPortOptions
             {
@@ -96,6 +97,9 @@ public sealed class BrowserAutomationService : IAsyncDisposable
 
 
         var pages = await _browser.PagesAsync();
+
+
+
         _page = pages.FirstOrDefault(page =>
             !page.Url.StartsWith("chrome-extension://", StringComparison.OrdinalIgnoreCase))
             ?? await _browser.NewPageAsync();
@@ -178,28 +182,33 @@ public sealed class BrowserAutomationService : IAsyncDisposable
         });
 
         var normalizedPhone = NormalizePhoneNumber(phoneNumber);
-        await NativeSetInputAsync(Selectors.LoginPagePhoneInput, normalizedPhone);
+        await TypePhoneNumberHumanLikeAsync(Selectors.LoginPagePhoneInput, normalizedPhone);
 
-        await WaitAsync(5000);
-
-
+        await WaitAsync(2_800);
 
 
 
 
-        var continueClicked = await page.EvaluateExpressionAsync<bool>(
-            """
-            (() => {
-                const buttons = Array.from(document.querySelectorAll('button'));
-                const button = buttons.find(current => (current.textContent || '').replace(/\s+/g, ' ').trim() === 'Devam Et');
-                if (!button) return false;
-                button.click();
-                return true;
-            })();
-            """);
+
+
+        var recaptchaResponseTask = page.WaitForResponseAsync(
+            response => response.Url.Contains(LoginRecaptchaEndpoint, StringComparison.OrdinalIgnoreCase),
+            new WaitForOptions { Timeout = 15_000 });
+
+        var continueClicked = await ClickButtonByTextHumanLikeAsync("Devam Et");
 
         if (!continueClicked)
             throw new InvalidOperationException("Login sayfasında 'Devam Et' butonu bulunamadı.");
+
+        try
+        {
+            var recaptchaResponse = await recaptchaResponseTask;
+            await ReportRecaptchaResponseAsync(recaptchaResponse);
+        }
+        catch (WaitTaskTimeoutException)
+        {
+            Report("reCAPTCHA cevabı 15 saniye içinde alınmadı.");
+        }
 
         await page.WaitForFunctionAsync(
         """
@@ -1424,6 +1433,211 @@ public sealed class BrowserAutomationService : IAsyncDisposable
                 el.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true }));
             })();
             """);
+    }
+
+    private async Task TypePhoneNumberHumanLikeAsync(string selector, string value)
+    {
+        var page = GetPage();
+
+        await WaitAsync(550);
+
+        var point = await GetElementCenterPointAsync(selector);
+        if (point.Found && point.Enabled)
+        {
+            await page.Mouse.MoveAsync(point.X - 26, point.Y - 8);
+            await WaitAsync(140);
+            await page.Mouse.MoveAsync(point.X - 10, point.Y - 3);
+            await WaitAsync(110);
+            await page.Mouse.MoveAsync(point.X, point.Y);
+            await WaitAsync(120);
+            await page.Mouse.ClickAsync(point.X, point.Y);
+        }
+
+        await WaitAsync(220);
+        await page.FocusAsync(selector);
+        await WaitAsync(160);
+
+        await page.Keyboard.DownAsync("Meta");
+        await page.Keyboard.PressAsync("A");
+        await page.Keyboard.UpAsync("Meta");
+        await WaitAsync(120);
+        await page.Keyboard.PressAsync("Backspace");
+        await WaitAsync(220);
+
+        foreach (var chunk in SplitPhoneNumber(value))
+        {
+            await page.Keyboard.TypeAsync(chunk, new PuppeteerSharp.Input.TypeOptions { Delay = 135 });
+            await WaitAsync(180);
+        }
+
+        await page.EvaluateExpressionAsync($$"""
+            (() => {
+                const el = document.querySelector({{JsonSerializer.Serialize(selector)}});
+                if (!el) return;
+                el.dispatchEvent(new Event('input', { bubbles: true }));
+                el.dispatchEvent(new Event('change', { bubbles: true }));
+                el.dispatchEvent(new Event('blur', { bubbles: true }));
+            })();
+            """);
+    }
+
+    private async Task<bool> ClickButtonByTextHumanLikeAsync(string buttonText)
+    {
+        var page = GetPage();
+        var point = await page.EvaluateExpressionAsync<ClickPoint>($$"""
+            (() => {
+                const normalize = value => (value || '').replace(/\s+/g, ' ').trim().toLocaleLowerCase('tr-TR');
+                const targetText = normalize({{JsonSerializer.Serialize(buttonText)}});
+                const buttons = Array.from(document.querySelectorAll('button, [role="button"], input[type="submit"], input[type="button"]'));
+
+                const target = buttons.find(button => {
+                    const rect = button.getBoundingClientRect();
+                    const style = window.getComputedStyle(button);
+                    const visible = rect.width > 0 &&
+                        rect.height > 0 &&
+                        style.display !== 'none' &&
+                        style.visibility !== 'hidden' &&
+                        !button.disabled;
+
+                    if (!visible) return false;
+
+                    const text = normalize(button.textContent || button.value || button.getAttribute('aria-label') || button.getAttribute('title') || '');
+                    return text === targetText;
+                });
+
+                if (!target) return { found: false, enabled: false, x: 0, y: 0, text: '' };
+
+                target.scrollIntoView({ block: 'center', inline: 'center' });
+                const rect = target.getBoundingClientRect();
+                return {
+                    found: true,
+                    enabled: true,
+                    x: rect.left + rect.width / 2,
+                    y: rect.top + rect.height / 2,
+                    text: (target.textContent || target.value || '').trim()
+                };
+            })();
+            """);
+
+        if (!point.Found || !point.Enabled)
+            return false;
+
+        await WaitAsync(420);
+        await page.Mouse.MoveAsync(point.X - 30, point.Y - 10);
+        await WaitAsync(120);
+        await page.Mouse.MoveAsync(point.X - 12, point.Y - 4);
+        await WaitAsync(100);
+        await page.Mouse.MoveAsync(point.X, point.Y);
+        await WaitAsync(180);
+        await page.Mouse.ClickAsync(point.X, point.Y);
+        await WaitAsync(450);
+        return true;
+    }
+
+    private async Task ReportRecaptchaResponseAsync(IResponse response)
+    {
+        try
+        {
+            var body = await response.TextAsync();
+            var compactBody = CompactForStatus(body);
+
+            try
+            {
+                using var json = JsonDocument.Parse(body);
+                var root = json.RootElement;
+
+                var message = root.TryGetProperty("message", out var messageEl)
+                    ? messageEl.GetString()
+                    : null;
+
+                var score = root.TryGetProperty("score", out var scoreEl) && scoreEl.ValueKind == JsonValueKind.Number
+                    ? scoreEl.GetDouble().ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)
+                    : null;
+
+                var error = root.TryGetProperty("error", out var errorEl)
+                    ? errorEl.GetString()
+                    : null;
+
+                var summary = $"reCAPTCHA cevap: HTTP {(int)response.Status}";
+                if (!string.IsNullOrWhiteSpace(error))
+                    summary += $" | error: {error}";
+                if (!string.IsNullOrWhiteSpace(message))
+                    summary += $" | message: {message}";
+                if (!string.IsNullOrWhiteSpace(score))
+                    summary += $" | score: {score}";
+
+                Report(summary);
+                await ShowDebugAsync(summary);
+                return;
+            }
+            catch (JsonException)
+            {
+                var summary = $"reCAPTCHA cevap: HTTP {(int)response.Status} | {compactBody}";
+                Report(summary);
+                await ShowDebugAsync(summary);
+            }
+        }
+        catch (Exception ex)
+        {
+            Report($"reCAPTCHA cevabı okunamadı: {ex.Message}");
+        }
+    }
+
+    private static string CompactForStatus(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return "Boş cevap";
+
+        var compact = value.Replace("\r", " ").Replace("\n", " ").Replace("\t", " ").Trim();
+        while (compact.Contains("  ", StringComparison.Ordinal))
+            compact = compact.Replace("  ", " ");
+
+        return compact.Length <= 180 ? compact : compact[..180];
+    }
+
+    private async Task<ClickPoint> GetElementCenterPointAsync(string selector)
+    {
+        var page = GetPage();
+        return await page.EvaluateExpressionAsync<ClickPoint>($$"""
+            (() => {
+                const el = document.querySelector({{JsonSerializer.Serialize(selector)}});
+                if (!el) return { found: false, enabled: false, x: 0, y: 0, text: '' };
+
+                const rect = el.getBoundingClientRect();
+                const style = window.getComputedStyle(el);
+                const visible = rect.width > 0 &&
+                    rect.height > 0 &&
+                    style.display !== 'none' &&
+                    style.visibility !== 'hidden';
+
+                return {
+                    found: true,
+                    enabled: visible && !el.disabled,
+                    x: rect.left + rect.width / 2,
+                    y: rect.top + rect.height / 2,
+                    text: ''
+                };
+            })();
+            """);
+    }
+
+    private static IEnumerable<string> SplitPhoneNumber(string value)
+    {
+        if (value.Length <= 3)
+            return [value];
+
+        var parts = new List<string>();
+        var index = 0;
+
+        while (index < value.Length)
+        {
+            var remaining = value.Length - index;
+            var take = remaining > 7 ? 3 : remaining > 4 ? 2 : remaining;
+            parts.Add(value.Substring(index, take));
+            index += take;
+        }
+
+        return parts;
     }
 
     private static string NormalizePhoneNumber(string phoneNumber)
