@@ -29,6 +29,15 @@ public sealed class BrowserAutomationService : IAsyncDisposable
             : sessionStateFilePath;
     }
 
+    private sealed class AppliedFilterResult
+    {
+        [JsonPropertyName("applied")]
+        public bool Applied { get; set; }
+
+        [JsonPropertyName("text")]
+        public string Text { get; set; } = string.Empty;
+    }
+
     // ─── Selector Sabitleri ───────────────────────────────────────────────────
     // Yolcu360 sayfa yapısı değişirse ilk olarak bu bölüm güncellenir.
     private static class Selectors
@@ -551,16 +560,15 @@ public sealed class BrowserAutomationService : IAsyncDisposable
         Report($"Bırakış saati seçiliyor: {filter.ReturnTime}");
         await SelectTimeAsync(timePickerIndex: 1, filter.ReturnTime);
 
-        // 8. İsteğe bağlı filtreler
-        await ClickOptionalFilterAsync(GetTransmissionSelector(filter.TransmissionType));
-        await ClickOptionalFilterAsync(GetFuelSelector(filter.FuelType));
-
-        // 9. Arama
+        // 8. Arama
         Report("Araç Ara butonuna tıklanıyor...");
         await ClickSearchButtonAsync();
 
         Report("Sonuç ekranı bekleniyor...");
         await WaitForSearchResultAsync();
+
+        // 9. Sonuç sayfası filtreleri
+        await ApplyResultPageFiltersAsync(filter);
     }
 
     public async Task<IReadOnlyList<SearchResultItem>> ReadSearchResultsAsync()
@@ -574,8 +582,12 @@ public sealed class BrowserAutomationService : IAsyncDisposable
             await page.WaitForFunctionAsync(
                 """
                 () => {
-                    const cards = document.querySelectorAll('#car_card_list .car-card, .car-card');
-                    return cards.length > 0;
+                    const cards = document.querySelectorAll('#car_card_list .car-card, .car-card, .py-2.car-card');
+                    const bodyText = (document.body.innerText || '').toLocaleLowerCase('tr-TR');
+                    return cards.length > 0
+                        || bodyText.includes('araç bulundu')
+                        || bodyText.includes('hemen kirala')
+                        || bodyText.includes('günlük fiyat');
                 }
                 """,
                 new WaitForFunctionOptions { Timeout = 30_000 });
@@ -586,7 +598,7 @@ public sealed class BrowserAutomationService : IAsyncDisposable
             throw new InvalidOperationException($"Sonuç kartları yüklenmedi. {diag}");
         }
 
-        await WaitAsync(2_000);
+        await StabilizeResultsPageAsync();
 
         Report("Sonuçlar okunuyor...");
 
@@ -595,7 +607,17 @@ public sealed class BrowserAutomationService : IAsyncDisposable
             () => {
                 const normalize = value => (value || '').replace(/\s+/g, ' ').trim();
 
-                return Array.from(document.querySelectorAll('#car_card_list .car-card, .car-card'))
+                const cards = Array.from(document.querySelectorAll('#car_card_list .car-card, .car-card, .py-2.car-card'))
+                    .filter(card => {
+                        const rect = card.getBoundingClientRect();
+                        const style = window.getComputedStyle(card);
+                        return rect.width > 0 &&
+                            rect.height > 0 &&
+                            style.display !== 'none' &&
+                            style.visibility !== 'hidden';
+                    });
+
+                return cards
                     .map(card => {
                         const specs = Array.from(card.querySelectorAll('.icon-gear-type, .icon-gas-type'))
                             .map(icon => normalize(icon.parentElement?.textContent))
@@ -632,6 +654,33 @@ public sealed class BrowserAutomationService : IAsyncDisposable
 
         Report($"{results.Length} sonuç okundu.");
         return results;
+    }
+
+    private async Task StabilizeResultsPageAsync()
+    {
+        var page = GetPage();
+
+        await WaitAsync(2_500);
+        await page.Mouse.WheelAsync(0, 500);
+        await WaitAsync(900);
+        await page.Mouse.WheelAsync(0, -300);
+        await WaitAsync(1_200);
+
+        try
+        {
+            await page.WaitForFunctionAsync(
+                """
+                () => {
+                    const cards = document.querySelectorAll('#car_card_list .car-card, .car-card, .py-2.car-card');
+                    return cards.length > 0;
+                }
+                """,
+                new WaitForFunctionOptions { Timeout = 10_000 });
+        }
+        catch
+        {
+            // Sonuç kartları hemen sabitlenmezse yine de okuma denenecek.
+        }
     }
 
     // ─── Alış Yeri ────────────────────────────────────────────────────────────
@@ -1371,49 +1420,172 @@ public sealed class BrowserAutomationService : IAsyncDisposable
 
     // ─── Filtreler ────────────────────────────────────────────────────────────
 
-    private async Task ClickOptionalFilterAsync(string? selector)
+    private async Task ApplyResultPageFiltersAsync(SearchFilter filter)
     {
-        if (string.IsNullOrWhiteSpace(selector))
-            return;
+        Report("Sonuç sayfası açıldı, filtre paneli hazırlanıyor...");
+        await ScrollToFiltersAsync();
+        await WaitAsync(1_500);
 
+        var transmissionApplied = await ApplyTransmissionFilterAsync(filter.TransmissionType);
+        var fuelApplied = await ApplyFuelFilterAsync(filter.FuelType);
+
+        if (transmissionApplied || fuelApplied)
+        {
+            Report("Sonuç sayfası filtreleri uygulanıyor...");
+            await WaitForFilteredResultsRefreshAsync();
+        }
+    }
+
+    private async Task<bool> ApplyTransmissionFilterAsync(string transmissionType)
+    {
+        return transmissionType.Trim().ToLowerInvariant() switch
+        {
+            "automatic" or "otomatik" => await ClickResultFilterOptionAsync("Vites filtresi", "filter-transmission", ["otomatik"]),
+            "manual" or "manuel" => await ClickResultFilterOptionAsync("Vites filtresi", "filter-transmission", ["manuel"]),
+            _ => false
+        };
+    }
+
+    private async Task<bool> ApplyFuelFilterAsync(string fuelType)
+    {
+        return fuelType.Trim().ToLowerInvariant() switch
+        {
+            "diesel" or "dizel" => await ClickResultFilterOptionAsync("Yakıt filtresi", "filter-fuel", ["dizel", "benzin/dizel"]),
+            "gasoline" or "benzin" => await ClickResultFilterOptionAsync("Yakıt filtresi", "filter-fuel", ["benzin", "benzin/dizel"]),
+            _ => false
+        };
+    }
+
+    private async Task<bool> ClickResultFilterOptionAsync(string filterName, string filterPrefix, IReadOnlyList<string> targetTexts)
+    {
+        var page = GetPage();
+        var targetsJson = JsonSerializer.Serialize(targetTexts);
+        var prefixJson = JsonSerializer.Serialize(filterPrefix);
+        Report($"{filterName} hazırlanıyor...");
+
+        try
+        {
+            await page.WaitForFunctionAsync(
+                $$"""
+                () => document.querySelectorAll(`label[name^="${{{prefixJson}}}."]`).length > 0
+                """,
+                new WaitForFunctionOptions { Timeout = 10_000 });
+        }
+        catch (WaitTaskTimeoutException)
+        {
+            Report($"{filterName} bulunamadı.");
+            return false;
+        }
+
+        var appliedFilter = await page.EvaluateFunctionAsync<AppliedFilterResult>(
+            $$"""
+            (targets, prefix) => {
+                const normalize = value => (value || '')
+                    .toLocaleLowerCase('tr-TR')
+                    .replace(/\s+/g, ' ')
+                    .trim();
+
+                const visible = el => {
+                    const rect = el.getBoundingClientRect();
+                    const style = window.getComputedStyle(el);
+                    return rect.width > 0 &&
+                        rect.height > 0 &&
+                        style.display !== 'none' &&
+                        style.visibility !== 'hidden';
+                };
+
+                const normalizedTargets = targets.map(normalize);
+
+                const labels = Array.from(document.querySelectorAll(`label[name^="${prefix}."]`))
+                    .filter(visible);
+
+                const score = text => {
+                    if (normalizedTargets.includes(text)) return 0;
+                    if (normalizedTargets.some(target => text.startsWith(target + ' '))) return 1;
+                    if (normalizedTargets.some(target => text.includes(target))) return 2;
+                    return 3;
+                };
+
+                const candidates = labels
+                    .map(label => ({
+                        label,
+                        text: normalize(label.textContent || ''),
+                        checkbox: label.querySelector('input[type="checkbox"], input[type="radio"]')
+                    }))
+                    .filter(item => item.text.length > 0)
+                    .sort((a, b) => score(a.text) - score(b.text));
+
+                const target = candidates.find(item => score(item.text) < 3);
+                if (!target) return { applied: false, text: '' };
+
+                target.label.scrollIntoView({ block: 'center', inline: 'nearest' });
+
+                ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click'].forEach(type => {
+                    target.label.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, view: window }));
+                });
+                target.label.click();
+
+                if (target.checkbox && !target.checkbox.checked) {
+                    target.checkbox.click();
+                }
+
+                return {
+                    applied: !!target.checkbox?.checked,
+                    text: target.text
+                };
+            }
+            """,
+            targetTexts,
+            filterPrefix);
+
+        if (!appliedFilter.Applied)
+        {
+            Report($"{filterName} seçilemedi.");
+            return false;
+        }
+
+        Report($"{filterName} seçildi: {appliedFilter.Text}");
+        await WaitAsync(2_000);
+
+        return true;
+    }
+
+    private async Task ScrollToFiltersAsync()
+    {
+        var page = GetPage();
+        await page.EvaluateExpressionAsync(
+            """
+            (() => {
+                const panel = document.querySelector('#stickyFilterCard');
+                panel?.scrollIntoView({ block: 'start', inline: 'nearest' });
+                window.scrollBy(0, -40);
+            })();
+            """);
+    }
+
+    private async Task WaitForFilteredResultsRefreshAsync()
+    {
         var page = GetPage();
 
         try
         {
-            await page.WaitForSelectorAsync(selector, new WaitForSelectorOptions
-            {
-                Visible = true,
-                Timeout = 8_000
-            });
-
-            await page.EvaluateExpressionAsync($$"""
-                (() => {
-                    const el = document.querySelector({{JsonSerializer.Serialize(selector)}});
-                    el?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
-                })();
-                """);
+            await page.WaitForFunctionAsync(
+                """
+                () => {
+                    const cards = document.querySelectorAll('#car_card_list .car-card, .car-card');
+                    return cards.length > 0;
+                }
+                """,
+                new WaitForFunctionOptions { Timeout = 15_000 });
         }
         catch (WaitTaskTimeoutException)
         {
-            // Filtre DOM'da yoksa akış devam eder.
+            var diag = await GetDiagnosticAsync();
+            throw new InvalidOperationException($"Filtreleme sonrası sonuçlar güncellenmedi. {diag}");
         }
+
+        await WaitAsync(2_000);
     }
-
-    private static string? GetTransmissionSelector(string transmissionType) =>
-        transmissionType.Trim().ToLowerInvariant() switch
-        {
-            "automatic" or "otomatik" => Selectors.AutomaticTransmissionFilter,
-            "manual" or "manuel" => Selectors.ManualTransmissionFilter,
-            _ => null
-        };
-
-    private static string? GetFuelSelector(string fuelType) =>
-        fuelType.Trim().ToLowerInvariant() switch
-        {
-            "diesel" or "dizel" => Selectors.DieselFuelFilter,
-            "gasoline" or "benzin" => Selectors.GasolineFuelFilter,
-            _ => null
-        };
 
     // ─── Yardımcı Metotlar ────────────────────────────────────────────────────
 

@@ -308,9 +308,9 @@ public partial class MainWindow : Window
                 ResultsDataGrid.ItemsSource = _latestResults;
             });
 
-            SearchStatusTextBlock.Text = results.Count == 0
+            SearchStatusTextBlock.Text = _latestResults.Count == 0
                 ? "Arama tamamlandı, sonuç bulunamadı."
-                : $"{results.Count} sonuç listelendi. İlk sonuç: {results[0].Title} | {results[0].Price}";
+                : $"{_latestResults.Count} sonuç listelendi. İlk sonuç: {_latestResults[0].Title} | {_latestResults[0].Price}";
         }
         catch (Exception ex)
         {
