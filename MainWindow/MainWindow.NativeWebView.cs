@@ -1,4 +1,5 @@
 using Avalonia.Interactivity;
+using Avalonia.Threading;
 using Yolcu360Otomasyon.Services;
 
 namespace Yolcu360Otomasyon;
@@ -12,8 +13,9 @@ public partial class MainWindow
             ShowSearchSection();
             EmbeddedBrowserPanel.IsVisible = true;
             SearchStatusTextBlock.Text = "Gömülü tarayıcı açılıyor...";
+            await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Render);
 
-            var embeddedBrowser = new EmbeddedBrowserAutomationService(EmbeddedBrowser);
+            var embeddedBrowser = CreateEmbeddedBrowserAutomationService();
             await embeddedBrowser.OpenYolcu360HomeAsync();
 
             var title = await embeddedBrowser.GetTitleAsync();
@@ -38,8 +40,9 @@ public partial class MainWindow
 
             EmbeddedBrowserPanel.IsVisible = true;
             SearchStatusTextBlock.Text = "Gömülü tarayıcı arama formu hazırlanıyor...";
+            await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Render);
 
-            var embeddedBrowser = new EmbeddedBrowserAutomationService(EmbeddedBrowser);
+            var embeddedBrowser = CreateEmbeddedBrowserAutomationService();
             await embeddedBrowser.OpenYolcu360HomeAsync();
 
             SearchStatusTextBlock.Text = "Gömülü tarayıcı alış yeri seçiyor...";
@@ -51,5 +54,19 @@ public partial class MainWindow
         {
             SearchStatusTextBlock.Text = $"Gömülü arama test hatası: {ex.Message}";
         }
+    }
+
+    private EmbeddedBrowserAutomationService CreateEmbeddedBrowserAutomationService()
+    {
+        var embeddedBrowser = new EmbeddedBrowserAutomationService(EmbeddedBrowser);
+        embeddedBrowser.ProgressChanged += message =>
+        {
+            Dispatcher.UIThread.Post(() =>
+            {
+                SearchStatusTextBlock.Text = message;
+            });
+        };
+
+        return embeddedBrowser;
     }
 }
