@@ -7,6 +7,10 @@ namespace Yolcu360Otomasyon.Services;
 public sealed class EmbeddedBrowserAutomationService
 {
     private const string Yolcu360HomeUrl = "https://www.yolcu360.com/";
+    private const string PickupLocationInputSelector = "#inputPickUpLocation";
+    private const string LocationSuggestionSelector = ".search-autocomplete__item, .search-autocomplete-mobile__item, .search-autocomplete .location-item, .location-item";
+    private const string DateTimeGroupSelector = "[modaltitle='Alış ve Bırakış Tarihi']";
+    private const string DatePickerSelector = ".dp__main.dp__theme_light";
     private readonly NativeWebView _browser;
 
     public event Action<string>? ProgressChanged;
@@ -116,13 +120,15 @@ public sealed class EmbeddedBrowserAutomationService
             throw new InvalidOperationException("Alış yeri boş bırakılamaz.");
 
         var locationJson = JsonSerializer.Serialize(location.Trim());
+        var pickupLocationInputSelectorJson = JsonSerializer.Serialize(PickupLocationInputSelector);
+        var locationSuggestionSelectorJson = JsonSerializer.Serialize(LocationSuggestionSelector);
         var diagnostic = await GetSearchDomDiagnosticAsync();
         Report($"Gömülü DOM: {diagnostic}");
 
         Report("Alış yeri inputu bekleniyor...");
         await WaitForScriptTrueAsync(
-            """
-            (() => !!document.querySelector('#inputPickUpLocation'))();
+            $$"""
+            (() => !!document.querySelector({{pickupLocationInputSelectorJson}}))();
             """,
             TimeSpan.FromSeconds(20));
 
@@ -130,7 +136,7 @@ public sealed class EmbeddedBrowserAutomationService
         await EvaluateScriptAsync(
             $$"""
             (() => {
-                const input = document.querySelector('#inputPickUpLocation');
+                const input = document.querySelector({{pickupLocationInputSelectorJson}});
                 const text = {{locationJson}};
                 input.focus();
                 input.value = '';
@@ -149,7 +155,7 @@ public sealed class EmbeddedBrowserAutomationService
             """);
 
         Report("Alış yeri önerileri bekleniyor...");
-        await WaitForLocationSuggestionsAsync(TimeSpan.FromSeconds(12));
+        await WaitForLocationSuggestionsAsync(LocationSuggestionSelector, TimeSpan.FromSeconds(12));
 
         Report("Alış yeri önerisi seçiliyor...");
         var selected = await EvaluateScriptAsync(
@@ -161,7 +167,7 @@ public sealed class EmbeddedBrowserAutomationService
                     .replace(/\s+/g, ' ')
                     .trim();
                 const target = normalize(targetText);
-                const items = Array.from(document.querySelectorAll('.search-autocomplete .location-item, .location-item'))
+                const items = Array.from(document.querySelectorAll({{locationSuggestionSelectorJson}}))
                     .filter(item => {
                         const rect = item.getBoundingClientRect();
                         return rect.width > 0 && rect.height > 0;
@@ -186,17 +192,18 @@ public sealed class EmbeddedBrowserAutomationService
         Report("Alış yeri önerisi seçildi.");
     }
 
-    private async Task WaitForLocationSuggestionsAsync(TimeSpan timeout)
+    private async Task WaitForLocationSuggestionsAsync(string selector, TimeSpan timeout)
     {
         var deadline = DateTimeOffset.UtcNow + timeout;
         string? lastResult = null;
+        var selectorJson = JsonSerializer.Serialize(selector);
 
         while (DateTimeOffset.UtcNow < deadline)
         {
             lastResult = await EvaluateScriptAsync(
                 """
                 (() => {
-                    const items = Array.from(document.querySelectorAll('.search-autocomplete .location-item, .location-item'));
+                    const items = Array.from(document.querySelectorAll({{selectorJson}}));
                     const visibleItems = items.filter(item => {
                         const rect = item.getBoundingClientRect();
                         return rect.width > 0 && rect.height > 0;
