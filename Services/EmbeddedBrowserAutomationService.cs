@@ -289,6 +289,7 @@ public sealed class EmbeddedBrowserAutomationService
 
     private void Report(string message)
     {
+        Console.WriteLine($"[EmbeddedWebView] {message}");
         ProgressChanged?.Invoke(message);
     }
 

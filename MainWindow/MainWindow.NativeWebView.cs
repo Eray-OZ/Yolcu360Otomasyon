@@ -61,6 +61,7 @@ public partial class MainWindow
         var embeddedBrowser = new EmbeddedBrowserAutomationService(EmbeddedBrowser);
         embeddedBrowser.ProgressChanged += message =>
         {
+            Console.WriteLine($"[EmbeddedWebViewUI] {message}");
             Dispatcher.UIThread.Post(() =>
             {
                 SearchStatusTextBlock.Text = message;
