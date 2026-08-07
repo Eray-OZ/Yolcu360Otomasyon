@@ -237,29 +237,12 @@ public partial class MainWindow : Window
         return AppContext.BaseDirectory;
     }
 
-    private async Task CloseBrowserAfterAuthAsync()
-    {
-        if (_browserAutomationService is null)
-            return;
-
-        await _browserAutomationService.DisposeAsync();
-        _browserAutomationService = null;
-    }
-
     private void ShowMainView()
     {
         LoginView.IsVisible = false;
         RegisterView.IsVisible = false;
         MainView.IsVisible = true;
         ShowSearchSection();
-    }
-
-    private void BrowserAutomationService_LoginProgressChanged(string message)
-    {
-        Dispatcher.UIThread.Post(() =>
-        {
-            SetAuthStatus(message);
-        });
     }
 
     private void SmsReceiverService_SmsReceived(string message)

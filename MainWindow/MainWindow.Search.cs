@@ -60,25 +60,43 @@ public partial class MainWindow : Window
                 return;
             }
 
-            _browserAutomationService ??= new BrowserAutomationService(_activeUser.SessionStatePath);
-            _browserAutomationService.ProgressChanged -= BrowserAutomationService_ProgressChanged;
-            _browserAutomationService.ProgressChanged += BrowserAutomationService_ProgressChanged;
+            ShowBrowserSection();
+            SearchStatusTextBlock.Text = "Gömülü tarayıcı arama formu hazırlanıyor...";
+            await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Render);
 
-            SearchStatusTextBlock.Text = "Tarayıcı başlatılıyor...";
-            await _browserAutomationService.InitializeAsync(headless: false, restoreSession: true);
-
-            SearchStatusTextBlock.Text = "Yolcu360 arama formu dolduruluyor...";
-            await _browserAutomationService.ApplySearchFiltersAndSearchAsync(filter);
-
-            SearchStatusTextBlock.Text = "Sonuçlar geliyor, lütfen bekleyin...";
-            await Dispatcher.UIThread.InvokeAsync(() =>
+            var embeddedBrowser = CreateEmbeddedBrowserAutomationService();
+            if (_activeUser is not null && !string.IsNullOrWhiteSpace(_activeUser.SessionStatePath))
             {
-                ResultsDataGrid.ItemsSource = null;
-            }, DispatcherPriority.Render);
-            await Task.Delay(50);
+                await embeddedBrowser.RestoreSessionAsync(_activeUser.SessionStatePath);
+            }
 
-            var results = await _browserAutomationService.ReadSearchResultsAsync();
-            _latestResults = results.ToList();
+            await embeddedBrowser.OpenYolcu360HomeAsync();
+
+            SearchStatusTextBlock.Text = "Gömülü tarayıcı alış yeri seçiyor...";
+            await embeddedBrowser.FillPickupLocationAsync(filter.PickupLocation);
+
+            SearchStatusTextBlock.Text = "Gömülü tarayıcı tarihleri seçiyor...";
+            await embeddedBrowser.SelectDateRangeAsync(filter.PickupDate, filter.ReturnDate);
+
+            SearchStatusTextBlock.Text = "Gömülü tarayıcı alış saatini seçiyor...";
+            await embeddedBrowser.SelectTimeAsync(0, filter.PickupTime);
+
+            SearchStatusTextBlock.Text = "Gömülü tarayıcı bırakış saatini seçiyor...";
+            await embeddedBrowser.SelectTimeAsync(1, filter.ReturnTime);
+
+            SearchStatusTextBlock.Text = "Gömülü tarayıcı araç ara butonuna tıklıyor...";
+            await embeddedBrowser.ClickSearchButtonAsync();
+
+            SearchStatusTextBlock.Text = "Gömülü tarayıcı sonuçları bekliyor...";
+            await embeddedBrowser.WaitForSearchResultsAsync();
+
+            SearchStatusTextBlock.Text = "Gömülü tarayıcı filtreleri uyguluyor...";
+            await embeddedBrowser.ApplyResultFiltersAsync(filter);
+
+            SearchStatusTextBlock.Text = "Gömülü tarayıcı sonuçları okuyor...";
+            var results = await embeddedBrowser.ReadSearchResultsAsync();
+            _latestResults = results;
+
             await Dispatcher.UIThread.InvokeAsync(() =>
             {
                 ResultsDataGrid.ItemsSource = null;
@@ -88,8 +106,6 @@ public partial class MainWindow : Window
             SearchStatusTextBlock.Text = _latestResults.Count == 0
                 ? "Arama tamamlandı, sonuç bulunamadı."
                 : $"{_latestResults.Count} sonuç listelendi. İlk sonuç: {_latestResults[0].Title} | {_latestResults[0].Price}";
-
-            await CloseBrowserAfterSearchAsync();
         }
         catch (Exception ex)
         {
@@ -99,16 +115,6 @@ public partial class MainWindow : Window
         {
             SearchButton.IsEnabled = true;
         }
-    }
-
-    private async Task CloseBrowserAfterSearchAsync()
-    {
-        if (_browserAutomationService is null)
-            return;
-
-        _browserAutomationService.ProgressChanged -= BrowserAutomationService_ProgressChanged;
-        await _browserAutomationService.DisposeAsync();
-        _browserAutomationService = null;
     }
 
     private async void SaveResultsButton_Click(object? sender, RoutedEventArgs e)
@@ -183,13 +189,5 @@ public partial class MainWindow : Window
     private static string GetComboBoxTag(ComboBox comboBox)
     {
         return (comboBox.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? string.Empty;
-    }
-
-    private void BrowserAutomationService_ProgressChanged(string message)
-    {
-        Dispatcher.UIThread.Post(() =>
-        {
-            SearchStatusTextBlock.Text = message;
-        });
     }
 }

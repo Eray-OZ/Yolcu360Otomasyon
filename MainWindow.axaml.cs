@@ -8,7 +8,6 @@ namespace Yolcu360Otomasyon;
 
 public partial class MainWindow : Window
 {
-    private BrowserAutomationService? _browserAutomationService;
     private readonly DatabaseService _databaseService = new(AppSettings.GetConnectionString());
     private readonly SmsReceiverService _smsReceiverService = new(5001);
     private readonly IyzicoCallbackService _iyzicoCallbackService = new();
