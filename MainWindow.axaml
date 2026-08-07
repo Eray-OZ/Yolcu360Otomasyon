@@ -611,7 +611,7 @@
                                         Spacing="12">
                                 <Button x:Name="CreatePaymentButton"
                                         Classes="primary"
-                                        Content="Sahte Ödeme Oluştur"
+                                        Content="iyzico Sandbox Ödeme"
                                         Width="190"
                                         Click="CreatePaymentButton_Click" />
                                 <Button x:Name="DeleteCollectionButton"
@@ -724,7 +724,7 @@
                                            FontSize="22"
                                            FontWeight="Bold"
                                            Foreground="#122033" />
-                                <TextBlock Text="Oluşturulan sahte iyzico ödeme kayıtları burada listelenir."
+                                <TextBlock Text="iyzico sandbox üzerinden tamamlanan ödeme kayıtları burada listelenir."
                                            Foreground="#5F7187" />
                             </StackPanel>
 
@@ -780,7 +780,7 @@
                                                    FontSize="30"
                                                    FontWeight="Bold"
                                                    Foreground="White" />
-                                        <TextBlock Text="Seçtiğiniz kayıtlar için sahte ödeme adımı burada tamamlanır."
+                                        <TextBlock Text="Seçtiğiniz kayıtlar için resmi iyzico sandbox ödeme adımı burada başlatılır."
                                                    Foreground="#DCE8FF"
                                                    TextWrapping="Wrap" />
                                     </StackPanel>
@@ -832,15 +832,14 @@
                                             CornerRadius="14"
                                             Padding="18">
                                         <StackPanel Spacing="8">
-                                            <TextBlock Text="Test Kartı"
+                                            <TextBlock Text="Sandbox Bilgisi"
                                                        FontSize="16"
                                                        FontWeight="Bold"
                                                        Foreground="White" />
-                                            <TextBlock Text="Kart No: 5528 7911 1111 1111"
-                                                       Foreground="#E8F0FF" />
-                                            <TextBlock Text="Son Kullanma: 12 / 28"
-                                                       Foreground="#E8F0FF" />
-                                            <TextBlock Text="CVV: 123"
+                                            <TextBlock Text="Kart bilgileri uygulama içinde değil, iyzico'nun açtığı resmi sandbox sayfasında girilir."
+                                                       Foreground="#E8F0FF"
+                                                       TextWrapping="Wrap" />
+                                            <TextBlock Text="Sandbox OTP: 123456"
                                                        Foreground="#E8F0FF" />
                                         </StackPanel>
                                     </Border>
@@ -861,11 +860,11 @@
                                 <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,*"
                                       RowSpacing="16">
                                     <StackPanel Spacing="6">
-                                        <TextBlock Text="Kart ile Öde"
+                                        <TextBlock Text="iyzico Sandbox"
                                                    FontSize="24"
                                                    FontWeight="Bold"
                                                    Foreground="#122033" />
-                                        <TextBlock Text="iyzico benzeri test ödeme formu"
+                                        <TextBlock Text="Test kartı bilgileri burada girilir, tarayıcıda otomatik doldurulup onaylanır."
                                                    Foreground="#61758A"
                                                    TextWrapping="Wrap" />
                                     </StackPanel>
@@ -877,11 +876,11 @@
                                             CornerRadius="12"
                                             Padding="14">
                                         <StackPanel Spacing="12">
-                                            <TextBlock Text="Kart Üzerindeki Ad"
+                                            <TextBlock Text="Kart Üzerindeki Ad Soyad"
                                                        Foreground="#243446"
                                                        FontWeight="SemiBold" />
-                                        <TextBox x:Name="PaymentCardHolderTextBox"
-                                                 PlaceholderText="ERAY OZ" />
+                                            <TextBox x:Name="PaymentCardHolderTextBox"
+                                                     PlaceholderText="ERAY OZ" />
                                         </StackPanel>
                                     </Border>
 
@@ -892,17 +891,11 @@
                                             CornerRadius="12"
                                             Padding="14">
                                         <StackPanel Spacing="12">
-                                            <Grid ColumnDefinitions="*,Auto">
-                                                <TextBlock Text="Kart Numarası"
-                                                           Foreground="#243446"
-                                                           FontWeight="SemiBold" />
-                                                <TextBlock Grid.Column="1"
-                                                           Text="VISA / MasterCard"
-                                                           Foreground="#73879C"
-                                                           FontSize="12" />
-                                            </Grid>
+                                            <TextBlock Text="Kart Numarası"
+                                                       Foreground="#243446"
+                                                       FontWeight="SemiBold" />
                                             <TextBox x:Name="PaymentCardNumberTextBox"
-                                                     PlaceholderText="5528 7911 1111 1111" />
+                                                     PlaceholderText="5526 0800 0000 0006" />
                                         </StackPanel>
                                     </Border>
 
@@ -941,7 +934,7 @@
                                                 CornerRadius="12"
                                                 Padding="14">
                                             <StackPanel Spacing="12">
-                                                <TextBlock Text="Güvenlik Kodu"
+                                                <TextBlock Text="CVC"
                                                            Foreground="#243446"
                                                            FontWeight="SemiBold" />
                                                 <TextBox x:Name="PaymentCvvTextBox"
@@ -956,7 +949,7 @@
                                             BorderThickness="1"
                                             CornerRadius="12"
                                             Padding="14">
-                                        <TextBlock Text="Bu ekran gerçek ödeme almaz. Girilen kart bilgileri yalnızca sahte ödeme kaydı oluşturmak için kullanılır."
+                                        <TextBlock Text="Uygulama tarayıcıyı açar, bu alanlardaki test kartını iyzico sandbox formuna yazar, ödeme butonuna basar ve callback sonucunu kaydeder."
                                                    Foreground="#5F7187"
                                                    TextWrapping="Wrap" />
                                     </Border>
@@ -971,8 +964,8 @@
                                                 Click="BackFromCheckoutButton_Click" />
                                         <Button x:Name="ConfirmPaymentButton"
                                                 Classes="primary"
-                                                Content="Ödemeyi Tamamla"
-                                                Width="200"
+                                                Content="Ödemeyi Başlat"
+                                                Width="210"
                                                 Click="ConfirmPaymentButton_Click" />
                                     </StackPanel>
                                 </Grid>

@@ -19,6 +19,7 @@
       <PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.8" />
+    <PackageReference Include="Iyzipay" Version="2.1.78" />
     <PackageReference Include="MySqlConnector" Version="2.6.1" />
     <PackageReference Include="Pomelo.EntityFrameworkCore.MySql" Version="8.0.2" />
     <PackageReference Include="PuppeteerExtraSharp" Version="3.1.1" />

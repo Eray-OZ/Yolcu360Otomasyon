@@ -10,6 +10,7 @@ public partial class MainWindow : Window
             await _browserAutomationService.DisposeAsync();
 
         await _smsReceiverService.DisposeAsync();
+        await _iyzicoCallbackService.DisposeAsync();
 
         base.OnClosed(e);
     }

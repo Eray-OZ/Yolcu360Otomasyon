@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Yolcu360Otomasyon.Models;
+using Yolcu360Otomasyon.Services;
 
 namespace Yolcu360Otomasyon;
 
@@ -59,32 +60,39 @@ public partial class MainWindow : Window
             return;
         }
 
-        var cardHolder = PaymentCardHolderTextBox.Text?.Trim() ?? string.Empty;
-        var cardNumber = NormalizeDigits(PaymentCardNumberTextBox.Text);
-        var expiryMonth = NormalizeDigits(PaymentExpiryMonthTextBox.Text);
-        var expiryYear = NormalizeDigits(PaymentExpiryYearTextBox.Text);
-        var cvv = NormalizeDigits(PaymentCvvTextBox.Text);
-
-        if (string.IsNullOrWhiteSpace(cardHolder) ||
-            cardNumber.Length != 16 ||
-            expiryMonth.Length != 2 ||
-            expiryYear.Length != 2 ||
-            cvv.Length is < 3 or > 4)
-        {
-            CheckoutStatusTextBlock.Text = "Kart bilgileri eksik veya geçersiz.";
-            return;
-        }
-
         ConfirmPaymentButton.IsEnabled = false;
+        BrowserAutomationService? paymentBrowser = null;
         try
         {
-            await _databaseService.CreateFakePaymentsAsync(
+            var paymentCard = BuildSandboxPaymentCardInput();
+            CheckoutStatusTextBlock.Text = "iyzico sandbox ödeme sayfası hazırlanıyor...";
+
+            var session = await _iyzicoPaymentService.InitializeCheckoutAsync(_activeUser, _paymentPreviewItems);
+            paymentBrowser = new BrowserAutomationService();
+            paymentBrowser.ProgressChanged += BrowserAutomationService_LoginProgressChanged;
+            await paymentBrowser.InitializeAsync(headless: false, restoreSession: false);
+            await paymentBrowser.CompleteIyzicoSandboxPaymentAsync(session.PaymentPageUrl, paymentCard);
+
+            CheckoutStatusTextBlock.Text =
+                $"iyzico sandbox formu dolduruldu. Callback bekleniyor: {_iyzicoCallbackService.CallbackUrl}";
+
+            await _iyzicoPaymentService.WaitForCallbackAsync(session.Token, TimeSpan.FromMinutes(5));
+            var paymentResult = await _iyzicoPaymentService.RetrievePaymentResultAsync(session.ConversationId, session.Token);
+
+            if (!string.Equals(paymentResult.Status, "success", StringComparison.OrdinalIgnoreCase) ||
+                !string.Equals(paymentResult.PaymentStatus, "SUCCESS", StringComparison.OrdinalIgnoreCase))
+            {
+                CheckoutStatusTextBlock.Text =
+                    $"Ödeme tamamlanmadı. Durum: {paymentResult.Status} / {paymentResult.PaymentStatus}";
+                return;
+            }
+
+            await _databaseService.CreatePaymentsFromSandboxResultAsync(
                 _activeUser.Id,
                 _paymentPreviewItems.Select(item => item.KoleksiyonId).ToList(),
-                cardHolder,
-                cardNumber[^4..]);
+                paymentResult);
 
-            CheckoutStatusTextBlock.Text = "Ödeme başarıyla tamamlandı.";
+            CheckoutStatusTextBlock.Text = "iyzico sandbox ödeme kaydı oluşturuldu.";
             ClearCheckoutForm();
             ShowPaymentsSection();
             await LoadPaymentsAsync();
@@ -95,6 +103,9 @@ public partial class MainWindow : Window
         }
         finally
         {
+            if (paymentBrowser is not null)
+                await paymentBrowser.DisposeAsync();
+
             ConfirmPaymentButton.IsEnabled = true;
         }
     }
@@ -119,7 +130,7 @@ public partial class MainWindow : Window
             $"{item.KoleksiyonAdi} - {item.Tutar:N2} TL"));
         PaymentSummaryCountTextBlock.Text = $"{_paymentPreviewItems.Count} kayıt seçildi";
         PaymentSummaryTotalTextBlock.Text = $"{total:N2} TL";
-        CheckoutStatusTextBlock.Text = "Kart bilgilerini girip ödemeyi tamamlayın.";
+        CheckoutStatusTextBlock.Text = "Ödeme iyzico sandbox sayfasında tamamlanacak.";
     }
 
     private void ClearCheckoutForm()
@@ -130,5 +141,32 @@ public partial class MainWindow : Window
         PaymentExpiryYearTextBox.Text = string.Empty;
         PaymentCvvTextBox.Text = string.Empty;
         _paymentPreviewItems = new List<OdemeHazirlikItem>();
+    }
+
+    private SandboxPaymentCardInput BuildSandboxPaymentCardInput()
+    {
+        var cardHolderName = PaymentCardHolderTextBox.Text?.Trim() ?? string.Empty;
+        var cardNumber = PaymentCardNumberTextBox.Text?.Trim() ?? string.Empty;
+        var expiryMonth = PaymentExpiryMonthTextBox.Text?.Trim() ?? string.Empty;
+        var expiryYear = PaymentExpiryYearTextBox.Text?.Trim() ?? string.Empty;
+        var cvc = PaymentCvvTextBox.Text?.Trim() ?? string.Empty;
+
+        if (string.IsNullOrWhiteSpace(cardHolderName) ||
+            string.IsNullOrWhiteSpace(cardNumber) ||
+            string.IsNullOrWhiteSpace(expiryMonth) ||
+            string.IsNullOrWhiteSpace(expiryYear) ||
+            string.IsNullOrWhiteSpace(cvc))
+        {
+            throw new InvalidOperationException("Test kartı alanlarının tamamı zorunlu.");
+        }
+
+        return new SandboxPaymentCardInput
+        {
+            CardHolderName = cardHolderName,
+            CardNumber = cardNumber,
+            ExpiryMonth = expiryMonth,
+            ExpiryYear = expiryYear,
+            Cvc = cvc
+        };
     }
 }

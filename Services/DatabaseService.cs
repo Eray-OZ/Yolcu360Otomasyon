@@ -382,11 +382,10 @@ public sealed class DatabaseService
         }).ToList();
     }
 
-    public async Task CreateFakePaymentsAsync(
+    public async Task CreatePaymentsFromSandboxResultAsync(
         int kullaniciId,
         IReadOnlyCollection<int> koleksiyonIds,
-        string kartSahibi,
-        string kartSon4)
+        IyzicoPaymentResult paymentResult)
     {
         await EnsureSchemaAsync();
         await using var context = new AppDbContext(_options);
@@ -403,14 +402,14 @@ public sealed class DatabaseService
             {
                 KullaniciId = kullaniciId,
                 KoleksiyonId = collection.Id,
-                ReferansNo = $"IYZ-{DateTime.Now:yyyyMMddHHmmss}-{collection.Id}",
+                ReferansNo = paymentResult.ReferenceNo,
                 KoleksiyonAdi = collection.OzelAd,
                 Tutar = tutar,
                 ParaBirimi = "TRY",
-                Durum = "Basarili",
-                Saglayici = "iyzico-sim",
-                KartSahibi = kartSahibi,
-                KartSon4 = kartSon4,
+                Durum = string.IsNullOrWhiteSpace(paymentResult.PaymentStatus) ? paymentResult.Status : paymentResult.PaymentStatus,
+                Saglayici = paymentResult.Provider,
+                KartSahibi = paymentResult.CardHolderName,
+                KartSon4 = paymentResult.LastFourDigits,
                 OdemeTarihi = DateTime.UtcNow
             });
         }
