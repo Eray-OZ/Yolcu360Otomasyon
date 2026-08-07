@@ -38,6 +38,29 @@ public partial class MainWindow
                 return;
             }
 
+            if (!DateTime.TryParseExact(
+                    PickupDateTextBox.Text?.Trim(),
+                    "yyyy-MM-dd",
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    System.Globalization.DateTimeStyles.None,
+                    out var pickupDate))
+            {
+                pickupDate = DateTime.Today.AddDays(3);
+            }
+
+            if (!DateTime.TryParseExact(
+                    ReturnDateTextBox.Text?.Trim(),
+                    "yyyy-MM-dd",
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    System.Globalization.DateTimeStyles.None,
+                    out var returnDate))
+            {
+                returnDate = pickupDate.AddDays(4);
+            }
+
+            var pickupTime = PickupTimeTextBox.Text?.Trim() ?? "10:00";
+            var returnTime = ReturnTimeTextBox.Text?.Trim() ?? "18:00";
+
             EmbeddedBrowserPanel.IsVisible = true;
             SearchStatusTextBlock.Text = "Gömülü tarayıcı arama formu hazırlanıyor...";
             await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Render);
@@ -48,7 +71,19 @@ public partial class MainWindow
             SearchStatusTextBlock.Text = "Gömülü tarayıcı alış yeri seçiyor...";
             await embeddedBrowser.FillPickupLocationAsync(pickupLocation);
 
-            SearchStatusTextBlock.Text = "Gömülü tarayıcı alış yeri seçimini tamamladı.";
+            SearchStatusTextBlock.Text = "Gömülü tarayıcı tarihleri seçiyor...";
+            await embeddedBrowser.SelectDateRangeAsync(pickupDate, returnDate);
+
+            SearchStatusTextBlock.Text = "Gömülü tarayıcı alış saatini seçiyor...";
+            await embeddedBrowser.SelectTimeAsync(0, pickupTime);
+
+            SearchStatusTextBlock.Text = "Gömülü tarayıcı bırakış saatini seçiyor...";
+            await embeddedBrowser.SelectTimeAsync(1, returnTime);
+
+            SearchStatusTextBlock.Text = "Gömülü tarayıcı araç ara butonuna tıklıyor...";
+            await embeddedBrowser.ClickSearchButtonAsync();
+
+            SearchStatusTextBlock.Text = "Gömülü tarayıcı arama işlemini tamamladı.";
         }
         catch (Exception ex)
         {
