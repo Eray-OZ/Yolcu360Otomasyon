@@ -60,23 +60,8 @@ public partial class MainWindow : Window
 
     private static decimal ParseVehiclePrice(string? priceText)
     {
-        if (string.IsNullOrWhiteSpace(priceText)) return 100.00m;
-        var raw = priceText.Trim();
-        var digitsAndDot = new string(raw.Where(ch => char.IsDigit(ch) || ch == ',' || ch == '.').ToArray());
-        if (string.IsNullOrWhiteSpace(digitsAndDot)) return 100.00m;
-
-        if (digitsAndDot.Contains(',') && digitsAndDot.Contains('.'))
-        {
-            digitsAndDot = digitsAndDot.Replace(".", "").Replace(',', '.');
-        }
-        else if (digitsAndDot.Contains(','))
-        {
-            digitsAndDot = digitsAndDot.Replace(',', '.');
-        }
-
-        return decimal.TryParse(digitsAndDot, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var val) && val > 0
-            ? val
-            : 100.00m;
+        var parsed = DatabaseService.ParseCurrency(priceText ?? string.Empty);
+        return parsed > 0 ? parsed : 100.00m;
     }
 
     private void BackFromCheckoutButton_Click(object? sender, RoutedEventArgs e)
@@ -123,7 +108,7 @@ public partial class MainWindow : Window
 
             await _databaseService.CreatePaymentsFromSandboxResultAsync(
                 _activeUser.Id,
-                _paymentPreviewItems.Select(item => item.KoleksiyonId).ToList(),
+                _paymentPreviewItems,
                 paymentResult);
 
             CheckoutStatusTextBlock.Text = "iyzico sandbox ödeme kaydı oluşturuldu.";
@@ -156,11 +141,12 @@ public partial class MainWindow : Window
 
     private void PrepareCheckoutSummary()
     {
+        var trCulture = new System.Globalization.CultureInfo("tr-TR");
         var total = _paymentPreviewItems.Sum(item => item.Tutar);
         PaymentSummaryCollectionsTextBlock.Text = string.Join(Environment.NewLine, _paymentPreviewItems.Select(item =>
-            $"{item.KoleksiyonAdi} - {item.Tutar:N2} TL"));
+            $"{item.KoleksiyonAdi} - {item.Tutar.ToString("N2", trCulture)} TL"));
         PaymentSummaryCountTextBlock.Text = $"{_paymentPreviewItems.Count} kayıt seçildi";
-        PaymentSummaryTotalTextBlock.Text = $"{total:N2} TL";
+        PaymentSummaryTotalTextBlock.Text = $"{total.ToString("N2", trCulture)} TL";
         CheckoutStatusTextBlock.Text = "Ödeme iyzico sandbox sayfasında tamamlanacak.";
     }
 

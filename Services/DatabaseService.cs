@@ -418,27 +418,21 @@ public sealed class DatabaseService
 
     public async Task CreatePaymentsFromSandboxResultAsync(
         int kullaniciId,
-        IReadOnlyCollection<int> koleksiyonIds,
+        IReadOnlyList<OdemeHazirlikItem> previewItems,
         IyzicoPaymentResult paymentResult)
     {
         await EnsureSchemaAsync();
         await using var context = new AppDbContext(_options);
 
-        var collections = await context.Koleksiyonlar
-            .Include(item => item.Araclar)
-            .Where(item => item.KullaniciId == kullaniciId && koleksiyonIds.Contains(item.Id))
-            .ToListAsync();
-
-        foreach (var collection in collections)
+        foreach (var item in previewItems)
         {
-            var tutar = CalculatePaymentAmount(collection.Araclar);
             context.Odemeler.Add(new Odeme
             {
                 KullaniciId = kullaniciId,
-                KoleksiyonId = collection.Id,
+                KoleksiyonId = item.KoleksiyonId,
                 ReferansNo = paymentResult.ReferenceNo,
-                KoleksiyonAdi = collection.OzelAd,
-                Tutar = tutar,
+                KoleksiyonAdi = item.KoleksiyonAdi,
+                Tutar = item.Tutar,
                 ParaBirimi = "TRY",
                 Durum = string.IsNullOrWhiteSpace(paymentResult.PaymentStatus) ? paymentResult.Status : paymentResult.PaymentStatus,
                 Saglayici = paymentResult.Provider,
@@ -489,19 +483,50 @@ public sealed class DatabaseService
         return parsedPrices.Min();
     }
 
-    private static decimal ParseCurrency(string value)
+    public static decimal ParseCurrency(string value)
     {
         if (string.IsNullOrWhiteSpace(value))
             return 0m;
 
-        var cleaned = value
+        var raw = value.Trim()
             .Replace("TL", string.Empty, StringComparison.OrdinalIgnoreCase)
             .Replace("TRY", string.Empty, StringComparison.OrdinalIgnoreCase)
-            .Replace(".", string.Empty)
-            .Replace(",", ".")
             .Trim();
 
-        return decimal.TryParse(cleaned, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var result)
+        var digits = new string(raw.Where(ch => char.IsDigit(ch) || ch == ',' || ch == '.').ToArray());
+        if (string.IsNullOrWhiteSpace(digits))
+            return 0m;
+
+        if (digits.Contains('.') && digits.Contains(','))
+        {
+            digits = digits.Replace(".", "").Replace(',', '.');
+        }
+        else if (digits.Contains('.'))
+        {
+            var parts = digits.Split('.');
+            if (parts.Length > 1 && parts[^1].Length == 3)
+            {
+                digits = digits.Replace(".", "");
+            }
+            else
+            {
+                digits = digits.Replace('.', ',');
+            }
+        }
+        else if (digits.Contains(','))
+        {
+            var parts = digits.Split(',');
+            if (parts.Length > 1 && parts[^1].Length == 3)
+            {
+                digits = digits.Replace(",", "");
+            }
+            else
+            {
+                digits = digits.Replace(',', '.');
+            }
+        }
+
+        return decimal.TryParse(digits, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var result)
             ? result
             : 0m;
     }
