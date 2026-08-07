@@ -166,6 +166,7 @@ public sealed class EmbeddedBrowserAutomationService
                     .toLocaleLowerCase('tr-TR')
                     .replace(/\s+/g, ' ')
                     .trim();
+                const compact = value => normalize(value).replace(/\s/g, '');
                 const target = normalize(targetText);
                 const items = Array.from(document.querySelectorAll({{locationSuggestionSelectorJson}}))
                     .filter(item => {
@@ -174,19 +175,52 @@ public sealed class EmbeddedBrowserAutomationService
                     });
 
                 const exactMainText = items.find(item =>
-                    normalize(item.querySelector('strong')?.textContent || '') === target);
-                const exactFullText = items.find(item =>
-                    normalize(item.textContent || '').startsWith(target));
-                const selected = exactMainText || exactFullText || items[0];
+                    normalize(item.querySelector('strong, .search-autocomplete__item__text-wrapper span:first-child, .search-autocomplete-mobile__item__text-wrapper span:first-child')?.textContent || '') === target);
+                const exactCityText = items.find(item => {
+                    const text = compact(item.textContent || '');
+                    return text === compact(`${targetText} Türkiye`) || text === compact(`${targetText}, Türkiye`);
+                });
+                const exactFullText = items.find(item => normalize(item.textContent || '') === target);
+                const nonAirportStartsWith = items.find(item => {
+                    const text = normalize(item.textContent || '');
+                    const hasAirportText =
+                        text.includes('airport') ||
+                        text.includes('havalimanı') ||
+                        text.includes('sabiha') ||
+                        text.includes('saw') ||
+                        text.includes('ist)');
+                    return !hasAirportText && text.startsWith(target);
+                });
+                const selected = exactMainText || exactCityText || exactFullText || nonAirportStartsWith || items[0];
                 if (!selected) return false;
 
                 selected.scrollIntoView({ block: 'center', inline: 'center' });
-                selected.click();
-                return true;
+                const rect = selected.getBoundingClientRect();
+                const x = rect.left + rect.width / 2;
+                const y = rect.top + rect.height / 2;
+                const eventOptions = { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y };
+
+                selected.dispatchEvent(new PointerEvent('pointerover', { ...eventOptions, pointerId: 1, pointerType: 'mouse' }));
+                selected.dispatchEvent(new PointerEvent('pointerenter', { ...eventOptions, pointerId: 1, pointerType: 'mouse' }));
+                selected.dispatchEvent(new MouseEvent('mouseover', eventOptions));
+                selected.dispatchEvent(new MouseEvent('mousemove', eventOptions));
+                selected.dispatchEvent(new PointerEvent('pointerdown', { ...eventOptions, pointerId: 1, pointerType: 'mouse', buttons: 1 }));
+                selected.dispatchEvent(new MouseEvent('mousedown', { ...eventOptions, buttons: 1 }));
+                selected.dispatchEvent(new PointerEvent('pointerup', { ...eventOptions, pointerId: 1, pointerType: 'mouse' }));
+                selected.dispatchEvent(new MouseEvent('mouseup', eventOptions));
+                selected.dispatchEvent(new MouseEvent('click', eventOptions));
+
+                return JSON.stringify({
+                    selectedText: (selected.textContent || '').replace(/\s+/g, ' ').trim(),
+                    inputValue: document.querySelector({{pickupLocationInputSelectorJson}})?.value || '',
+                    remainingSuggestions: document.querySelectorAll({{locationSuggestionSelectorJson}}).length
+                });
             })();
             """);
 
-        if (!IsScriptTrue(selected))
+        Report($"Alış yeri seçim sonucu: {selected}");
+
+        if (string.IsNullOrWhiteSpace(selected) || selected.Trim().Trim('"') == "false")
             throw new InvalidOperationException("Alış yeri önerisi seçilemedi.");
 
         Report("Alış yeri önerisi seçildi.");
@@ -201,7 +235,7 @@ public sealed class EmbeddedBrowserAutomationService
         while (DateTimeOffset.UtcNow < deadline)
         {
             lastResult = await EvaluateScriptAsync(
-                """
+                $$"""
                 (() => {
                     const items = Array.from(document.querySelectorAll({{selectorJson}}));
                     const visibleItems = items.filter(item => {
