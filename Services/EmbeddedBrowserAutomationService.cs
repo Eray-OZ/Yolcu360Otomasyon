@@ -157,73 +157,141 @@ public sealed class EmbeddedBrowserAutomationService
         Report("Alış yeri önerileri bekleniyor...");
         await WaitForLocationSuggestionsAsync(LocationSuggestionSelector, TimeSpan.FromSeconds(12));
 
-        Report("Alış yeri önerisi seçiliyor...");
-        var selected = await EvaluateScriptAsync(
-            $$"""
-            (() => {
-                const targetText = {{locationJson}};
-                const normalize = value => (value || '')
-                    .toLocaleLowerCase('tr-TR')
-                    .replace(/\s+/g, ' ')
-                    .trim();
-                const compact = value => normalize(value).replace(/\s/g, '');
-                const target = normalize(targetText);
-                const items = Array.from(document.querySelectorAll({{locationSuggestionSelectorJson}}))
-                    .filter(item => {
+        var selectionApplied = false;
+        for (var attempt = 1; attempt <= 3 && !selectionApplied; attempt++)
+        {
+            Report($"Alış yeri önerisi seçiliyor. Deneme: {attempt}");
+            var selected = await EvaluateScriptAsync(
+                $$"""
+                (() => {
+                    const input = document.querySelector({{pickupLocationInputSelectorJson}});
+                    const targetText = {{locationJson}};
+                    const normalize = value => (value || '')
+                        .toLocaleLowerCase('tr-TR')
+                        .replace(/\s+/g, ' ')
+                        .trim();
+                    const compact = value => normalize(value).replace(/\s/g, '');
+                    const target = normalize(targetText);
+                    const visible = item => {
                         const rect = item.getBoundingClientRect();
-                        return rect.width > 0 && rect.height > 0;
+                        const style = getComputedStyle(item);
+                        return rect.width > 0 &&
+                            rect.height > 0 &&
+                            style.display !== 'none' &&
+                            style.visibility !== 'hidden';
+                    };
+                    const getMainText = item => normalize(
+                        item.querySelector('strong, .search-autocomplete__item__text-wrapper span:first-child, .search-autocomplete-mobile__item__text-wrapper span:first-child, div > div:first-child')?.textContent || ''
+                    );
+                    const getScore = item => {
+                        const fullText = normalize(item.textContent || '');
+                        const mainText = getMainText(item);
+                        const compactText = compact(item.textContent || '');
+                        const hasAirportText =
+                            fullText.includes('airport') ||
+                            fullText.includes('havalimanı') ||
+                            fullText.includes('sabiha') ||
+                            fullText.includes('saw') ||
+                            fullText.includes('ist)');
+
+                        if (mainText === target) return 0;
+                        if (compactText === compact(`${targetText} Türkiye`) || compactText === compact(`${targetText}, Türkiye`)) return 1;
+                        if (fullText === target) return 2;
+                        if (!hasAirportText && mainText.startsWith(target + ' ')) return 3;
+                        if (!hasAirportText && fullText.startsWith(target)) return 4;
+                        if (mainText.startsWith(target)) return 5;
+                        if (fullText.startsWith(target)) return 6;
+                        if (mainText.includes(target)) return 7;
+                        if (fullText.includes(target)) return 8;
+                        return 9;
+                    };
+
+                    const items = Array.from(document.querySelectorAll({{locationSuggestionSelectorJson}}))
+                        .filter(item => visible(item) && (!input || (item !== input && !item.contains(input))));
+                    const selected = items
+                        .sort((a, b) => {
+                            const score = getScore(a) - getScore(b);
+                            if (score !== 0) return score;
+                            const ar = a.getBoundingClientRect();
+                            const br = b.getBoundingClientRect();
+                            return ar.top === br.top ? ar.left - br.left : ar.top - br.top;
+                        })[0];
+
+                    if (!selected) return JSON.stringify({ clicked: false, reason: 'öneri bulunamadı', itemCount: items.length });
+
+                    selected.scrollIntoView({ block: 'center', inline: 'nearest' });
+                    const rect = selected.getBoundingClientRect();
+                    const x = rect.left + rect.width / 2;
+                    const y = rect.top + rect.height / 2;
+                    const pointTarget = document.elementFromPoint(x, y);
+                    const eventTarget = pointTarget?.closest?.({{locationSuggestionSelectorJson}}) || pointTarget || selected;
+                    const eventOptions = { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y };
+
+                    const dispatchPointer = (target, type, buttons = 0) => {
+                        if (!target) return;
+                        if (typeof PointerEvent === 'function') {
+                            target.dispatchEvent(new PointerEvent(type, { ...eventOptions, pointerId: 1, pointerType: 'mouse', isPrimary: true, buttons }));
+                        }
+                    };
+                    const dispatchMouse = (target, type, buttons = 0) => {
+                        if (!target) return;
+                        target.dispatchEvent(new MouseEvent(type, { ...eventOptions, buttons }));
+                    };
+
+                    for (const target of [eventTarget, selected]) {
+                        dispatchPointer(target, 'pointerover');
+                        dispatchMouse(target, 'mouseover');
+                        dispatchMouse(target, 'mousemove');
+                        dispatchPointer(target, 'pointerdown', 1);
+                        dispatchMouse(target, 'mousedown', 1);
+                        dispatchPointer(target, 'pointerup');
+                        dispatchMouse(target, 'mouseup');
+                        dispatchMouse(target, 'click');
+                    }
+
+                    return JSON.stringify({
+                        clicked: true,
+                        selectedText: (selected.textContent || '').replace(/\s+/g, ' ').trim(),
+                        pointTargetText: (pointTarget?.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 120),
+                        inputValue: input?.value || '',
+                        remainingSuggestions: document.querySelectorAll({{locationSuggestionSelectorJson}}).length
                     });
+                })();
+                """);
 
-                const exactMainText = items.find(item =>
-                    normalize(item.querySelector('strong, .search-autocomplete__item__text-wrapper span:first-child, .search-autocomplete-mobile__item__text-wrapper span:first-child')?.textContent || '') === target);
-                const exactCityText = items.find(item => {
-                    const text = compact(item.textContent || '');
-                    return text === compact(`${targetText} Türkiye`) || text === compact(`${targetText}, Türkiye`);
-                });
-                const exactFullText = items.find(item => normalize(item.textContent || '') === target);
-                const nonAirportStartsWith = items.find(item => {
-                    const text = normalize(item.textContent || '');
-                    const hasAirportText =
-                        text.includes('airport') ||
-                        text.includes('havalimanı') ||
-                        text.includes('sabiha') ||
-                        text.includes('saw') ||
-                        text.includes('ist)');
-                    return !hasAirportText && text.startsWith(target);
-                });
-                const selected = exactMainText || exactCityText || exactFullText || nonAirportStartsWith || items[0];
-                if (!selected) return false;
+            Report($"Alış yeri seçim sonucu: {selected}");
+            await Task.Delay(700);
+            selectionApplied = await IsPickupLocationSelectionAppliedAsync();
+        }
 
-                selected.scrollIntoView({ block: 'center', inline: 'center' });
-                const rect = selected.getBoundingClientRect();
-                const x = rect.left + rect.width / 2;
-                const y = rect.top + rect.height / 2;
-                const eventOptions = { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y };
-
-                selected.dispatchEvent(new PointerEvent('pointerover', { ...eventOptions, pointerId: 1, pointerType: 'mouse' }));
-                selected.dispatchEvent(new PointerEvent('pointerenter', { ...eventOptions, pointerId: 1, pointerType: 'mouse' }));
-                selected.dispatchEvent(new MouseEvent('mouseover', eventOptions));
-                selected.dispatchEvent(new MouseEvent('mousemove', eventOptions));
-                selected.dispatchEvent(new PointerEvent('pointerdown', { ...eventOptions, pointerId: 1, pointerType: 'mouse', buttons: 1 }));
-                selected.dispatchEvent(new MouseEvent('mousedown', { ...eventOptions, buttons: 1 }));
-                selected.dispatchEvent(new PointerEvent('pointerup', { ...eventOptions, pointerId: 1, pointerType: 'mouse' }));
-                selected.dispatchEvent(new MouseEvent('mouseup', eventOptions));
-                selected.dispatchEvent(new MouseEvent('click', eventOptions));
-
-                return JSON.stringify({
-                    selectedText: (selected.textContent || '').replace(/\s+/g, ' ').trim(),
-                    inputValue: document.querySelector({{pickupLocationInputSelectorJson}})?.value || '',
-                    remainingSuggestions: document.querySelectorAll({{locationSuggestionSelectorJson}}).length
-                });
-            })();
-            """);
-
-        Report($"Alış yeri seçim sonucu: {selected}");
-
-        if (string.IsNullOrWhiteSpace(selected) || selected.Trim().Trim('"') == "false")
+        if (!selectionApplied)
             throw new InvalidOperationException("Alış yeri önerisi seçilemedi.");
 
         Report("Alış yeri önerisi seçildi.");
+    }
+
+    private async Task<bool> IsPickupLocationSelectionAppliedAsync()
+    {
+        var pickupLocationInputSelectorJson = JsonSerializer.Serialize(PickupLocationInputSelector);
+        var locationSuggestionSelectorJson = JsonSerializer.Serialize(LocationSuggestionSelector);
+        var result = await EvaluateScriptAsync(
+            $$"""
+            (() => {
+                const input = document.querySelector({{pickupLocationInputSelectorJson}});
+                const visibleSuggestions = Array.from(document.querySelectorAll({{locationSuggestionSelectorJson}}))
+                    .filter(item => {
+                        const rect = item.getBoundingClientRect();
+                        const style = getComputedStyle(item);
+                        return rect.width > 0 &&
+                            rect.height > 0 &&
+                            style.display !== 'none' &&
+                            style.visibility !== 'hidden';
+                    });
+                return !!input && input.value.trim().length > 0 && visibleSuggestions.length === 0;
+            })();
+            """);
+
+        return IsScriptTrue(result);
     }
 
     private async Task WaitForLocationSuggestionsAsync(string selector, TimeSpan timeout)
