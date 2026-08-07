@@ -95,6 +95,14 @@ public sealed class SmsReceiverService : IAsyncDisposable
         }
     }
 
+    public void ClearLatestCode()
+    {
+        lock (_sync)
+        {
+            _latestCode = null;
+        }
+    }
+
     private async Task ListenLoopAsync(CancellationToken cancellationToken)
     {
         while (!cancellationToken.IsCancellationRequested)
@@ -122,7 +130,7 @@ public sealed class SmsReceiverService : IAsyncDisposable
         try
         {
             var requestPath = context.Request.Url?.AbsolutePath?.TrimEnd('/') ?? string.Empty;
-            if (!requestPath.Equals("/sms", StringComparison.OrdinalIgnoreCase))
+            if (!requestPath.StartsWith("/sms", StringComparison.OrdinalIgnoreCase))
             {
                 Console.WriteLine($"[SMS] Desteklenmeyen yol: {context.Request.Url}");
                 context.Response.StatusCode = 404;
@@ -134,6 +142,9 @@ public sealed class SmsReceiverService : IAsyncDisposable
             var code = ExtractCode(message);
 
             Console.WriteLine($"[SMS] Istek alindi. Sender='{sender}', Message='{message}'");
+            SmsReceived?.Invoke(string.IsNullOrWhiteSpace(message)
+                ? $"{sender} | SMS isteği geldi ama mesaj alanı boş. URL: {context.Request.Url}"
+                : $"{sender} | {message}");
 
             if (string.IsNullOrWhiteSpace(code))
             {
@@ -144,6 +155,7 @@ public sealed class SmsReceiverService : IAsyncDisposable
             }
 
             Console.WriteLine($"[SMS] Kod yakalandi: {code}");
+            SmsReceived?.Invoke($"Kod yakalandı: {code}");
 
             lock (_sync)
             {
@@ -152,8 +164,6 @@ public sealed class SmsReceiverService : IAsyncDisposable
                 foreach (var waiter in _waiters.ToArray())
                     waiter.TrySetResult(code);
             }
-
-            SmsReceived?.Invoke($"{sender} | {message}");
 
             context.Response.StatusCode = 200;
             await WriteResponseAsync(context.Response, $$"""{"status":"ok","code":"{{code}}"}""");
@@ -181,8 +191,8 @@ public sealed class SmsReceiverService : IAsyncDisposable
         if (request.Url is not null)
         {
             var query = HttpUtility.ParseQueryString(request.Url.Query);
-            sender = query["sender"]?.Trim() ?? string.Empty;
-            message = query["message"]?.Trim() ?? query["sms_message"]?.Trim() ?? string.Empty;
+            sender = ReadFirst(query, "sender", "sms_sender", "from", "phone") ?? string.Empty;
+            message = ReadFirst(query, "message", "sms_message", "text", "body", "sms", "msg", "message_text") ?? string.Empty;
 
             if (string.IsNullOrWhiteSpace(message))
             {
@@ -207,22 +217,20 @@ public sealed class SmsReceiverService : IAsyncDisposable
         var contentType = request.ContentType ?? string.Empty;
         if (contentType.Contains("application/json", StringComparison.OrdinalIgnoreCase))
         {
-            var payload = JsonSerializer.Deserialize<SmsPayload>(body, new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true
-            });
+            using var document = JsonDocument.Parse(body);
+            var root = document.RootElement;
 
             return (
-                payload?.Message?.Trim() ?? message,
-                payload?.Sender?.Trim() ?? sender);
+                ReadFirst(root, "message", "sms_message", "text", "body", "sms", "msg", "message_text") ?? message,
+                ReadFirst(root, "sender", "sms_sender", "from", "phone") ?? sender);
         }
 
         if (contentType.Contains("application/x-www-form-urlencoded", StringComparison.OrdinalIgnoreCase))
         {
             var form = HttpUtility.ParseQueryString(body);
             return (
-                form["message"]?.Trim() ?? form["sms_message"]?.Trim() ?? message,
-                form["sender"]?.Trim() ?? sender);
+                ReadFirst(form, "message", "sms_message", "text", "body", "sms", "msg", "message_text") ?? message,
+                ReadFirst(form, "sender", "sms_sender", "from", "phone") ?? sender);
         }
 
         return (body, sender);
@@ -232,6 +240,33 @@ public sealed class SmsReceiverService : IAsyncDisposable
     {
         var match = OtpRegex.Match(message);
         return match.Success ? match.Value : string.Empty;
+    }
+
+    private static string? ReadFirst(System.Collections.Specialized.NameValueCollection values, params string[] keys)
+    {
+        foreach (var key in keys)
+        {
+            var value = values[key]?.Trim();
+            if (!string.IsNullOrWhiteSpace(value))
+                return value;
+        }
+
+        return null;
+    }
+
+    private static string? ReadFirst(JsonElement root, params string[] keys)
+    {
+        foreach (var key in keys)
+        {
+            if (root.TryGetProperty(key, out var value) && value.ValueKind == JsonValueKind.String)
+            {
+                var text = value.GetString()?.Trim();
+                if (!string.IsNullOrWhiteSpace(text))
+                    return text;
+            }
+        }
+
+        return null;
     }
 
     private static async Task WriteResponseAsync(HttpListenerResponse response, string content)
@@ -265,9 +300,4 @@ public sealed class SmsReceiverService : IAsyncDisposable
         }
     }
 
-    private sealed class SmsPayload
-    {
-        public string? Message { get; init; }
-        public string? Sender { get; init; }
-    }
 }

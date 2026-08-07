@@ -7,11 +7,12 @@ public sealed partial class BrowserAutomationService : IAsyncDisposable
 {
     private const string Yolcu360HomeUrl = "https://www.yolcu360.com/";
     private const string LoginRecaptchaEndpoint = "/api/v1/accounts-api/auth/login/phone/code/recaptcha/";
-    private const string DefaultSessionStateFilePath = "/Users/erayoz/Codes/Staj/Yolcu360Otomasyon/session_state.json";
     private const string ChromeExecutablePath = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
     private const string ChromeSourceUserDataDir = "/Users/erayoz/Library/Application Support/Google/Chrome";
-    private const string ChromeUserDataDir = "/Users/erayoz/Codes/Staj/Yolcu360Otomasyon/chrome-user-profile";
     private const string ChromeProfileDirectory = "Default";
+    private static readonly string AppDataDirectory = ResolveAppDataDirectory();
+    private static readonly string DefaultSessionStateFilePath = Path.Combine(AppDataDirectory, "session_state.json");
+    private static readonly string ChromeUserDataDir = Path.Combine(AppDataDirectory, "chrome-user-profile");
 
     private IBrowser? _browser;
     private IPage? _page;
@@ -24,6 +25,21 @@ public sealed partial class BrowserAutomationService : IAsyncDisposable
         _sessionStateFilePath = string.IsNullOrWhiteSpace(sessionStateFilePath)
             ? DefaultSessionStateFilePath
             : sessionStateFilePath;
+    }
+
+    private static string ResolveAppDataDirectory()
+    {
+        var current = new DirectoryInfo(AppContext.BaseDirectory);
+
+        while (current is not null)
+        {
+            if (File.Exists(Path.Combine(current.FullName, "Yolcu360Otomasyon.csproj")))
+                return current.FullName;
+
+            current = current.Parent;
+        }
+
+        return AppContext.BaseDirectory;
     }
 
     private sealed class AppliedFilterResult

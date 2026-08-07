@@ -307,4 +307,66 @@ public sealed partial class BrowserAutomationService
         {
         }
     }
+
+    public async Task WaitForLoginCompletedAsync()
+    {
+        var page = GetPage();
+
+        Report("Yolcu360 giriş sonucu bekleniyor...");
+
+        try
+        {
+            await page.WaitForFunctionAsync(
+                """
+                () => {
+                    const normalize = value => (value || '').toLocaleLowerCase('tr-TR');
+                    const text = normalize(document.body?.innerText || '');
+                    const href = normalize(window.location.href);
+
+                    const verificationStillVisible =
+                        text.includes('doğrulama kodu') ||
+                        text.includes('sms doğrulama') ||
+                        text.includes('telefonunuza') ||
+                        text.includes('6 haneli');
+
+                    const storageText = [
+                        ...Array.from({ length: localStorage.length }, (_, index) => {
+                            const key = localStorage.key(index);
+                            return `${key || ''} ${key ? localStorage.getItem(key) || '' : ''}`;
+                        }),
+                        ...Array.from({ length: sessionStorage.length }, (_, index) => {
+                            const key = sessionStorage.key(index);
+                            return `${key || ''} ${key ? sessionStorage.getItem(key) || '' : ''}`;
+                        })
+                    ].join(' ').toLocaleLowerCase('tr-TR');
+
+                    const hasAuthStorage =
+                        storageText.includes('token') ||
+                        storageText.includes('access') ||
+                        storageText.includes('refresh') ||
+                        storageText.includes('user') ||
+                        storageText.includes('auth');
+
+                    const hasLoggedInText =
+                        text.includes('hesabım') ||
+                        text.includes('profil') ||
+                        text.includes('çıkış yap') ||
+                        text.includes('cikis yap') ||
+                        text.includes('rezervasyonlarım');
+
+                    const leftLoginPage = !href.includes('/login') && !href.includes('phone');
+
+                    return !verificationStillVisible && (hasAuthStorage || hasLoggedInText || leftLoginPage);
+                }
+                """,
+                new WaitForFunctionOptions { Timeout = 30_000 });
+
+            Report("Yolcu360 girişi tamamlandı.");
+        }
+        catch (WaitTaskTimeoutException)
+        {
+            var diagnostic = await GetDiagnosticAsync();
+            throw new InvalidOperationException($"Giriş tamamlanamadı, oturum kaydedilmedi. {diagnostic}");
+        }
+    }
 }

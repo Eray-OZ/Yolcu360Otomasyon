@@ -1,6 +1,9 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
+using System.Net;
+using System.Net.NetworkInformation;
+using System.Net.Sockets;
 using Yolcu360Otomasyon.Models;
 using Yolcu360Otomasyon.Services;
 
@@ -13,11 +16,11 @@ public partial class MainWindow : Window
         try
         {
             await _smsReceiverService.StartAsync();
-            StatusTextBlock.Text = $"SMS alıcısı hazır. URL: http://192.168.1.161:{_smsReceiverService.Port}/sms";
+            SetAuthStatus(BuildSmsReceiverStatus());
         }
         catch (Exception ex)
         {
-            StatusTextBlock.Text = $"SMS alıcısı başlatılamadı: {ex.Message}";
+            SetAuthStatus($"SMS alıcısı başlatılamadı: {ex.Message}");
         }
     }
 
@@ -124,29 +127,27 @@ public partial class MainWindow : Window
             await _browserAutomationService.InitializeAsync(headless: false, restoreSession: false);
 
             StatusTextBlock.Text = "Yolcu360 giriş ekranı dolduruluyor...";
+            _smsReceiverService.ClearLatestCode();
             await _browserAutomationService.LoginWithPhoneAsync(user.PhoneNumber);
 
-            StatusTextBlock.Text = "SMS doğrulama ekranı bekleniyor...";
-            var smsVerificationDetected = false;
-            for (var attempt = 0; attempt < 15; attempt++)
+            StatusTextBlock.Text = "SMS doğrulama kodu bekleniyor...";
+            string code;
+            try
             {
-                if (await _browserAutomationService.IsSmsVerificationRequiredAsync())
-                {
-                    smsVerificationDetected = true;
-                    break;
-                }
-
-                await Task.Delay(1_000);
+                code = await _smsReceiverService.WaitForCodeAsync(TimeSpan.FromMinutes(2));
+            }
+            catch (OperationCanceledException)
+            {
+                throw new InvalidOperationException(
+                    $"SMS kodu 2 dakika içinde uygulamaya gelmedi. MacroDroid URL'i şu formatta olmalı: http://{GetPreferredLocalIpAddress()}:{_smsReceiverService.Port}/sms?message={{sms_message}}");
             }
 
-            if (smsVerificationDetected)
-            {
-                StatusTextBlock.Text = "SMS doğrulama bekleniyor...";
-                var code = await _smsReceiverService.WaitForCodeAsync(TimeSpan.FromMinutes(2));
-                await _browserAutomationService.FillSmsVerificationCodeAsync(code);
-                await Task.Delay(3_000);
-            }
+            StatusTextBlock.Text = $"SMS kodu alındı: {code}";
+            await _browserAutomationService.FillSmsVerificationCodeAsync(code);
+            StatusTextBlock.Text = "Girişin tamamlanması bekleniyor...";
+            await _browserAutomationService.WaitForLoginCompletedAsync();
 
+            StatusTextBlock.Text = "Oturum kaydediliyor...";
             await _browserAutomationService.SaveCurrentSessionAsync();
             await _databaseService.SaveOrUpdateUserAsync(email, password, user.PhoneNumber, sessionStatePath);
 
@@ -190,8 +191,23 @@ public partial class MainWindow : Window
     private static string BuildSessionStatePath(string email)
     {
         var safeFileName = string.Concat(email.Select(ch => char.IsLetterOrDigit(ch) ? ch : '_'));
-        const string sessionsDirectory = "/Users/erayoz/Codes/Staj/Yolcu360Otomasyon/sessions";
+        var sessionsDirectory = Path.Combine(ResolveAppDataDirectory(), "sessions");
         return Path.Combine(sessionsDirectory, $"{safeFileName}.json");
+    }
+
+    private static string ResolveAppDataDirectory()
+    {
+        var current = new DirectoryInfo(AppContext.BaseDirectory);
+
+        while (current is not null)
+        {
+            if (File.Exists(Path.Combine(current.FullName, "Yolcu360Otomasyon.csproj")))
+                return current.FullName;
+
+            current = current.Parent;
+        }
+
+        return AppContext.BaseDirectory;
     }
 
     private async Task CloseBrowserAfterAuthAsync()
@@ -215,7 +231,7 @@ public partial class MainWindow : Window
     {
         Dispatcher.UIThread.Post(() =>
         {
-            StatusTextBlock.Text = message;
+            SetAuthStatus(message);
         });
     }
 
@@ -223,7 +239,69 @@ public partial class MainWindow : Window
     {
         Dispatcher.UIThread.Post(() =>
         {
-            StatusTextBlock.Text = $"SMS alındı: {message}";
+            SetAuthStatus($"SMS alındı: {message}");
         });
+    }
+
+    private void SetAuthStatus(string message)
+    {
+        StatusTextBlock.Text = message;
+
+        if (RegisterView.IsVisible)
+            RegisterStatusTextBlock.Text = message;
+    }
+
+    private string BuildSmsReceiverStatus()
+    {
+        var addresses = GetLocalIpAddresses().ToArray();
+        var primaryAddress = addresses.FirstOrDefault() ?? "127.0.0.1";
+        var alternatives = addresses.Length > 1
+            ? $" Alternatif IP: {string.Join(", ", addresses.Skip(1))}"
+            : string.Empty;
+
+        return $"SMS alıcısı hazır. MacroDroid URL: http://{primaryAddress}:{_smsReceiverService.Port}/sms?message={{sms_message}}{alternatives}";
+    }
+
+    private static string GetPreferredLocalIpAddress()
+    {
+        return GetLocalIpAddresses().FirstOrDefault() ?? "127.0.0.1";
+    }
+
+    private static IEnumerable<string> GetLocalIpAddresses()
+    {
+        var addresses = new List<string>();
+
+        foreach (var networkInterface in NetworkInterface.GetAllNetworkInterfaces())
+        {
+            if (networkInterface.OperationalStatus != OperationalStatus.Up)
+                continue;
+
+            if (networkInterface.NetworkInterfaceType is not (NetworkInterfaceType.Wireless80211 or NetworkInterfaceType.Ethernet))
+                continue;
+
+            var properties = networkInterface.GetIPProperties();
+            foreach (var address in properties.UnicastAddresses)
+            {
+                var ip = address.Address;
+                if (ip.AddressFamily == AddressFamily.InterNetwork && !IPAddress.IsLoopback(ip))
+                    addresses.Add(ip.ToString());
+            }
+        }
+
+        if (addresses.Count > 0)
+            return addresses.Distinct();
+
+        try
+        {
+            return Dns.GetHostEntry(Dns.GetHostName())
+                .AddressList
+                .Where(ip => ip.AddressFamily == AddressFamily.InterNetwork && !IPAddress.IsLoopback(ip))
+                .Select(ip => ip.ToString())
+                .Distinct();
+        }
+        catch
+        {
+            return [];
+        }
     }
 }

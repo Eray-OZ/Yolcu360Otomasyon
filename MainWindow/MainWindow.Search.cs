@@ -70,6 +70,13 @@ public partial class MainWindow : Window
             SearchStatusTextBlock.Text = "Yolcu360 arama formu dolduruluyor...";
             await _browserAutomationService.ApplySearchFiltersAndSearchAsync(filter);
 
+            SearchStatusTextBlock.Text = "Sonuçlar geliyor, lütfen bekleyin...";
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                ResultsDataGrid.ItemsSource = null;
+            }, DispatcherPriority.Render);
+            await Task.Delay(50);
+
             var results = await _browserAutomationService.ReadSearchResultsAsync();
             _latestResults = results.ToList();
             await Dispatcher.UIThread.InvokeAsync(() =>
