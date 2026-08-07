@@ -376,7 +376,19 @@ public sealed partial class BrowserAutomationService
                 const monthTarget = {{monthJson}};
                 const yearTarget  = {{yearJson}};
 
-                const allCalendars = Array.from(menu.querySelectorAll('.dp__calendar'));
+                const visible = el => {
+                    const rect = el.getBoundingClientRect();
+                    const style = window.getComputedStyle(el);
+                    return rect.width > 0 &&
+                        rect.height > 0 &&
+                        style.display !== 'none' &&
+                        style.visibility !== 'hidden';
+                };
+
+                const allCalendars = Array.from(menu.querySelectorAll('.dp__calendar'))
+                    .filter(visible);
+                const headers = Array.from(menu.querySelectorAll('.dp__month_year_select'))
+                    .filter(visible);
                 let searchRoot = allCalendars.length > 0 ? null : menu;
 
                 for (const cal of allCalendars) {
@@ -388,7 +400,21 @@ public sealed partial class BrowserAutomationService
                     }
                 }
 
-                if (!searchRoot) searchRoot = menu;
+                if (!searchRoot && allCalendars.length > 0) {
+                    const headerIndex = headers.findIndex(h => {
+                        const text = h.textContent?.trim() ?? '';
+                        return text.includes(monthTarget) && text.includes(yearTarget);
+                    });
+
+                    if (headerIndex >= 0 && headerIndex < allCalendars.length)
+                        searchRoot = allCalendars[headerIndex];
+                }
+
+                if (!searchRoot && allCalendars.length > 0)
+                    return false;
+
+                if (!searchRoot)
+                    searchRoot = menu;
 
                 const selectors = [
                     '.dp__cell_inner',
@@ -404,14 +430,28 @@ public sealed partial class BrowserAutomationService
                             const num = parseInt(text, 10);
                             if (!text || isNaN(num)) return false;
                             const item = c.closest('.dp__calendar_item') ?? c;
-                            return !item.classList.contains('dp__cell_offset') &&
+                            return visible(c) &&
+                                   visible(item) &&
+                                   !item.classList.contains('dp__cell_offset') &&
                                    !c.classList.contains('dp__cell_offset');
                         });
 
                     const cell = candidates.find(c => parseInt(c.textContent.trim(), 10) === dayTarget);
                     if (cell) {
                         cell.scrollIntoView({ block: 'nearest' });
-                        cell.click();
+                        const rect = cell.getBoundingClientRect();
+                        const eventOptions = {
+                            bubbles: true,
+                            cancelable: true,
+                            view: window,
+                            clientX: rect.left + rect.width / 2,
+                            clientY: rect.top + rect.height / 2
+                        };
+                        cell.dispatchEvent(new MouseEvent('mouseover', eventOptions));
+                        cell.dispatchEvent(new MouseEvent('mousemove', eventOptions));
+                        cell.dispatchEvent(new MouseEvent('mousedown', eventOptions));
+                        cell.dispatchEvent(new MouseEvent('mouseup', eventOptions));
+                        cell.dispatchEvent(new MouseEvent('click', eventOptions));
                         return true;
                     }
                 }
