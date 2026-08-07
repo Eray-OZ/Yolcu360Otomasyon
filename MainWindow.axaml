@@ -364,7 +364,7 @@
                 <Border Background="#0F172A"
                         CornerRadius="10"
                         Padding="28">
-                    <Grid ColumnDefinitions="*"
+                    <Grid ColumnDefinitions="*,Auto"
                           ColumnSpacing="24">
                         <StackPanel Spacing="10">
                             <TextBlock Text="Yolcu360 Operasyon Paneli"
@@ -376,13 +376,21 @@
                                        FontSize="15"
                                        Foreground="#C7D2E4" />
                         </StackPanel>
+
+                        <Button Grid.Column="1"
+                                x:Name="LogoutButton"
+                                Content="Çıkış Yap"
+                                Width="120"
+                                VerticalAlignment="Center"
+                                Click="LogoutButton_Click" />
                     </Grid>
                 </Border>
 
                 <Grid Grid.Row="1"
                       RowDefinitions="Auto,Auto,*"
                       RowSpacing="20">
-                    <StackPanel Orientation="Horizontal"
+                    <StackPanel x:Name="TopNavigationPanel"
+                                Orientation="Horizontal"
                                 Spacing="10">
                         <Button x:Name="SearchTabButton"
                                 Classes="primary"

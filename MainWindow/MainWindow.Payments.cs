@@ -10,6 +10,7 @@ public partial class MainWindow : Window
 {
     private async void PaymentsTabButton_Click(object? sender, RoutedEventArgs e)
     {
+        if (_isAuthenticating) return;
         ShowPaymentsSection();
         await LoadPaymentsAsync();
     }

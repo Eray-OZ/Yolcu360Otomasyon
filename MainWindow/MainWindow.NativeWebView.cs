@@ -9,6 +9,7 @@ public partial class MainWindow
 {
     private async void NativeWebViewTestButton_Click(object? sender, RoutedEventArgs e)
     {
+        if (_isAuthenticating) return;
         try
         {
             ShowBrowserSection();

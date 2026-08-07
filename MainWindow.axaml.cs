@@ -21,6 +21,7 @@ public partial class MainWindow : Window
     private List<KoleksiyonListItem> _selectedCollections = new();
     private List<OdemeHazirlikItem> _paymentPreviewItems = new();
     private SearchFilter? _latestSearchFilter;
+    private bool _isAuthenticating;
 
     public MainWindow()
     {
@@ -36,5 +37,26 @@ public partial class MainWindow : Window
         _smsReceiverService.SmsReceived += SmsReceiverService_SmsReceived;
         _ = _databaseService.EnsureDatabaseAsync();
         InitializeSmsReceiver();
+
+        _activeUser = null;
+        ShowLoginView();
+    }
+
+    private void SetNavigationEnabled(bool enabled)
+    {
+        _isAuthenticating = !enabled;
+        SearchTabButton.IsEnabled = enabled;
+        HistoryTabButton.IsEnabled = enabled;
+        PaymentsTabButton.IsEnabled = enabled;
+        NativeWebViewTestButton.IsEnabled = enabled;
+        if (LogoutButton is not null)
+            LogoutButton.IsEnabled = enabled;
+    }
+
+    private void SetNavigationVisibility(bool visible)
+    {
+        TopNavigationPanel.IsVisible = visible;
+        if (LogoutButton is not null)
+            LogoutButton.IsVisible = visible;
     }
 }

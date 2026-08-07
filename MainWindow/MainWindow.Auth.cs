@@ -95,6 +95,7 @@ public partial class MainWindow : Window
     private async Task PerformLoginAsync(string email, string password, bool forceBrowserLogin = false)
     {
         LoginButton.IsEnabled = false;
+        SetNavigationEnabled(false);
         try
         {
             StatusTextBlock.Text = "Kullanıcı bilgileri kontrol ediliyor...";
@@ -128,11 +129,13 @@ public partial class MainWindow : Window
             RegisterView.IsVisible = false;
             MainView.IsVisible = true;
             ShowBrowserSection();
+            SetNavigationVisibility(false);
 
             StatusTextBlock.Text = "Gömülü tarayıcı hazırlanıyor...";
             await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Render);
 
             var embeddedBrowser = CreateEmbeddedBrowserAutomationService();
+            await embeddedBrowser.ClearBrowserSessionAsync();
 
             StatusTextBlock.Text = "Yolcu360 giriş ekranı dolduruluyor...";
             _smsReceiverService.ClearLatestCode();
@@ -170,18 +173,29 @@ public partial class MainWindow : Window
 
             StatusTextBlock.Text = "Giriş tamamlandı.";
             ShowMainView();
+            SetNavigationVisibility(true);
             ShowSearchSection();
             await LoadHistoryAsync();
         }
         catch (Exception ex)
         {
+            SetNavigationVisibility(true);
             ShowLoginView();
             StatusTextBlock.Text = $"Giriş hatası: {ex.Message}";
         }
         finally
         {
             LoginButton.IsEnabled = true;
+            SetNavigationEnabled(true);
         }
+    }
+
+    private void LogoutButton_Click(object? sender, RoutedEventArgs e)
+    {
+        if (_isAuthenticating) return;
+        _activeUser = null;
+        ShowLoginView();
+        StatusTextBlock.Text = "Çıkış yapıldı.";
     }
 
     private void GoToRegisterButton_Click(object? sender, RoutedEventArgs e) => ShowRegisterView();

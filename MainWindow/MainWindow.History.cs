@@ -9,6 +9,7 @@ public partial class MainWindow : Window
 {
     private async void HistoryTabButton_Click(object? sender, RoutedEventArgs e)
     {
+        if (_isAuthenticating) return;
         ShowHistorySection();
         await LoadHistoryAsync();
     }

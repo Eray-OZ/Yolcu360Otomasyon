@@ -176,6 +176,7 @@ public partial class MainWindow : Window
 
     private void SearchTabButton_Click(object? sender, RoutedEventArgs e)
     {
+        if (_isAuthenticating) return;
         ShowSearchSection();
     }
 
