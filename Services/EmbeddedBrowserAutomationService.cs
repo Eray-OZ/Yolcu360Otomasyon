@@ -107,7 +107,7 @@ public sealed class EmbeddedBrowserAutomationService
             })();
             """);
 
-        return string.Equals(result?.Trim('"'), "true", StringComparison.OrdinalIgnoreCase);
+        return IsScriptTrue(result);
     }
 
     public async Task FillPickupLocationAsync(string location)
@@ -173,7 +173,7 @@ public sealed class EmbeddedBrowserAutomationService
             })();
             """);
 
-        if (!string.Equals(selected?.Trim('"'), "true", StringComparison.OrdinalIgnoreCase))
+        if (!IsScriptTrue(selected))
             throw new InvalidOperationException("Alış yeri önerisi seçilemedi.");
 
         Report("Alış yeri önerisi seçildi.");
@@ -186,17 +186,23 @@ public sealed class EmbeddedBrowserAutomationService
         while (DateTimeOffset.UtcNow < deadline)
         {
             var result = await EvaluateScriptAsync(script);
-            if (string.Equals(result?.Trim('"'), "true", StringComparison.OrdinalIgnoreCase))
+            if (IsScriptTrue(result))
                 return;
 
             await Task.Delay(250);
         }
 
-        throw new TimeoutException("Gömülü tarayıcı beklenen sayfa durumuna ulaşmadı.");
+        throw new TimeoutException($"Gömülü tarayıcı beklenen sayfa durumuna ulaşmadı. Son kontrol sonucu: {await EvaluateScriptAsync(script)}");
     }
 
     private void Report(string message)
     {
         ProgressChanged?.Invoke(message);
+    }
+
+    private static bool IsScriptTrue(string? value)
+    {
+        var normalized = (value ?? string.Empty).Trim().Trim('"');
+        return string.Equals(normalized, "true", StringComparison.OrdinalIgnoreCase);
     }
 }
