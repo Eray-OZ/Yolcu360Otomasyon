@@ -88,6 +88,8 @@ public partial class MainWindow : Window
             SearchStatusTextBlock.Text = _latestResults.Count == 0
                 ? "Arama tamamlandı, sonuç bulunamadı."
                 : $"{_latestResults.Count} sonuç listelendi. İlk sonuç: {_latestResults[0].Title} | {_latestResults[0].Price}";
+
+            await CloseBrowserAfterSearchAsync();
         }
         catch (Exception ex)
         {
@@ -97,6 +99,16 @@ public partial class MainWindow : Window
         {
             SearchButton.IsEnabled = true;
         }
+    }
+
+    private async Task CloseBrowserAfterSearchAsync()
+    {
+        if (_browserAutomationService is null)
+            return;
+
+        _browserAutomationService.ProgressChanged -= BrowserAutomationService_ProgressChanged;
+        await _browserAutomationService.DisposeAsync();
+        _browserAutomationService = null;
     }
 
     private async void SaveResultsButton_Click(object? sender, RoutedEventArgs e)
