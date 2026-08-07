@@ -129,20 +129,25 @@ public sealed class EmbeddedBrowserAutomationService
             $$"""
             (() => {
                 const input = document.querySelector('#inputPickUpLocation');
+                const text = {{locationJson}};
                 input.focus();
-                input.value = {{locationJson}};
-                input.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: {{locationJson}} }));
+                input.value = '';
+                input.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'deleteContentBackward', data: null }));
+
+                for (const char of text) {
+                    input.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: char }));
+                    input.value += char;
+                    input.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: char }));
+                    input.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true, key: char }));
+                }
+
                 input.dispatchEvent(new Event('change', { bubbles: true }));
                 return true;
             })();
             """);
 
         Report("Alış yeri önerileri bekleniyor...");
-        await WaitForScriptTrueAsync(
-            """
-            (() => document.querySelectorAll('.search-autocomplete .location-item, .location-item').length > 0)();
-            """,
-            TimeSpan.FromSeconds(10));
+        await WaitForLocationSuggestionsAsync(TimeSpan.FromSeconds(12));
 
         Report("Alış yeri önerisi seçiliyor...");
         var selected = await EvaluateScriptAsync(
@@ -177,6 +182,42 @@ public sealed class EmbeddedBrowserAutomationService
             throw new InvalidOperationException("Alış yeri önerisi seçilemedi.");
 
         Report("Alış yeri önerisi seçildi.");
+    }
+
+    private async Task WaitForLocationSuggestionsAsync(TimeSpan timeout)
+    {
+        var deadline = DateTimeOffset.UtcNow + timeout;
+        string? lastResult = null;
+
+        while (DateTimeOffset.UtcNow < deadline)
+        {
+            lastResult = await EvaluateScriptAsync(
+                """
+                (() => {
+                    const items = Array.from(document.querySelectorAll('.search-autocomplete .location-item, .location-item'));
+                    const visibleItems = items.filter(item => {
+                        const rect = item.getBoundingClientRect();
+                        return rect.width > 0 && rect.height > 0;
+                    });
+                    return JSON.stringify({
+                        total: items.length,
+                        visible: visibleItems.length,
+                        text: visibleItems.slice(0, 3).map(item => (item.textContent || '').replace(/\s+/g, ' ').trim())
+                    });
+                })();
+                """);
+
+            var summary = (lastResult ?? string.Empty).Trim('"');
+            Report($"Alış yeri önerileri: {summary}");
+
+            if (summary.Contains("\"visible\":", StringComparison.OrdinalIgnoreCase) &&
+                !summary.Contains("\"visible\":0", StringComparison.OrdinalIgnoreCase))
+                return;
+
+            await Task.Delay(350);
+        }
+
+        throw new TimeoutException($"Alış yeri önerileri gelmedi. Son durum: {lastResult}");
     }
 
     private async Task WaitForScriptTrueAsync(string script, TimeSpan timeout)
