@@ -10,8 +10,7 @@ public partial class MainWindow
     {
         try
         {
-            ShowSearchSection();
-            EmbeddedBrowserPanel.IsVisible = true;
+            ShowBrowserSection();
             SearchStatusTextBlock.Text = "Gömülü tarayıcı açılıyor...";
             await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Render);
 
@@ -61,7 +60,7 @@ public partial class MainWindow
             var pickupTime = PickupTimeTextBox.Text?.Trim() ?? "10:00";
             var returnTime = ReturnTimeTextBox.Text?.Trim() ?? "18:00";
 
-            EmbeddedBrowserPanel.IsVisible = true;
+            ShowBrowserSection();
             SearchStatusTextBlock.Text = "Gömülü tarayıcı arama formu hazırlanıyor...";
             await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Render);
 
@@ -83,11 +82,31 @@ public partial class MainWindow
             SearchStatusTextBlock.Text = "Gömülü tarayıcı araç ara butonuna tıklıyor...";
             await embeddedBrowser.ClickSearchButtonAsync();
 
-            SearchStatusTextBlock.Text = "Gömülü tarayıcı arama işlemini tamamladı.";
+            SearchStatusTextBlock.Text = "Gömülü tarayıcı sonuçları bekliyor...";
+            await embeddedBrowser.WaitForSearchResultsAsync();
+
+            SearchStatusTextBlock.Text = "Gömülü tarayıcı sonuçları okuyor...";
+            var results = await embeddedBrowser.ReadSearchResultsAsync();
+            _latestResults = results;
+
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                ResultsDataGrid.ItemsSource = null;
+                ResultsDataGrid.ItemsSource = _latestResults;
+            });
+
+            SearchStatusTextBlock.Text = _latestResults.Count == 0
+                ? "Gömülü arama tamamlandı, sonuç bulunamadı."
+                : $"{_latestResults.Count} sonuç listelendi. İlk sonuç: {_latestResults[0].Title} | {_latestResults[0].Price}";
         }
         catch (Exception ex)
         {
             SearchStatusTextBlock.Text = $"Gömülü arama test hatası: {ex.Message}";
+        }
+        finally
+        {
+            await Task.Delay(1500);
+            ShowSearchSection();
         }
     }
 

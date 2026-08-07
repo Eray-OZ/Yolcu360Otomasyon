@@ -397,7 +397,7 @@
                                 Width="160"
                                 Click="PaymentsTabButton_Click" />
                         <Button x:Name="NativeWebViewTestButton"
-                                Content="WebView Test"
+                                Content="Tarayıcı"
                                 Width="160"
                                 Click="NativeWebViewTestButton_Click" />
                     </StackPanel>
@@ -529,7 +529,7 @@
                             BorderThickness="1"
                             CornerRadius="10"
                             Padding="22">
-                        <Grid RowDefinitions="Auto,Auto,Auto,*"
+                        <Grid RowDefinitions="Auto,Auto,*"
                               RowSpacing="16">
                             <StackPanel Spacing="4">
                                 <TextBlock Text="Arama Sonuçları"
@@ -540,20 +540,7 @@
                                            Foreground="#5F7187" />
                             </StackPanel>
 
-                            <Border Grid.Row="1"
-                                    x:Name="EmbeddedBrowserPanel"
-                                    IsVisible="False"
-                                    Background="#FBFDFF"
-                                    BorderBrush="#E2EAF2"
-                                    BorderThickness="1"
-                                    CornerRadius="10"
-                                    Padding="0"
-                                    MinHeight="360">
-                                <NativeWebView x:Name="EmbeddedBrowser"
-                                               Source="about:blank" />
-                            </Border>
-
-                            <Grid Grid.Row="2"
+                            <Grid Grid.Row="1"
                                   ColumnDefinitions="*,Auto"
                                   ColumnSpacing="12">
                                 <TextBox x:Name="CollectionNameTextBox"
@@ -566,7 +553,7 @@
                                         Click="SaveResultsButton_Click" />
                             </Grid>
 
-                            <Border Grid.Row="3"
+                            <Border Grid.Row="2"
                                     Background="#FBFDFF"
                                     BorderBrush="#E2EAF2"
                                     BorderThickness="1"
@@ -580,6 +567,39 @@
                                           VerticalAlignment="Stretch"
                                           HorizontalAlignment="Stretch"
                                           MinHeight="420" />
+                            </Border>
+                        </Grid>
+                    </Border>
+
+                    <Border Grid.Row="1"
+                            Grid.RowSpan="2"
+                            x:Name="BrowserSectionPanel"
+                            IsVisible="False"
+                            Background="White"
+                            BorderBrush="#D9E2EC"
+                            BorderThickness="1"
+                            CornerRadius="10"
+                            Padding="22">
+                        <Grid RowDefinitions="Auto,*"
+                              RowSpacing="16">
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="Tarayıcı Görünümü"
+                                           FontSize="22"
+                                           FontWeight="Bold"
+                                           Foreground="#122033" />
+                                <TextBlock Text="Arama işlemi sırasında gömülü tarayıcı ekranı burada görüntülenir."
+                                           Foreground="#5F7187" />
+                            </StackPanel>
+
+                            <Border Grid.Row="1"
+                                    Background="#FBFDFF"
+                                    BorderBrush="#E2EAF2"
+                                    BorderThickness="1"
+                                    CornerRadius="10"
+                                    Padding="0"
+                                    MinHeight="520">
+                                <NativeWebView x:Name="EmbeddedBrowser"
+                                               Source="about:blank" />
                             </Border>
                         </Grid>
                     </Border>

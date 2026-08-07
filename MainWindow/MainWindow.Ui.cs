@@ -13,9 +13,11 @@ public partial class MainWindow : Window
         HistoryPanel.IsVisible = false;
         PaymentsPanel.IsVisible = false;
         PaymentCheckoutPanel.IsVisible = false;
+        BrowserSectionPanel.IsVisible = false;
         SearchTabButton.Classes.Set("primary", true);
         HistoryTabButton.Classes.Set("primary", false);
         PaymentsTabButton.Classes.Set("primary", false);
+        NativeWebViewTestButton.Classes.Set("primary", false);
     }
 
     private void ShowHistorySection()
@@ -25,9 +27,11 @@ public partial class MainWindow : Window
         HistoryPanel.IsVisible = true;
         PaymentsPanel.IsVisible = false;
         PaymentCheckoutPanel.IsVisible = false;
+        BrowserSectionPanel.IsVisible = false;
         SearchTabButton.Classes.Set("primary", false);
         HistoryTabButton.Classes.Set("primary", true);
         PaymentsTabButton.Classes.Set("primary", false);
+        NativeWebViewTestButton.Classes.Set("primary", false);
     }
 
     private void ShowPaymentsSection()
@@ -37,9 +41,11 @@ public partial class MainWindow : Window
         HistoryPanel.IsVisible = false;
         PaymentsPanel.IsVisible = true;
         PaymentCheckoutPanel.IsVisible = false;
+        BrowserSectionPanel.IsVisible = false;
         SearchTabButton.Classes.Set("primary", false);
         HistoryTabButton.Classes.Set("primary", false);
         PaymentsTabButton.Classes.Set("primary", true);
+        NativeWebViewTestButton.Classes.Set("primary", false);
     }
 
     private void ShowPaymentCheckoutSection()
@@ -49,9 +55,25 @@ public partial class MainWindow : Window
         HistoryPanel.IsVisible = false;
         PaymentsPanel.IsVisible = false;
         PaymentCheckoutPanel.IsVisible = true;
+        BrowserSectionPanel.IsVisible = false;
         SearchTabButton.Classes.Set("primary", false);
         HistoryTabButton.Classes.Set("primary", false);
         PaymentsTabButton.Classes.Set("primary", true);
+        NativeWebViewTestButton.Classes.Set("primary", false);
+    }
+
+    private void ShowBrowserSection()
+    {
+        SearchPanel.IsVisible = false;
+        SearchResultsPanel.IsVisible = false;
+        HistoryPanel.IsVisible = false;
+        PaymentsPanel.IsVisible = false;
+        PaymentCheckoutPanel.IsVisible = false;
+        BrowserSectionPanel.IsVisible = true;
+        SearchTabButton.Classes.Set("primary", false);
+        HistoryTabButton.Classes.Set("primary", false);
+        PaymentsTabButton.Classes.Set("primary", false);
+        NativeWebViewTestButton.Classes.Set("primary", true);
     }
 
     private void ConfigureResultsGrid()
