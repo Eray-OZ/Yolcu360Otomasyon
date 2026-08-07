@@ -14,7 +14,7 @@ public partial class MainWindow
             SearchStatusTextBlock.Text = "Gömülü tarayıcı açılıyor...";
 
             var embeddedBrowser = new EmbeddedBrowserAutomationService(EmbeddedBrowser);
-            await embeddedBrowser.NavigateAsync("https://www.yolcu360.com/");
+            await embeddedBrowser.OpenYolcu360HomeAsync();
 
             var title = await embeddedBrowser.GetTitleAsync();
             SearchStatusTextBlock.Text = $"Gömülü tarayıcı hazır. Title: {title}";
