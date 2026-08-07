@@ -514,6 +514,10 @@
                                         Content="Ara"
                                         Click="SearchButton_Click"
                                         Width="160" />
+                                <Button x:Name="EmbeddedSearchTestButton"
+                                        Content="Gömülü Ara Test"
+                                        Click="EmbeddedSearchTestButton_Click"
+                                        Width="170" />
                             </StackPanel>
                         </StackPanel>
                     </Border>
