@@ -1,13 +1,27 @@
 using Avalonia.Interactivity;
+using Yolcu360Otomasyon.Services;
 
 namespace Yolcu360Otomasyon;
 
 public partial class MainWindow
 {
-    private void NativeWebViewTestButton_Click(object? sender, RoutedEventArgs e)
+    private async void NativeWebViewTestButton_Click(object? sender, RoutedEventArgs e)
     {
-        ShowSearchSection();
-        EmbeddedBrowserPanel.IsVisible = true;
-        EmbeddedBrowser.Navigate(new Uri("https://www.yolcu360.com/"));
+        try
+        {
+            ShowSearchSection();
+            EmbeddedBrowserPanel.IsVisible = true;
+            SearchStatusTextBlock.Text = "Gömülü tarayıcı açılıyor...";
+
+            var embeddedBrowser = new EmbeddedBrowserAutomationService(EmbeddedBrowser);
+            await embeddedBrowser.NavigateAsync("https://www.yolcu360.com/");
+
+            var title = await embeddedBrowser.GetTitleAsync();
+            SearchStatusTextBlock.Text = $"Gömülü tarayıcı hazır. Title: {title}";
+        }
+        catch (Exception ex)
+        {
+            SearchStatusTextBlock.Text = $"Gömülü tarayıcı hatası: {ex.Message}";
+        }
     }
 }
