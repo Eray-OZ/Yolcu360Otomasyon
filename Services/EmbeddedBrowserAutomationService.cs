@@ -239,51 +239,80 @@ public sealed class EmbeddedBrowserAutomationService
         if (string.IsNullOrWhiteSpace(code))
             throw new InvalidOperationException("SMS doğrulama kodu boş olamaz.");
 
-        Report($"Gömülü tarayıcıda insansı davranışla SMS kodu giriliyor: {code}");
-        await Task.Delay(Random.Shared.Next(1500, 2500));
+        Report($"Gömülü tarayıcıda insansı davranışla SMS kodu yazılıyor: {code}");
+        await Task.Delay(Random.Shared.Next(1000, 1800));
 
-        // Enter code digit by digit with human delays
+        var codeJson = JsonSerializer.Serialize(code.Trim());
+
+        // First, attempt digit-by-digit entry with React native setter
         for (int i = 0; i < code.Length; i++)
         {
             var digit = code[i];
             var index = i;
             var digitJson = JsonSerializer.Serialize(digit.ToString());
 
-            await EvaluateScriptAsync(
+            var digitSet = await EvaluateScriptAsync(
                 $$"""
                 (() => {
                     const digit = {{digitJson}};
                     const idx = {{index}};
+
+                    const normalize = value => (value || '').toLocaleLowerCase('tr-TR');
                     const visible = el => {
                         const rect = el.getBoundingClientRect();
                         const style = window.getComputedStyle(el);
                         return rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden';
                     };
 
-                    const inputs = Array.from(document.querySelectorAll('input, [contenteditable="true"]')).filter(visible);
-                    const singleCharInputs = inputs.filter(input => input.maxLength === 1);
+                    const setValue = (el, val) => {
+                        const proto = el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement ? Object.getPrototypeOf(el) : null;
+                        const desc = proto ? Object.getOwnPropertyDescriptor(proto, 'value') : null;
+                        if (desc && desc.set) {
+                            desc.set.call(el, val);
+                        } else if ('value' in el) {
+                            el.value = val;
+                        } else {
+                            el.textContent = val;
+                        }
+                    };
 
-                    const dispatchInput = el => {
+                    const dispatchEvents = el => {
+                        el.focus();
                         el.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: digit }));
-                        el.dispatchEvent(new Event('input', { bubbles: true, inputType: 'insertText', data: digit }));
+                        el.dispatchEvent(new KeyboardEvent('keypress', { bubbles: true, key: digit }));
+                        el.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: digit }));
+                        el.dispatchEvent(new Event('input', { bubbles: true }));
                         el.dispatchEvent(new Event('change', { bubbles: true }));
                         el.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true, key: digit }));
                     };
 
+                    const allInputs = Array.from(document.querySelectorAll('input, [contenteditable="true"]')).filter(visible);
+                    const otpInputs = allInputs.filter(input => {
+                        const attrs = normalize(`${input.id} ${input.name} ${input.placeholder} ${input.autocomplete} ${input.inputMode} ${input.type} ${input.className} ${input.getAttribute?.('aria-label') || ''}`);
+                        return attrs.includes('otp') || attrs.includes('code') || attrs.includes('kod') || attrs.includes('pin') || attrs.includes('verify') || attrs.includes('dogrulama') || attrs.includes('sms') || input.maxLength === 1;
+                    });
+
+                    const singleCharInputs = otpInputs.filter(input => input.maxLength === 1);
                     if (singleCharInputs.length > idx) {
                         const input = singleCharInputs[idx];
-                        input.focus();
-                        input.value = digit;
-                        dispatchInput(input);
+                        setValue(input, digit);
+                        dispatchEvents(input);
                         return true;
                     }
 
-                    if (inputs.length > 0) {
-                        const input = inputs[0];
-                        if (idx === 0) input.value = '';
-                        input.focus();
-                        input.value += digit;
-                        dispatchInput(input);
+                    if (otpInputs.length > 0) {
+                        const input = otpInputs[0];
+                        if (idx === 0) setValue(input, '');
+                        setValue(input, input.value + digit);
+                        dispatchEvents(input);
+                        return true;
+                    }
+
+                    if (allInputs.length > 0) {
+                        const input = allInputs[0];
+                        if (idx === 0) setValue(input, '');
+                        setValue(input, input.value + digit);
+                        dispatchEvents(input);
                         return true;
                     }
 
@@ -291,8 +320,67 @@ public sealed class EmbeddedBrowserAutomationService
                 })();
                 """);
 
-            await Task.Delay(Random.Shared.Next(300, 450));
+            if (!IsScriptTrue(digitSet))
+            {
+                Report($"Gömülü tarayıcıda {index + 1}. hane ({digit}) için kutu bulunamadı, fallback deneniyor...");
+            }
+
+            await Task.Delay(Random.Shared.Next(280, 420));
         }
+
+        // Entire code fallback injection via React setter if single digit entry missed any fields
+        var fullFilled = await EvaluateScriptAsync(
+            $$"""
+            (() => {
+                const code = {{codeJson}};
+                const normalize = value => (value || '').toLocaleLowerCase('tr-TR');
+                const visible = el => {
+                    const rect = el.getBoundingClientRect();
+                    const style = window.getComputedStyle(el);
+                    return rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden';
+                };
+
+                const setValue = (el, val) => {
+                    const proto = el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement ? Object.getPrototypeOf(el) : null;
+                    const desc = proto ? Object.getOwnPropertyDescriptor(proto, 'value') : null;
+                    if (desc && desc.set) {
+                        desc.set.call(el, val);
+                    } else if ('value' in el) {
+                        el.value = val;
+                    } else {
+                        el.textContent = val;
+                    }
+                };
+
+                const dispatchEvents = el => {
+                    el.dispatchEvent(new Event('input', { bubbles: true }));
+                    el.dispatchEvent(new Event('change', { bubbles: true }));
+                    el.dispatchEvent(new Event('blur', { bubbles: true }));
+                };
+
+                const allInputs = Array.from(document.querySelectorAll('input, [contenteditable="true"]')).filter(visible);
+                const singleCharInputs = allInputs.filter(input => input.maxLength === 1);
+                if (singleCharInputs.length >= code.length) {
+                    singleCharInputs.slice(0, code.length).forEach((input, idx) => {
+                        setValue(input, code[idx]);
+                        dispatchEvents(input);
+                    });
+                    return true;
+                }
+
+                if (allInputs.length > 0) {
+                    setValue(allInputs[0], code);
+                    dispatchEvents(allInputs[0]);
+                    return true;
+                }
+
+                return false;
+            })();
+            """);
+
+        Report(IsScriptTrue(fullFilled)
+            ? $"SMS kodu ({code}) gömülü tarayıcıdaki kutulara insansı şekilde yazıldı."
+            : $"UYARI: SMS kodu ({code}) için uygun HTML kutusu tespit edilemedi.");
 
         // Wait 4.5 seconds after filling SMS code before clicking approve
         Report("SMS kodu girildi, doğrulama butonuna basmadan önce 4.5 saniye bekleniyor (reCAPTCHA / sayfa onay süresi)...");
