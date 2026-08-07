@@ -21,17 +21,41 @@ public partial class MainWindow : Window
         if (_selectedCollections.Count == 0)
         {
             _selectedCollection = null;
+            _selectedVehicle = null;
             _selectedCollectionVehicles = new List<SearchResultItem>();
+            CollectionVehiclesDataGrid.ItemsSource = null;
             ClearSelectedCollectionSummary();
             return;
         }
 
         _selectedCollection = _selectedCollections[0];
-        _selectedCollectionVehicles = new List<SearchResultItem>();
+        _selectedCollectionVehicles = await _databaseService.GetCollectionVehiclesAsync(_selectedCollection.Id);
+        CollectionVehiclesDataGrid.ItemsSource = null;
+        CollectionVehiclesDataGrid.ItemsSource = _selectedCollectionVehicles;
+
+        if (_selectedCollectionVehicles.Count > 0)
+        {
+            CollectionVehiclesDataGrid.SelectedItem = _selectedCollectionVehicles[0];
+            _selectedVehicle = _selectedCollectionVehicles[0];
+        }
+        else
+        {
+            _selectedVehicle = null;
+        }
+
         UpdateSelectedCollectionSummary(_selectedCollections);
         HistoryStatusTextBlock.Text = _selectedCollections.Count == 1
-            ? $"{_selectedCollections[0].OzelAd} kaydı seçildi."
+            ? $"{_selectedCollection.OzelAd} kaydı seçildi. {_selectedCollectionVehicles.Count} araç listelendi."
             : $"{_selectedCollections.Count} kayıt seçildi.";
+    }
+
+    private void CollectionVehiclesDataGrid_SelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (CollectionVehiclesDataGrid.SelectedItem is SearchResultItem vehicle)
+        {
+            _selectedVehicle = vehicle;
+            HistoryStatusTextBlock.Text = $"{_selectedCollection?.OzelAd} - {vehicle.Title} seçildi ({vehicle.Price}).";
+        }
     }
 
     private async void DeleteCollectionButton_Click(object? sender, RoutedEventArgs e)

@@ -16,6 +16,7 @@ public partial class MainWindow : Window
     private AppUser? _activeUser;
     private List<SearchResultItem> _latestResults = new();
     private List<SearchResultItem> _selectedCollectionVehicles = new();
+    private SearchResultItem? _selectedVehicle;
     private KoleksiyonListItem? _selectedCollection;
     private List<KoleksiyonListItem> _selectedCollections = new();
     private List<OdemeHazirlikItem> _paymentPreviewItems = new();

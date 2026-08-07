@@ -2,6 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:models="clr-namespace:Yolcu360Otomasyon.Models"
         mc:Ignorable="d"
         d:DesignWidth="1360"
         d:DesignHeight="860"
@@ -614,7 +615,7 @@
                             CornerRadius="10"
                             Padding="22">
                         <Grid x:Name="HistoryExportRoot"
-                              RowDefinitions="Auto,Auto,*,Auto,Auto"
+                              RowDefinitions="Auto,Auto,*,Auto,Auto,Auto"
                               RowSpacing="16">
                             <StackPanel Spacing="4">
                                 <TextBlock Text="Geçmiş Kayıtlar"
@@ -652,8 +653,8 @@
                                         Spacing="12">
                                 <Button x:Name="CreatePaymentButton"
                                         Classes="primary"
-                                        Content="iyzico Sandbox Ödeme"
-                                        Width="190"
+                                        Content="Seçilen Araç İçin Ödeme"
+                                        Width="220"
                                         Click="CreatePaymentButton_Click" />
                                 <Button x:Name="DeleteCollectionButton"
                                         Content="Sil"
@@ -743,6 +744,46 @@
                                                    Foreground="#132235"
                                                    TextWrapping="Wrap" />
                                     </StackPanel>
+                                </Grid>
+                            </Border>
+
+                            <Border Grid.Row="5"
+                                    Background="#FBFDFF"
+                                    BorderBrush="#E2EAF2"
+                                    BorderThickness="1"
+                                    CornerRadius="10"
+                                    Padding="18">
+                                <Grid RowDefinitions="Auto,*"
+                                      RowSpacing="12">
+                                    <StackPanel Spacing="4">
+                                        <TextBlock Text="Koleksiyondaki Araçlar"
+                                                   FontSize="18"
+                                                   FontWeight="Bold"
+                                                   Foreground="#122033" />
+                                        <TextBlock Text="Aşağıdaki listeden bir araç seçerek ödemesini gerçekleştirebilirsiniz."
+                                                   Foreground="#5F7187" />
+                                    </StackPanel>
+
+                                    <DataGrid Grid.Row="1"
+                                              x:Name="CollectionVehiclesDataGrid"
+                                              x:DataType="models:SearchResultItem"
+                                              AutoGenerateColumns="False"
+                                              IsReadOnly="True"
+                                              CanUserResizeColumns="True"
+                                              CanUserSortColumns="True"
+                                              SelectionMode="Single"
+                                              SelectionChanged="CollectionVehiclesDataGrid_SelectionChanged"
+                                              MinHeight="250">
+                                        <DataGrid.Columns>
+                                            <DataGridTextColumn Header="Araç" Binding="{Binding Title}" Width="2*" />
+                                            <DataGridTextColumn Header="Detay" Binding="{Binding Subtitle}" Width="2*" />
+                                            <DataGridTextColumn Header="Fiyat" Binding="{Binding Price}" Width="1*" />
+                                            <DataGridTextColumn Header="Günlük Fiyat" Binding="{Binding DailyPrice}" Width="1*" />
+                                            <DataGridTextColumn Header="Vites" Binding="{Binding Transmission}" Width="1*" />
+                                            <DataGridTextColumn Header="Yakıt" Binding="{Binding FuelType}" Width="1*" />
+                                            <DataGridTextColumn Header="Tedarikçi" Binding="{Binding Supplier}" Width="1*" />
+                                        </DataGrid.Columns>
+                                    </DataGrid>
                                 </Grid>
                             </Border>
 

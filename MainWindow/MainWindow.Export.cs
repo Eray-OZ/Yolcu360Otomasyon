@@ -19,6 +19,13 @@ public partial class MainWindow : Window
                 : $"{collections.Count} kayıt için PNG hazırlanıyor...";
         });
 
+        var collectionsWithVehicles = new List<(KoleksiyonListItem Collection, List<SearchResultItem> Vehicles)>();
+        foreach (var collection in collections)
+        {
+            var vehicles = await _databaseService.GetCollectionVehiclesAsync(collection.Id);
+            collectionsWithVehicles.Add((collection, vehicles));
+        }
+
         var downloadsDirectory = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
             "Downloads");
@@ -32,7 +39,7 @@ public partial class MainWindow : Window
         await Dispatcher.UIThread.InvokeAsync(() =>
         {
             const double reportWidth = 1440;
-            var report = BuildCollectionReportVisual(collections);
+            var report = BuildCollectionReportVisual(collectionsWithVehicles);
             report.Measure(new Size(reportWidth, double.PositiveInfinity));
             report.Arrange(new Rect(0, 0, reportWidth, report.DesiredSize.Height));
 
@@ -49,7 +56,7 @@ public partial class MainWindow : Window
         return filePath;
     }
 
-    private static Control BuildCollectionReportVisual(IReadOnlyList<KoleksiyonListItem> collections)
+    private static Control BuildCollectionReportVisual(List<(KoleksiyonListItem Collection, List<SearchResultItem> Vehicles)> items)
     {
         var root = new Border
         {
@@ -62,6 +69,8 @@ public partial class MainWindow : Window
         {
             Spacing = 18
         };
+
+        var collections = items.Select(x => x.Collection).ToList();
 
         container.Children.Add(new Border
         {
@@ -101,23 +110,25 @@ public partial class MainWindow : Window
                     },
                     new TextBlock
                     {
-                        Text = $"Araç Sayısı: {collections.Sum(item => item.AracSayisi)} | Oluşturulma: {collections.Min(item => item.OlusturmaTarihi).ToLocalTime():dd.MM.yyyy HH:mm}",
+                        Text = $"Toplam Araç Sayısı: {items.Sum(x => x.Vehicles.Count)} | Oluşturulma: {collections.Min(item => item.OlusturmaTarihi).ToLocalTime():dd.MM.yyyy HH:mm}",
                         Foreground = new SolidColorBrush(Color.Parse("#D6E2F0"))
                     }
                 }
             }
         });
 
-        foreach (var collection in collections)
-            container.Children.Add(BuildSingleCollectionSummaryCard(collection));
+        foreach (var (collection, vehicles) in items)
+            container.Children.Add(BuildSingleCollectionSummaryCard(collection, vehicles));
 
         root.Child = container;
         return root;
     }
 
-    private static Control BuildSingleCollectionSummaryCard(KoleksiyonListItem collection)
+    private static Control BuildSingleCollectionSummaryCard(KoleksiyonListItem collection, List<SearchResultItem> vehicles)
     {
-        return new Border
+        var container = new StackPanel { Spacing = 14 };
+
+        var headerCard = new Border
         {
             Background = Brushes.White,
             BorderBrush = new SolidColorBrush(Color.Parse("#D9E2EC")),
@@ -144,11 +155,98 @@ public partial class MainWindow : Window
                         $"Vites: {FormatFilterValue(collection.SecilenVitesFiltresi)} | Yakıt: {FormatFilterValue(collection.SecilenYakitFiltresi)}",
                         1,
                         1),
-                    CreateSummaryBlock("Araç Sayısı", collection.AracSayisi.ToString(), 2, 0),
+                    CreateSummaryBlock("Araç Sayısı", vehicles.Count.ToString(), 2, 0),
                     CreateSummaryBlock("Oluşturulma", collection.OlusturmaTarihi.ToLocalTime().ToString("dd.MM.yyyy HH:mm"), 2, 1)
                 }
             }
         };
+        container.Children.Add(headerCard);
+
+        if (vehicles.Count > 0)
+        {
+            var vehiclesCard = new Border
+            {
+                Background = Brushes.White,
+                BorderBrush = new SolidColorBrush(Color.Parse("#D9E2EC")),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(12),
+                Padding = new Thickness(20),
+                Child = new StackPanel
+                {
+                    Spacing = 12,
+                    Children =
+                    {
+                        new TextBlock
+                        {
+                            Text = $"Koleksiyondaki Tüm Araçlar ({vehicles.Count})",
+                            FontSize = 18,
+                            FontWeight = FontWeight.Bold,
+                            Foreground = new SolidColorBrush(Color.Parse("#0F172A"))
+                        },
+                        BuildVehiclesGrid(vehicles)
+                    }
+                }
+            };
+            container.Children.Add(vehiclesCard);
+        }
+
+        return container;
+    }
+
+    private static Control BuildVehiclesGrid(List<SearchResultItem> vehicles)
+    {
+        var grid = new Grid
+        {
+            ColumnDefinitions = new ColumnDefinitions("2*,2*,1*,1*,1*,1*,1*"),
+            RowSpacing = 8,
+            ColumnSpacing = 12
+        };
+
+        var rowDefs = new RowDefinitions();
+        rowDefs.Add(new RowDefinition(GridLength.Auto));
+        foreach (var _ in vehicles)
+            rowDefs.Add(new RowDefinition(GridLength.Auto));
+        grid.RowDefinitions = rowDefs;
+
+        AddTableCell(grid, "Araç Adı", 0, 0, isHeader: true);
+        AddTableCell(grid, "Detay", 0, 1, isHeader: true);
+        AddTableCell(grid, "Fiyat", 0, 2, isHeader: true);
+        AddTableCell(grid, "Günlük Fiyat", 0, 3, isHeader: true);
+        AddTableCell(grid, "Vites", 0, 4, isHeader: true);
+        AddTableCell(grid, "Yakıt", 0, 5, isHeader: true);
+        AddTableCell(grid, "Tedarikçi", 0, 6, isHeader: true);
+
+        for (int i = 0; i < vehicles.Count; i++)
+        {
+            var v = vehicles[i];
+            var row = i + 1;
+            AddTableCell(grid, v.Title, row, 0);
+            AddTableCell(grid, v.Subtitle, row, 1);
+            AddTableCell(grid, v.Price, row, 2, isHighlight: true);
+            AddTableCell(grid, v.DailyPrice, row, 3);
+            AddTableCell(grid, v.Transmission, row, 4);
+            AddTableCell(grid, v.FuelType, row, 5);
+            AddTableCell(grid, v.Supplier, row, 6);
+        }
+
+        return grid;
+    }
+
+    private static void AddTableCell(Grid grid, string? text, int row, int col, bool isHeader = false, bool isHighlight = false)
+    {
+        var tb = new TextBlock
+        {
+            Text = string.IsNullOrWhiteSpace(text) ? "-" : text,
+            FontWeight = isHeader ? FontWeight.Bold : (isHighlight ? FontWeight.SemiBold : FontWeight.Normal),
+            Foreground = isHeader
+                ? new SolidColorBrush(Color.Parse("#0F172A"))
+                : (isHighlight ? new SolidColorBrush(Color.Parse("#2563EB")) : new SolidColorBrush(Color.Parse("#334155"))),
+            FontSize = isHeader ? 14 : 13,
+            TextWrapping = TextWrapping.Wrap
+        };
+        Grid.SetRow(tb, row);
+        Grid.SetColumn(tb, col);
+        grid.Children.Add(tb);
     }
 
     private static Control CreateSummaryBlock(string title, string value, int row, int column)

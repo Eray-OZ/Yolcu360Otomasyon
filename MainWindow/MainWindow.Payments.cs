@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using Avalonia.Threading;
 using Yolcu360Otomasyon.Models;
 using Yolcu360Otomasyon.Services;
 
@@ -13,26 +14,35 @@ public partial class MainWindow : Window
         await LoadPaymentsAsync();
     }
 
-    private async void CreatePaymentButton_Click(object? sender, RoutedEventArgs e)
+    private void CreatePaymentButton_Click(object? sender, RoutedEventArgs e)
     {
-        if (_activeUser is null || _selectedCollections.Count == 0)
+        if (_activeUser is null || _selectedCollection is null)
         {
-            HistoryStatusTextBlock.Text = "Ödeme oluşturmak için en az bir kayıt seçin.";
+            HistoryStatusTextBlock.Text = "Ödeme oluşturmak için lütfen bir koleksiyon seçin.";
+            return;
+        }
+
+        var vehicle = _selectedVehicle ?? _selectedCollectionVehicles.FirstOrDefault();
+        if (vehicle is null)
+        {
+            HistoryStatusTextBlock.Text = "Ödeme yapmak için lütfen koleksiyon içerisinden bir araç seçin.";
             return;
         }
 
         CreatePaymentButton.IsEnabled = false;
         try
         {
-            _paymentPreviewItems = await _databaseService.GetPaymentPreviewAsync(
-                _activeUser.Id,
-                _selectedCollections.Select(item => item.Id).ToList());
+            var vehiclePrice = ParseVehiclePrice(vehicle.Price);
 
-            if (_paymentPreviewItems.Count == 0)
+            _paymentPreviewItems = new List<OdemeHazirlikItem>
             {
-                HistoryStatusTextBlock.Text = "Ödeme için uygun kayıt bulunamadı.";
-                return;
-            }
+                new OdemeHazirlikItem
+                {
+                    KoleksiyonId = _selectedCollection.Id,
+                    KoleksiyonAdi = $"{_selectedCollection.OzelAd} ({vehicle.Title})",
+                    Tutar = vehiclePrice
+                }
+            };
 
             PrepareCheckoutSummary();
             ShowPaymentCheckoutSection();
@@ -45,6 +55,27 @@ public partial class MainWindow : Window
         {
             CreatePaymentButton.IsEnabled = true;
         }
+    }
+
+    private static decimal ParseVehiclePrice(string? priceText)
+    {
+        if (string.IsNullOrWhiteSpace(priceText)) return 100.00m;
+        var raw = priceText.Trim();
+        var digitsAndDot = new string(raw.Where(ch => char.IsDigit(ch) || ch == ',' || ch == '.').ToArray());
+        if (string.IsNullOrWhiteSpace(digitsAndDot)) return 100.00m;
+
+        if (digitsAndDot.Contains(',') && digitsAndDot.Contains('.'))
+        {
+            digitsAndDot = digitsAndDot.Replace(".", "").Replace(',', '.');
+        }
+        else if (digitsAndDot.Contains(','))
+        {
+            digitsAndDot = digitsAndDot.Replace(',', '.');
+        }
+
+        return decimal.TryParse(digitsAndDot, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var val) && val > 0
+            ? val
+            : 100.00m;
     }
 
     private void BackFromCheckoutButton_Click(object? sender, RoutedEventArgs e)
@@ -61,20 +92,22 @@ public partial class MainWindow : Window
         }
 
         ConfirmPaymentButton.IsEnabled = false;
-        BrowserAutomationService? paymentBrowser = null;
         try
         {
             var paymentCard = BuildSandboxPaymentCardInput();
             CheckoutStatusTextBlock.Text = "iyzico sandbox ödeme sayfası hazırlanıyor...";
 
             var session = await _iyzicoPaymentService.InitializeCheckoutAsync(_activeUser, _paymentPreviewItems);
-            paymentBrowser = new BrowserAutomationService();
-            paymentBrowser.ProgressChanged += BrowserAutomationService_LoginProgressChanged;
-            await paymentBrowser.InitializeAsync(headless: false, restoreSession: false);
-            await paymentBrowser.CompleteIyzicoSandboxPaymentAsync(session.PaymentPageUrl, paymentCard);
+
+            ShowBrowserSection();
+            CheckoutStatusTextBlock.Text = "Gömülü tarayıcıda iyzico ödeme sayfası dolduruluyor...";
+            await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Render);
+
+            var embeddedBrowser = CreateEmbeddedBrowserAutomationService();
+            await embeddedBrowser.CompleteIyzicoSandboxPaymentAsync(session.PaymentPageUrl, paymentCard);
 
             CheckoutStatusTextBlock.Text =
-                $"iyzico sandbox formu dolduruldu. Callback bekleniyor: {_iyzicoCallbackService.CallbackUrl}";
+                $"iyzico sandbox formu gömülü tarayıcıda dolduruldu. Callback bekleniyor: {_iyzicoCallbackService.CallbackUrl}";
 
             await _iyzicoPaymentService.WaitForCallbackAsync(session.Token, TimeSpan.FromMinutes(5));
             var paymentResult = await _iyzicoPaymentService.RetrievePaymentResultAsync(session.ConversationId, session.Token);
@@ -103,9 +136,6 @@ public partial class MainWindow : Window
         }
         finally
         {
-            if (paymentBrowser is not null)
-                await paymentBrowser.DisposeAsync();
-
             ConfirmPaymentButton.IsEnabled = true;
         }
     }
