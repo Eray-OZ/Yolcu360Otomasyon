@@ -103,6 +103,9 @@ public partial class MainWindow
             SearchStatusTextBlock.Text = "Gömülü tarayıcı sonuçları bekliyor...";
             await embeddedBrowser.WaitForSearchResultsAsync();
 
+            SearchStatusTextBlock.Text = "Gömülü tarayıcı filtreleri uyguluyor...";
+            await embeddedBrowser.ApplyResultFiltersAsync(filter);
+
             SearchStatusTextBlock.Text = "Gömülü tarayıcı sonuçları okuyor...";
             var results = await embeddedBrowser.ReadSearchResultsAsync();
             _latestResults = results;
