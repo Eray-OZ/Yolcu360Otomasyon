@@ -115,6 +115,403 @@ public sealed class EmbeddedBrowserAutomationService
         return IsScriptTrue(result);
     }
 
+    public async Task LoginWithPhoneAsync(string phoneNumber)
+    {
+        if (string.IsNullOrWhiteSpace(phoneNumber))
+            throw new InvalidOperationException("Telefon numarası boş bırakılamaz.");
+
+        Report("Gömülü tarayıcıda Yolcu360 login sayfası açılıyor...");
+        await NavigateAsync("https://www.yolcu360.com/login?redirect=%2F");
+        await WaitForDocumentReadyAsync();
+        await Task.Delay(Random.Shared.Next(2000, 3000));
+        await CloseInitialPopupAsync();
+
+        Report("Telefon numarası inputu bekleniyor...");
+        await WaitForScriptTrueAsync(
+            """
+            (() => !!document.querySelector('#phn-input') || !!document.querySelector('input[type="tel"]'))();
+            """,
+            TimeSpan.FromSeconds(20));
+
+        var normalizedPhone = NormalizePhoneNumber(phoneNumber);
+        Report($"Telefon numarası insansı davranışla yazılıyor: {normalizedPhone}");
+
+        await Task.Delay(550);
+
+        // Focus and clear input
+        await EvaluateScriptAsync(
+            """
+            (() => {
+                const input = document.querySelector('#phn-input') || document.querySelector('input[type="tel"]');
+                if (!input) return false;
+                input.scrollIntoView({ block: 'center', inline: 'nearest' });
+                input.focus();
+                input.value = '';
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+                return true;
+            })();
+            """);
+
+        await Task.Delay(220);
+
+        // Type phone number character by character with human pauses
+        var phoneChunks = SplitPhoneNumber(normalizedPhone);
+        foreach (var chunk in phoneChunks)
+        {
+            foreach (var ch in chunk)
+            {
+                var charJson = JsonSerializer.Serialize(ch.ToString());
+                await EvaluateScriptAsync(
+                    $$"""
+                    (() => {
+                        const input = document.querySelector('#phn-input') || document.querySelector('input[type="tel"]');
+                        if (!input) return false;
+                        const char = {{charJson}};
+                        input.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: char }));
+                        input.value += char;
+                        input.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: char }));
+                        input.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true, key: char }));
+                        return true;
+                    })();
+                    """);
+                await Task.Delay(Random.Shared.Next(135, 190));
+            }
+            await Task.Delay(Random.Shared.Next(200, 350));
+        }
+
+        // Trigger change & blur
+        await EvaluateScriptAsync(
+            """
+            (() => {
+                const input = document.querySelector('#phn-input') || document.querySelector('input[type="tel"]');
+                if (!input) return;
+                input.dispatchEvent(new Event('change', { bubbles: true }));
+                input.dispatchEvent(new Event('blur', { bubbles: true }));
+            })();
+            """);
+
+        // Wait 2.8 seconds as in BrowserAutomation.Login.cs
+        Report("Telefon numarası girildi, 2.8 saniye bekleniyor (reCAPTCHA / insansı duraklama)...");
+        await Task.Delay(Random.Shared.Next(2600, 3000));
+
+        Report("'Devam Et' butonuna insansı şekilde tıklanıyor...");
+        var continueClicked = await EvaluateScriptAsync(
+            """
+            (() => {
+                const btn = Array.from(document.querySelectorAll('button, input[type="submit"]'))
+                    .find(b => (b.textContent || b.value || '').trim().toLowerCase().includes('devam'));
+                if (!btn) return false;
+
+                btn.scrollIntoView({ block: 'center', inline: 'nearest' });
+                const rect = btn.getBoundingClientRect();
+                const x = rect.left + rect.width / 2;
+                const y = rect.top + rect.height / 2;
+                const opts = { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y };
+
+                if (typeof PointerEvent === 'function') {
+                    btn.dispatchEvent(new PointerEvent('pointerdown', { ...opts, pointerId: 1, pointerType: 'mouse', isPrimary: true, buttons: 1 }));
+                    btn.dispatchEvent(new PointerEvent('pointerup', { ...opts, pointerId: 1, pointerType: 'mouse', isPrimary: true }));
+                }
+                btn.dispatchEvent(new MouseEvent('mousedown', { ...opts, buttons: 1 }));
+                btn.dispatchEvent(new MouseEvent('mouseup', opts));
+                btn.click();
+                return true;
+            })();
+            """);
+
+        if (!IsScriptTrue(continueClicked))
+            throw new InvalidOperationException("Gömülü tarayıcıda 'Devam Et' butonu tıklanamadı.");
+
+        Report("SMS doğrulama ekranı bekleniyor...");
+        await WaitForScriptTrueAsync(
+            """
+            (() => {
+                const text = (document.body.innerText || '').toLocaleLowerCase('tr-TR');
+                const inputs = document.querySelectorAll('input');
+                return text.includes('doğrulama') || text.includes('sms') || inputs.length > 0;
+            })();
+            """,
+            TimeSpan.FromSeconds(25));
+    }
+
+    public async Task FillSmsVerificationCodeAsync(string code)
+    {
+        if (string.IsNullOrWhiteSpace(code))
+            throw new InvalidOperationException("SMS doğrulama kodu boş olamaz.");
+
+        Report($"Gömülü tarayıcıda insansı davranışla SMS kodu giriliyor: {code}");
+        await Task.Delay(Random.Shared.Next(1500, 2500));
+
+        // Enter code digit by digit with human delays
+        for (int i = 0; i < code.Length; i++)
+        {
+            var digit = code[i];
+            var index = i;
+            var digitJson = JsonSerializer.Serialize(digit.ToString());
+
+            await EvaluateScriptAsync(
+                $$"""
+                (() => {
+                    const digit = {{digitJson}};
+                    const idx = {{index}};
+                    const visible = el => {
+                        const rect = el.getBoundingClientRect();
+                        const style = window.getComputedStyle(el);
+                        return rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden';
+                    };
+
+                    const inputs = Array.from(document.querySelectorAll('input, [contenteditable="true"]')).filter(visible);
+                    const singleCharInputs = inputs.filter(input => input.maxLength === 1);
+
+                    const dispatchInput = el => {
+                        el.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: digit }));
+                        el.dispatchEvent(new Event('input', { bubbles: true, inputType: 'insertText', data: digit }));
+                        el.dispatchEvent(new Event('change', { bubbles: true }));
+                        el.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true, key: digit }));
+                    };
+
+                    if (singleCharInputs.length > idx) {
+                        const input = singleCharInputs[idx];
+                        input.focus();
+                        input.value = digit;
+                        dispatchInput(input);
+                        return true;
+                    }
+
+                    if (inputs.length > 0) {
+                        const input = inputs[0];
+                        if (idx === 0) input.value = '';
+                        input.focus();
+                        input.value += digit;
+                        dispatchInput(input);
+                        return true;
+                    }
+
+                    return false;
+                })();
+                """);
+
+            await Task.Delay(Random.Shared.Next(300, 450));
+        }
+
+        // Wait 4.5 seconds after filling SMS code before clicking approve
+        Report("SMS kodu girildi, doğrulama butonuna basmadan önce 4.5 saniye bekleniyor (reCAPTCHA / sayfa onay süresi)...");
+        await Task.Delay(Random.Shared.Next(4200, 5500));
+
+        Report("SMS doğrulama butonu tıklanıyor...");
+        await EvaluateScriptAsync(
+            """
+            (() => {
+                const applyBtn = document.querySelector('button[data-cms-key="button_apply"]');
+                if (applyBtn) {
+                    applyBtn.scrollIntoView({ block: 'center', inline: 'nearest' });
+                    const rect = applyBtn.getBoundingClientRect();
+                    const x = rect.left + rect.width / 2;
+                    const y = rect.top + rect.height / 2;
+                    const opts = { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y };
+                    applyBtn.dispatchEvent(new MouseEvent('mousedown', { ...opts, buttons: 1 }));
+                    applyBtn.dispatchEvent(new MouseEvent('mouseup', opts));
+                    applyBtn.click();
+                    return true;
+                }
+
+                const btn = Array.from(document.querySelectorAll('button, input[type="submit"]'))
+                    .find(b => {
+                        const txt = (b.textContent || b.value || '').trim().toLowerCase();
+                        return (txt.includes('doğrula') || txt.includes('onayla') || txt.includes('devam') || txt.includes('giriş'));
+                    });
+                if (btn) {
+                    btn.scrollIntoView({ block: 'center', inline: 'nearest' });
+                    const rect = btn.getBoundingClientRect();
+                    const x = rect.left + rect.width / 2;
+                    const y = rect.top + rect.height / 2;
+                    const opts = { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y };
+                    btn.dispatchEvent(new MouseEvent('mousedown', { ...opts, buttons: 1 }));
+                    btn.dispatchEvent(new MouseEvent('mouseup', opts));
+                    btn.click();
+                    return true;
+                }
+                return false;
+            })();
+            """);
+    }
+
+    public async Task WaitForLoginCompletedAsync(TimeSpan? timeout = null)
+    {
+        var deadline = DateTimeOffset.UtcNow + (timeout ?? TimeSpan.FromSeconds(30));
+        Report("Giriş işleminin tamamlanması bekleniyor...");
+
+        while (DateTimeOffset.UtcNow < deadline)
+        {
+            var isCompleted = await EvaluateScriptAsync(
+                """
+                (() => {
+                    const url = window.location.href;
+                    const text = (document.body.innerText || '').toLocaleLowerCase('tr-TR');
+                    return !url.includes('login') || text.includes('hesabım') || text.includes('profil') || text.includes('hoş geldin');
+                })();
+                """);
+
+            if (IsScriptTrue(isCompleted))
+            {
+                Report("Giriş başarıyla tamamlandı.");
+                return;
+            }
+
+            await Task.Delay(500);
+        }
+
+        Report("Giriş tamamlanma kontrolü zaman aşımına uğradı, ancak devam ediliyor.");
+    }
+
+    public async Task SaveSessionAsync(string filePath)
+    {
+        if (string.IsNullOrWhiteSpace(filePath))
+            return;
+
+        try
+        {
+            var directory = Path.GetDirectoryName(filePath);
+            if (!string.IsNullOrWhiteSpace(directory))
+                Directory.CreateDirectory(directory);
+
+            var cookiesRaw = await EvaluateScriptAsync("document.cookie");
+            var cookies = (cookiesRaw ?? string.Empty).Trim().Trim('"');
+
+            var localStorageJson = await EvaluateScriptAsync(
+                """
+                (() => {
+                    const result = {};
+                    try {
+                        for (let i = 0; i < localStorage.length; i++) {
+                            const key = localStorage.key(i);
+                            if (key) result[key] = localStorage.getItem(key);
+                        }
+                    } catch {}
+                    return JSON.stringify(result);
+                })();
+                """);
+
+            var sessionStorageJson = await EvaluateScriptAsync(
+                """
+                (() => {
+                    const result = {};
+                    try {
+                        for (let i = 0; i < sessionStorage.length; i++) {
+                            const key = sessionStorage.key(i);
+                            if (key) result[key] = sessionStorage.getItem(key);
+                        }
+                    } catch {}
+                    return JSON.stringify(result);
+                })();
+                """);
+
+            var localStorage = DeserializeStorage(localStorageJson);
+            var sessionStorage = DeserializeStorage(sessionStorageJson);
+
+            var currentUrlRaw = await EvaluateScriptAsync("window.location.href");
+            var currentUrl = (currentUrlRaw ?? string.Empty).Trim().Trim('"');
+
+            var state = new EmbeddedSessionState
+            {
+                SavedAt = DateTimeOffset.UtcNow,
+                CurrentUrl = currentUrl,
+                Cookies = cookies,
+                LocalStorage = localStorage,
+                SessionStorage = sessionStorage
+            };
+
+            var json = JsonSerializer.Serialize(state, new JsonSerializerOptions { WriteIndented = true });
+            await File.WriteAllTextAsync(filePath, json);
+            Report($"Oturum gömülü tarayıcıdan dosyaya kaydedildi: {filePath}");
+        }
+        catch (Exception ex)
+        {
+            Report($"Oturum kaydetme hatası: {ex.Message}");
+        }
+    }
+
+    public async Task<bool> RestoreSessionAsync(string filePath)
+    {
+        if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))
+            return false;
+
+        try
+        {
+            var json = await File.ReadAllTextAsync(filePath);
+            var state = JsonSerializer.Deserialize<EmbeddedSessionState>(json);
+            if (state is null) return false;
+
+            Report($"Kaydedilmiş oturum gömülü tarayıcıya yükleniyor ({filePath})...");
+
+            if (!string.IsNullOrWhiteSpace(state.Cookies))
+            {
+                var cookieParts = state.Cookies.Split(';', StringSplitOptions.RemoveEmptyEntries);
+                foreach (var part in cookieParts)
+                {
+                    var partJson = JsonSerializer.Serialize(part.Trim() + "; path=/; domain=.yolcu360.com");
+                    await EvaluateScriptAsync($"document.cookie = {partJson};");
+                }
+            }
+
+            if (state.LocalStorage.Count > 0)
+            {
+                var localJson = JsonSerializer.Serialize(state.LocalStorage);
+                await EvaluateScriptAsync(
+                    $$"""
+                    (() => {
+                        const items = {{localJson}};
+                        for (const key in items) {
+                            if (Object.prototype.hasOwnProperty.call(items, key)) {
+                                localStorage.setItem(key, items[key]);
+                            }
+                        }
+                    })();
+                    """);
+            }
+
+            if (state.SessionStorage.Count > 0)
+            {
+                var sessionJson = JsonSerializer.Serialize(state.SessionStorage);
+                await EvaluateScriptAsync(
+                    $$"""
+                    (() => {
+                        const items = {{sessionJson}};
+                        for (const key in items) {
+                            if (Object.prototype.hasOwnProperty.call(items, key)) {
+                                sessionStorage.setItem(key, items[key]);
+                            }
+                        }
+                    })();
+                    """);
+            }
+
+            Report("Kaydedilmiş oturum gömülü tarayıcıya başarıyla restore edildi.");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Report($"Oturum yükleme hatası: {ex.Message}");
+            return false;
+        }
+    }
+
+    private static Dictionary<string, string?> DeserializeStorage(string? rawJson)
+    {
+        if (string.IsNullOrWhiteSpace(rawJson))
+            return new Dictionary<string, string?>();
+
+        try
+        {
+            var unescaped = rawJson.Trim().Trim('"').Replace("\\\"", "\"");
+            return JsonSerializer.Deserialize<Dictionary<string, string?>>(unescaped) ?? new Dictionary<string, string?>();
+        }
+        catch
+        {
+            return new Dictionary<string, string?>();
+        }
+    }
+
     public async Task FillPickupLocationAsync(string location)
     {
         if (string.IsNullOrWhiteSpace(location))
@@ -1017,6 +1414,32 @@ public sealed class EmbeddedBrowserAutomationService
     {
         Console.WriteLine($"[EmbeddedWebView] {message}");
         ProgressChanged?.Invoke(message);
+    }
+
+    private static string NormalizePhoneNumber(string raw)
+    {
+        var digits = new string(raw.Where(char.IsDigit).ToArray());
+        if (digits.StartsWith("90") && digits.Length == 12)
+            digits = digits[2..];
+        if (digits.StartsWith("0") && digits.Length == 11)
+            digits = digits[1..];
+        return digits;
+    }
+
+    private static List<string> SplitPhoneNumber(string number)
+    {
+        if (number.Length == 10)
+        {
+            return new List<string>
+            {
+                number.Substring(0, 3),
+                number.Substring(3, 3),
+                number.Substring(6, 2),
+                number.Substring(8, 2)
+            };
+        }
+
+        return new List<string> { number };
     }
 
     private static bool IsScriptTrue(string? value)

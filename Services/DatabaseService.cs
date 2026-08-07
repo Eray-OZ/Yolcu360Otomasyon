@@ -8,11 +8,13 @@ namespace Yolcu360Otomasyon.Services;
 public sealed class DatabaseService
 {
     private readonly DbContextOptions<AppDbContext> _options;
+    private readonly string _connectionString;
     private readonly SemaphoreSlim _schemaLock = new(1, 1);
     private bool _schemaReady;
 
     public DatabaseService(string connectionString)
     {
+        _connectionString = connectionString;
         _options = new DbContextOptionsBuilder<AppDbContext>()
             .UseMySql(connectionString, ServerVersion.AutoDetect(connectionString))
             .Options;
@@ -21,6 +23,30 @@ public sealed class DatabaseService
     public async Task EnsureDatabaseAsync()
     {
         await EnsureSchemaAsync();
+    }
+
+    private async Task EnsureDatabaseExistsAsync()
+    {
+        try
+        {
+            var builder = new MySqlConnectionStringBuilder(_connectionString);
+            var databaseName = builder.Database;
+
+            if (!string.IsNullOrWhiteSpace(databaseName))
+            {
+                builder.Database = string.Empty;
+                await using var connection = new MySqlConnection(builder.ConnectionString);
+                await connection.OpenAsync();
+
+                await using var command = connection.CreateCommand();
+                command.CommandText = $"CREATE DATABASE IF NOT EXISTS `{databaseName}` DEFAULT CHARACTER SET utf8mb4;";
+                await command.ExecuteNonQueryAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[DatabaseService] Database creation note: {ex.Message}");
+        }
     }
 
     private async Task EnsureSchemaAsync()
@@ -33,6 +59,8 @@ public sealed class DatabaseService
         {
             if (_schemaReady)
                 return;
+
+            await EnsureDatabaseExistsAsync();
 
             await using var context = new AppDbContext(_options);
             await context.Database.ExecuteSqlRawAsync("DROP TABLE IF EXISTS users;");
@@ -270,33 +298,39 @@ public sealed class DatabaseService
         var koleksiyon = new Koleksiyon
         {
             KullaniciId = kullaniciId,
-            OzelAd = ozelAd,
-            AlisYeri = filter.PickupLocation,
+            OzelAd = Truncate(ozelAd, 250),
+            AlisYeri = Truncate(filter.PickupLocation, 250),
             AlisTarihi = filter.PickupDate,
             DonusTarihi = filter.ReturnDate,
-            AlisSaati = filter.PickupTime,
-            DonusSaati = filter.ReturnTime,
-            SecilenVitesFiltresi = filter.TransmissionType,
-            SecilenYakitFiltresi = filter.FuelType,
+            AlisSaati = Truncate(filter.PickupTime, 16),
+            DonusSaati = Truncate(filter.ReturnTime, 16),
+            SecilenVitesFiltresi = Truncate(filter.TransmissionType, 64),
+            SecilenYakitFiltresi = Truncate(filter.FuelType, 64),
             OlusturmaTarihi = DateTime.UtcNow,
             Araclar = items.Select(item => new Arac
             {
-                Baslik = item.Title,
-                AltBaslik = item.Subtitle,
-                Fiyat = item.Price,
-                GunlukFiyat = item.DailyPrice,
-                Vites = item.Transmission,
-                Yakit = item.FuelType,
-                Sirket = item.Supplier,
-                TeslimBilgisi = item.PickupInfo,
-                IslemMetni = item.ActionText,
-                Baglanti = item.Url
+                Baslik = Truncate(item.Title, 250),
+                AltBaslik = Truncate(item.Subtitle, 250),
+                Fiyat = Truncate(item.Price, 64),
+                GunlukFiyat = Truncate(item.DailyPrice, 64),
+                Vites = Truncate(item.Transmission, 64),
+                Yakit = Truncate(item.FuelType, 64),
+                Sirket = Truncate(item.Supplier, 128),
+                TeslimBilgisi = Truncate(item.PickupInfo, 255),
+                IslemMetni = Truncate(item.ActionText, 128),
+                Baglanti = Truncate(item.Url, 1024)
             }).ToList()
         };
 
         context.Koleksiyonlar.Add(koleksiyon);
         await context.SaveChangesAsync();
         return koleksiyon.Id;
+    }
+
+    private static string Truncate(string? value, int maxLength)
+    {
+        if (string.IsNullOrEmpty(value)) return string.Empty;
+        return value.Length <= maxLength ? value : value[..maxLength];
     }
 
     public async Task<List<KoleksiyonListItem>> GetCollectionsAsync(int kullaniciId)

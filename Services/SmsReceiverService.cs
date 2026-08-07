@@ -39,19 +39,51 @@ public sealed class SmsReceiverService : IAsyncDisposable
         for (var offset = 0; offset < MaxPortAttempts && !started; offset++)
         {
             var candidatePort = _preferredPort + offset;
-            var candidateListener = new HttpListener();
-            candidateListener.Prefixes.Add($"http://+:{candidatePort}/");
 
+            // Attempt 1: Wildcard +
             try
             {
+                var candidateListener = new HttpListener();
+                candidateListener.Prefixes.Add($"http://+:{candidatePort}/");
                 candidateListener.Start();
                 _listener = candidateListener;
                 Port = candidatePort;
                 started = true;
+                break;
             }
-            catch (HttpListenerException ex) when (ex.ErrorCode == 48)
+            catch
             {
-                candidateListener.Close();
+            }
+
+            // Attempt 2: Wildcard *
+            try
+            {
+                var candidateListener = new HttpListener();
+                candidateListener.Prefixes.Add($"http://*:{candidatePort}/");
+                candidateListener.Start();
+                _listener = candidateListener;
+                Port = candidatePort;
+                started = true;
+                break;
+            }
+            catch
+            {
+            }
+
+            // Attempt 3: Localhost & 127.0.0.1
+            try
+            {
+                var candidateListener = new HttpListener();
+                candidateListener.Prefixes.Add($"http://localhost:{candidatePort}/");
+                candidateListener.Prefixes.Add($"http://127.0.0.1:{candidatePort}/");
+                candidateListener.Start();
+                _listener = candidateListener;
+                Port = candidatePort;
+                started = true;
+                break;
+            }
+            catch
+            {
             }
         }
 
@@ -130,18 +162,10 @@ public sealed class SmsReceiverService : IAsyncDisposable
         try
         {
             var requestPath = context.Request.Url?.AbsolutePath?.TrimEnd('/') ?? string.Empty;
-            if (!requestPath.StartsWith("/sms", StringComparison.OrdinalIgnoreCase))
-            {
-                Console.WriteLine($"[SMS] Desteklenmeyen yol: {context.Request.Url}");
-                context.Response.StatusCode = 404;
-                await WriteResponseAsync(context.Response, """{"error":"Not found."}""");
-                return;
-            }
-
             var (message, sender) = await ReadIncomingMessageAsync(context.Request);
             var code = ExtractCode(message);
 
-            Console.WriteLine($"[SMS] Istek alindi. Sender='{sender}', Message='{message}'");
+            Console.WriteLine($"[SMS] Istek alindi ({requestPath}). Sender='{sender}', Message='{message}'");
             SmsReceived?.Invoke(string.IsNullOrWhiteSpace(message)
                 ? $"{sender} | SMS isteği geldi ama mesaj alanı boş. URL: {context.Request.Url}"
                 : $"{sender} | {message}");

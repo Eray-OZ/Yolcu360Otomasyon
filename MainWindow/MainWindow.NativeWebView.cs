@@ -1,5 +1,6 @@
 using Avalonia.Interactivity;
 using Avalonia.Threading;
+using Yolcu360Otomasyon.Models;
 using Yolcu360Otomasyon.Services;
 
 namespace Yolcu360Otomasyon;
@@ -60,11 +61,28 @@ public partial class MainWindow
             var pickupTime = PickupTimeTextBox.Text?.Trim() ?? "10:00";
             var returnTime = ReturnTimeTextBox.Text?.Trim() ?? "18:00";
 
+            var filter = new SearchFilter
+            {
+                PickupLocation = pickupLocation,
+                PickupDate = pickupDate.Date,
+                ReturnDate = returnDate.Date,
+                PickupTime = pickupTime,
+                ReturnTime = returnTime,
+                TransmissionType = GetComboBoxTag(TransmissionComboBox),
+                FuelType = GetComboBoxTag(FuelComboBox)
+            };
+            _latestSearchFilter = filter;
+
             ShowBrowserSection();
             SearchStatusTextBlock.Text = "Gömülü tarayıcı arama formu hazırlanıyor...";
             await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Render);
 
             var embeddedBrowser = CreateEmbeddedBrowserAutomationService();
+            if (_activeUser is not null && !string.IsNullOrWhiteSpace(_activeUser.SessionStatePath))
+            {
+                await embeddedBrowser.RestoreSessionAsync(_activeUser.SessionStatePath);
+            }
+
             await embeddedBrowser.OpenYolcu360HomeAsync();
 
             SearchStatusTextBlock.Text = "Gömülü tarayıcı alış yeri seçiyor...";

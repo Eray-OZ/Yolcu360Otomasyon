@@ -69,14 +69,18 @@ public partial class MainWindow : Window
             }
 
             var sessionStatePath = BuildSessionStatePath(email);
+            if (File.Exists(sessionStatePath))
+            {
+                try { File.Delete(sessionStatePath); } catch { }
+            }
+
             await _databaseService.SaveOrUpdateUserAsync(email, password, phoneNumber, sessionStatePath);
 
             LoginEmailTextBox.Text = email;
             LoginPasswordTextBox.Text = password;
-            StatusTextBlock.Text = "Kayıt oluşturuldu. Giriş başlatılıyor...";
+            StatusTextBlock.Text = "Kayıt oluşturuldu. Gömülü tarayıcıda giriş başlatılıyor...";
 
-            ShowLoginView();
-            await PerformLoginAsync(email, password);
+            await PerformLoginAsync(email, password, forceBrowserLogin: true);
         }
         catch (Exception ex)
         {
@@ -88,7 +92,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private async Task PerformLoginAsync(string email, string password)
+    private async Task PerformLoginAsync(string email, string password, bool forceBrowserLogin = false)
     {
         LoginButton.IsEnabled = false;
         try
@@ -102,7 +106,7 @@ public partial class MainWindow : Window
             }
 
             var sessionStatePath = BuildSessionStatePath(email);
-            if (File.Exists(sessionStatePath))
+            if (!forceBrowserLogin && File.Exists(sessionStatePath))
             {
                 _activeUser = new AppUser
                 {
@@ -119,16 +123,20 @@ public partial class MainWindow : Window
                 return;
             }
 
-            StatusTextBlock.Text = "Tarayıcı başlatılıyor...";
+            // Gömülü tarayıcıyı canlı göstermek için Ana Görünüme ve Tarayıcı Paneline geç
+            LoginView.IsVisible = false;
+            RegisterView.IsVisible = false;
+            MainView.IsVisible = true;
+            ShowBrowserSection();
 
-            _browserAutomationService = new BrowserAutomationService(sessionStatePath);
-            _browserAutomationService.ProgressChanged -= BrowserAutomationService_LoginProgressChanged;
-            _browserAutomationService.ProgressChanged += BrowserAutomationService_LoginProgressChanged;
-            await _browserAutomationService.InitializeAsync(headless: false, restoreSession: false);
+            StatusTextBlock.Text = "Gömülü tarayıcı hazırlanıyor...";
+            await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Render);
+
+            var embeddedBrowser = CreateEmbeddedBrowserAutomationService();
 
             StatusTextBlock.Text = "Yolcu360 giriş ekranı dolduruluyor...";
             _smsReceiverService.ClearLatestCode();
-            await _browserAutomationService.LoginWithPhoneAsync(user.PhoneNumber);
+            await embeddedBrowser.LoginWithPhoneAsync(user.PhoneNumber);
 
             StatusTextBlock.Text = "SMS doğrulama kodu bekleniyor...";
             string code;
@@ -143,12 +151,12 @@ public partial class MainWindow : Window
             }
 
             StatusTextBlock.Text = $"SMS kodu alındı: {code}";
-            await _browserAutomationService.FillSmsVerificationCodeAsync(code);
+            await embeddedBrowser.FillSmsVerificationCodeAsync(code);
             StatusTextBlock.Text = "Girişin tamamlanması bekleniyor...";
-            await _browserAutomationService.WaitForLoginCompletedAsync();
+            await embeddedBrowser.WaitForLoginCompletedAsync();
 
             StatusTextBlock.Text = "Oturum kaydediliyor...";
-            await _browserAutomationService.SaveCurrentSessionAsync();
+            await embeddedBrowser.SaveSessionAsync(sessionStatePath);
             await _databaseService.SaveOrUpdateUserAsync(email, password, user.PhoneNumber, sessionStatePath);
 
             _activeUser = new AppUser
@@ -161,9 +169,14 @@ public partial class MainWindow : Window
             };
 
             StatusTextBlock.Text = "Giriş tamamlandı.";
-            await CloseBrowserAfterAuthAsync();
             ShowMainView();
+            ShowSearchSection();
             await LoadHistoryAsync();
+        }
+        catch (Exception ex)
+        {
+            ShowLoginView();
+            StatusTextBlock.Text = $"Giriş hatası: {ex.Message}";
         }
         finally
         {
