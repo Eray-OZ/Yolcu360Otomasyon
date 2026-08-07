@@ -30,6 +30,30 @@ public partial class MainWindow : Window
         }
 
         _selectedCollection = _selectedCollections[0];
+        UpdateSelectedCollectionSummary(_selectedCollections);
+        HistoryStatusTextBlock.Text = _selectedCollections.Count == 1
+            ? $"{_selectedCollection.OzelAd} kaydı seçildi."
+            : $"{_selectedCollections.Count} kayıt seçildi.";
+    }
+
+    private async void ViewVehiclesButton_Click(object? sender, RoutedEventArgs e)
+    {
+        await OpenSelectedCollectionVehiclesAsync();
+    }
+
+    private async void CollectionsDataGrid_DoubleTapped(object? sender, Avalonia.Input.TappedEventArgs e)
+    {
+        await OpenSelectedCollectionVehiclesAsync();
+    }
+
+    private async Task OpenSelectedCollectionVehiclesAsync()
+    {
+        if (_selectedCollection is null)
+        {
+            HistoryStatusTextBlock.Text = "Araçlarını görüntülemek için lütfen bir koleksiyon seçin.";
+            return;
+        }
+
         _selectedCollectionVehicles = await _databaseService.GetCollectionVehiclesAsync(_selectedCollection.Id);
         CollectionVehiclesDataGrid.ItemsSource = null;
         CollectionVehiclesDataGrid.ItemsSource = _selectedCollectionVehicles;
@@ -44,10 +68,19 @@ public partial class MainWindow : Window
             _selectedVehicle = null;
         }
 
-        UpdateSelectedCollectionSummary(_selectedCollections);
-        HistoryStatusTextBlock.Text = _selectedCollections.Count == 1
-            ? $"{_selectedCollection.OzelAd} kaydı seçildi. {_selectedCollectionVehicles.Count} araç listelendi."
-            : $"{_selectedCollections.Count} kayıt seçildi.";
+        VehicleViewTitleTextBlock.Text = $"{_selectedCollection.OzelAd} (Araç Listesi)";
+        VehicleViewSubtitleTextBlock.Text = $"Alış Yeri: {_selectedCollection.AlisYeri} | Toplam {_selectedCollectionVehicles.Count} Araç Kayıtlı";
+        VehicleStatusTextBlock.Text = $"{_selectedCollection.OzelAd} koleksiyonu için {_selectedCollectionVehicles.Count} araç listelendi.";
+
+        CollectionsViewPanel.IsVisible = false;
+        VehiclesViewPanel.IsVisible = true;
+    }
+
+    private void BackToCollectionsButton_Click(object? sender, RoutedEventArgs e)
+    {
+        VehiclesViewPanel.IsVisible = false;
+        CollectionsViewPanel.IsVisible = true;
+        HistoryStatusTextBlock.Text = "Koleksiyonlar listesine dönüldü.";
     }
 
     private void CollectionVehiclesDataGrid_SelectionChanged(object? sender, SelectionChangedEventArgs e)
@@ -55,7 +88,7 @@ public partial class MainWindow : Window
         if (CollectionVehiclesDataGrid.SelectedItem is SearchResultItem vehicle)
         {
             _selectedVehicle = vehicle;
-            HistoryStatusTextBlock.Text = $"{_selectedCollection?.OzelAd} - {vehicle.Title} seçildi ({vehicle.Price}).";
+            VehicleStatusTextBlock.Text = $"{_selectedCollection?.OzelAd} - {vehicle.Title} seçildi ({vehicle.Price}).";
         }
     }
 
@@ -118,6 +151,9 @@ public partial class MainWindow : Window
     {
         if (_activeUser is null)
             return;
+
+        CollectionsViewPanel.IsVisible = true;
+        VehiclesViewPanel.IsVisible = false;
 
         var collections = await _databaseService.GetCollectionsAsync(_activeUser.Id);
         CollectionsDataGrid.ItemsSource = null;

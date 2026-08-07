@@ -622,158 +622,183 @@
                             BorderThickness="1"
                             CornerRadius="10"
                             Padding="22">
-                        <Grid x:Name="HistoryExportRoot"
-                              RowDefinitions="Auto,Auto,*,Auto,Auto,Auto"
-                              RowSpacing="16">
-                            <StackPanel Spacing="4">
-                                <TextBlock Text="Geçmiş Kayıtlar"
-                                           FontSize="22"
-                                           FontWeight="Bold"
-                                           Foreground="#122033" />
-                                <TextBlock Text="Kaydedilen arama listelerini açın, silin veya PNG olarak indirin."
-                                           Foreground="#5F7187" />
-                            </StackPanel>
+                        <Grid x:Name="HistoryExportRoot">
 
-                            <TextBlock x:Name="HistoryStatusTextBlock"
-                                       Grid.Row="1"
-                                       Foreground="#132235"
-                                       FontWeight="SemiBold"
-                                       TextWrapping="Wrap" />
+                            <!-- KOLEKSİYONLAR LİSTESİ GÖRÜNÜMÜ -->
+                            <Grid x:Name="CollectionsViewPanel"
+                                  IsVisible="True"
+                                  RowDefinitions="Auto,Auto,*,Auto,Auto"
+                                  RowSpacing="16">
+                                <StackPanel Spacing="4">
+                                    <TextBlock Text="Geçmiş Kayıtlar ve Koleksiyonlar"
+                                               FontSize="22"
+                                               FontWeight="Bold"
+                                               Foreground="#122033" />
+                                    <TextBlock Text="Kaydedilen arama listelerinizi inceleyin, araçlarını görüntüleyin veya PNG olarak indirin."
+                                               Foreground="#5F7187" />
+                                </StackPanel>
 
-                            <Border Grid.Row="2"
-                                    Background="#FBFDFF"
-                                    BorderBrush="#E2EAF2"
-                                    BorderThickness="1"
-                                    CornerRadius="10"
-                                    Padding="0">
-                                <DataGrid x:Name="CollectionsDataGrid"
-                                          AutoGenerateColumns="True"
-                                          IsReadOnly="True"
-                                          CanUserResizeColumns="True"
-                                          CanUserSortColumns="True"
-                                          SelectionMode="Extended"
-                                          SelectionChanged="CollectionsDataGrid_SelectionChanged"
-                                          MinHeight="220" />
-                            </Border>
+                                <TextBlock x:Name="HistoryStatusTextBlock"
+                                           Grid.Row="1"
+                                           Foreground="#132235"
+                                           FontWeight="SemiBold"
+                                           TextWrapping="Wrap" />
 
-                            <StackPanel Grid.Row="3"
-                                        Orientation="Horizontal"
-                                        Spacing="12">
-                                <Button x:Name="CreatePaymentButton"
-                                        Classes="primary"
-                                        Content="Seçilen Araç İçin Ödeme"
-                                        Width="220"
-                                        Click="CreatePaymentButton_Click" />
-                                <Button x:Name="DeleteCollectionButton"
-                                        Content="Sil"
-                                        Width="120"
-                                        Click="DeleteCollectionButton_Click" />
-                                <Button x:Name="ExportPngButton"
-                                        Classes="primary"
-                                        Content="PNG Olarak İndir"
-                                        Width="180"
-                                        Click="ExportPngButton_Click" />
-                            </StackPanel>
+                                <Border Grid.Row="2"
+                                        Background="#FBFDFF"
+                                        BorderBrush="#E2EAF2"
+                                        BorderThickness="1"
+                                        CornerRadius="10"
+                                        Padding="0">
+                                    <DataGrid x:Name="CollectionsDataGrid"
+                                              AutoGenerateColumns="True"
+                                              IsReadOnly="True"
+                                              CanUserResizeColumns="True"
+                                              CanUserSortColumns="True"
+                                              SelectionMode="Extended"
+                                              SelectionChanged="CollectionsDataGrid_SelectionChanged"
+                                              DoubleTapped="CollectionsDataGrid_DoubleTapped"
+                                              MinHeight="280" />
+                                </Border>
 
-                            <Border Grid.Row="4"
-                                    Background="#F7FAFE"
-                                    BorderBrush="#DCE6F2"
-                                    BorderThickness="1"
-                                    CornerRadius="10"
-                                    Padding="18">
-                                <Grid ColumnDefinitions="*,*"
-                                      RowDefinitions="Auto,Auto,Auto"
-                                      ColumnSpacing="18"
-                                      RowSpacing="10">
+                                <StackPanel Grid.Row="3"
+                                            Orientation="Horizontal"
+                                            Spacing="12">
+                                    <Button x:Name="ViewVehiclesButton"
+                                            Classes="primary"
+                                            Content="Araçları Göster"
+                                            Width="160"
+                                            Click="ViewVehiclesButton_Click" />
+                                    <Button x:Name="DeleteCollectionButton"
+                                            Content="Sil"
+                                            Width="120"
+                                            Click="DeleteCollectionButton_Click" />
+                                    <Button x:Name="ExportPngButton"
+                                            Classes="primary"
+                                            Content="PNG Olarak İndir"
+                                            Width="180"
+                                            Click="ExportPngButton_Click" />
+                                </StackPanel>
+
+                                <Border Grid.Row="4"
+                                        Background="#F7FAFE"
+                                        BorderBrush="#DCE6F2"
+                                        BorderThickness="1"
+                                        CornerRadius="10"
+                                        Padding="18">
+                                    <Grid ColumnDefinitions="*,*"
+                                          RowDefinitions="Auto,Auto,Auto"
+                                          ColumnSpacing="18"
+                                          RowSpacing="10">
+                                        <StackPanel Spacing="4">
+                                            <TextBlock Text="Seçili Kayıt"
+                                                       FontWeight="Bold"
+                                                       Foreground="#122033" />
+                                            <TextBlock x:Name="SelectedCollectionNameTextBlock"
+                                                       Text="-"
+                                                       Foreground="#132235"
+                                                       FontWeight="SemiBold"
+                                                       TextWrapping="Wrap" />
+                                        </StackPanel>
+
+                                        <StackPanel Grid.Column="1"
+                                                    Spacing="4">
+                                            <TextBlock Text="Alış Yeri"
+                                                       FontWeight="Bold"
+                                                       Foreground="#122033" />
+                                            <TextBlock x:Name="SelectedCollectionLocationTextBlock"
+                                                       Text="-"
+                                                       Foreground="#132235"
+                                                       TextWrapping="Wrap" />
+                                        </StackPanel>
+
+                                        <StackPanel Grid.Row="1"
+                                                    Spacing="4">
+                                            <TextBlock Text="Tarih ve Saat"
+                                                       FontWeight="Bold"
+                                                       Foreground="#122033" />
+                                            <TextBlock x:Name="SelectedCollectionDateRangeTextBlock"
+                                                       Text="-"
+                                                       Foreground="#132235"
+                                                       TextWrapping="Wrap" />
+                                        </StackPanel>
+
+                                        <StackPanel Grid.Row="1"
+                                                    Grid.Column="1"
+                                                    Spacing="4">
+                                            <TextBlock Text="Filtreler"
+                                                       FontWeight="Bold"
+                                                       Foreground="#122033" />
+                                            <TextBlock x:Name="SelectedCollectionFiltersTextBlock"
+                                                       Text="-"
+                                                       Foreground="#132235"
+                                                       TextWrapping="Wrap" />
+                                        </StackPanel>
+
+                                        <StackPanel Grid.Row="2"
+                                                    Spacing="4">
+                                            <TextBlock Text="Araç Sayısı"
+                                                       FontWeight="Bold"
+                                                       Foreground="#122033" />
+                                            <TextBlock x:Name="SelectedCollectionCountTextBlock"
+                                                       Text="-"
+                                                       Foreground="#132235"
+                                                       TextWrapping="Wrap" />
+                                        </StackPanel>
+
+                                        <StackPanel Grid.Row="2"
+                                                    Grid.Column="1"
+                                                    Spacing="4">
+                                            <TextBlock Text="Oluşturulma"
+                                                       FontWeight="Bold"
+                                                       Foreground="#122033" />
+                                            <TextBlock x:Name="SelectedCollectionCreatedAtTextBlock"
+                                                       Text="-"
+                                                       Foreground="#132235"
+                                                       TextWrapping="Wrap" />
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                            </Grid>
+
+                            <!-- KOLEKSİYON ARAÇLARI LİSTESİ GÖRÜNÜMÜ -->
+                            <Grid x:Name="VehiclesViewPanel"
+                                  IsVisible="False"
+                                  RowDefinitions="Auto,Auto,*,Auto"
+                                  RowSpacing="16">
+                                <Grid ColumnDefinitions="*,Auto"
+                                      VerticalAlignment="Center">
                                     <StackPanel Spacing="4">
-                                        <TextBlock Text="Seçili Kayıt"
+                                        <TextBlock x:Name="VehicleViewTitleTextBlock"
+                                                   Text="Koleksiyondaki Araçlar"
+                                                   FontSize="22"
                                                    FontWeight="Bold"
                                                    Foreground="#122033" />
-                                        <TextBlock x:Name="SelectedCollectionNameTextBlock"
-                                                   Text="-"
-                                                   Foreground="#132235"
-                                                   FontWeight="SemiBold"
-                                                   TextWrapping="Wrap" />
-                                    </StackPanel>
-
-                                    <StackPanel Grid.Column="1"
-                                                Spacing="4">
-                                        <TextBlock Text="Alış Yeri"
-                                                   FontWeight="Bold"
-                                                   Foreground="#122033" />
-                                        <TextBlock x:Name="SelectedCollectionLocationTextBlock"
-                                                   Text="-"
-                                                   Foreground="#132235"
-                                                   TextWrapping="Wrap" />
-                                    </StackPanel>
-
-                                    <StackPanel Grid.Row="1"
-                                                Spacing="4">
-                                        <TextBlock Text="Tarih ve Saat"
-                                                   FontWeight="Bold"
-                                                   Foreground="#122033" />
-                                        <TextBlock x:Name="SelectedCollectionDateRangeTextBlock"
-                                                   Text="-"
-                                                   Foreground="#132235"
-                                                   TextWrapping="Wrap" />
-                                    </StackPanel>
-
-                                    <StackPanel Grid.Row="1"
-                                                Grid.Column="1"
-                                                Spacing="4">
-                                        <TextBlock Text="Filtreler"
-                                                   FontWeight="Bold"
-                                                   Foreground="#122033" />
-                                        <TextBlock x:Name="SelectedCollectionFiltersTextBlock"
-                                                   Text="-"
-                                                   Foreground="#132235"
-                                                   TextWrapping="Wrap" />
-                                    </StackPanel>
-
-                                    <StackPanel Grid.Row="2"
-                                                Spacing="4">
-                                        <TextBlock Text="Araç Sayısı"
-                                                   FontWeight="Bold"
-                                                   Foreground="#122033" />
-                                        <TextBlock x:Name="SelectedCollectionCountTextBlock"
-                                                   Text="-"
-                                                   Foreground="#132235"
-                                                   TextWrapping="Wrap" />
-                                    </StackPanel>
-
-                                    <StackPanel Grid.Row="2"
-                                                Grid.Column="1"
-                                                Spacing="4">
-                                        <TextBlock Text="Oluşturulma"
-                                                   FontWeight="Bold"
-                                                   Foreground="#122033" />
-                                        <TextBlock x:Name="SelectedCollectionCreatedAtTextBlock"
-                                                   Text="-"
-                                                   Foreground="#132235"
-                                                   TextWrapping="Wrap" />
-                                    </StackPanel>
-                                </Grid>
-                            </Border>
-
-                            <Border Grid.Row="5"
-                                    Background="#FBFDFF"
-                                    BorderBrush="#E2EAF2"
-                                    BorderThickness="1"
-                                    CornerRadius="10"
-                                    Padding="18">
-                                <Grid RowDefinitions="Auto,*"
-                                      RowSpacing="12">
-                                    <StackPanel Spacing="4">
-                                        <TextBlock Text="Koleksiyondaki Araçlar"
-                                                   FontSize="18"
-                                                   FontWeight="Bold"
-                                                   Foreground="#122033" />
-                                        <TextBlock Text="Aşağıdaki listeden bir araç seçerek ödemesini gerçekleştirebilirsiniz."
+                                        <TextBlock x:Name="VehicleViewSubtitleTextBlock"
+                                                   Text="Aşağıdaki listeden bir araç seçerek ödemesini gerçekleştirebilirsiniz."
                                                    Foreground="#5F7187" />
                                     </StackPanel>
 
-                                    <DataGrid Grid.Row="1"
-                                              x:Name="CollectionVehiclesDataGrid"
+                                    <Button Grid.Column="1"
+                                            x:Name="BackToCollectionsButton"
+                                            Content="← Koleksiyonlara Dön"
+                                            Width="190"
+                                            Click="BackToCollectionsButton_Click" />
+                                </Grid>
+
+                                <TextBlock x:Name="VehicleStatusTextBlock"
+                                           Grid.Row="1"
+                                           Foreground="#132235"
+                                           FontWeight="SemiBold"
+                                           TextWrapping="Wrap" />
+
+                                <Border Grid.Row="2"
+                                        Background="#FBFDFF"
+                                        BorderBrush="#E2EAF2"
+                                        BorderThickness="1"
+                                        CornerRadius="10"
+                                        Padding="0">
+                                    <DataGrid x:Name="CollectionVehiclesDataGrid"
                                               x:DataType="models:SearchResultItem"
                                               AutoGenerateColumns="False"
                                               IsReadOnly="True"
@@ -781,7 +806,7 @@
                                               CanUserSortColumns="True"
                                               SelectionMode="Single"
                                               SelectionChanged="CollectionVehiclesDataGrid_SelectionChanged"
-                                              MinHeight="250">
+                                              MinHeight="300">
                                         <DataGrid.Columns>
                                             <DataGridTextColumn Header="Araç" Binding="{Binding Title}" Width="2*" />
                                             <DataGridTextColumn Header="Detay" Binding="{Binding Subtitle}" Width="2*" />
@@ -792,8 +817,27 @@
                                             <DataGridTextColumn Header="Tedarikçi" Binding="{Binding Supplier}" Width="1*" />
                                         </DataGrid.Columns>
                                     </DataGrid>
-                                </Grid>
-                            </Border>
+                                </Border>
+
+                                <StackPanel Grid.Row="3"
+                                            Orientation="Horizontal"
+                                            Spacing="12">
+                                    <Button x:Name="BackToCollectionsButtonBottom"
+                                            Content="← Koleksiyonlara Dön"
+                                            Width="190"
+                                            Click="BackToCollectionsButton_Click" />
+                                    <Button x:Name="CreatePaymentButton"
+                                            Classes="primary"
+                                            Content="Seçilen Araç İçin Ödeme"
+                                            Width="220"
+                                            Click="CreatePaymentButton_Click" />
+                                    <Button x:Name="ExportPngButtonVehicles"
+                                            Classes="primary"
+                                            Content="PNG Olarak İndir"
+                                            Width="180"
+                                            Click="ExportPngButton_Click" />
+                                </StackPanel>
+                            </Grid>
 
                         </Grid>
                     </Border>
