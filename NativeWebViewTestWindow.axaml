@@ -1,0 +1,41 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Yolcu360Otomasyon.NativeWebViewTestWindow"
+        Title="Native WebView Test"
+        Width="1100"
+        Height="760"
+        Background="#F4F7FB">
+    <Grid RowDefinitions="Auto,*"
+          Margin="16"
+          RowSpacing="12">
+        <Border Background="White"
+                BorderBrush="#D6DFEA"
+                BorderThickness="1"
+                CornerRadius="8"
+                Padding="12">
+            <StackPanel Orientation="Horizontal"
+                        Spacing="12"
+                        VerticalAlignment="Center">
+                <Button Content="Example"
+                        Click="ExampleButton_Click" />
+                <Button Content="Yolcu360"
+                        Click="Yolcu360Button_Click" />
+                <Button Content="JS Test"
+                        Click="JsTestButton_Click" />
+                <TextBlock x:Name="NativeWebViewStatusTextBlock"
+                           VerticalAlignment="Center"
+                           Foreground="#132235"
+                           Text="NativeWebView hazırlanıyor..." />
+            </StackPanel>
+        </Border>
+
+        <Border Grid.Row="1"
+                Background="White"
+                BorderBrush="#D6DFEA"
+                BorderThickness="1"
+                CornerRadius="8">
+            <NativeWebView x:Name="NativeBrowser"
+                           Source="https://example.com" />
+        </Border>
+    </Grid>
+</Window>
