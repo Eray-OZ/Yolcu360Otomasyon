@@ -525,7 +525,7 @@
                             BorderThickness="1"
                             CornerRadius="10"
                             Padding="22">
-                        <Grid RowDefinitions="Auto,Auto,*"
+                        <Grid RowDefinitions="Auto,Auto,Auto,*"
                               RowSpacing="16">
                             <StackPanel Spacing="4">
                                 <TextBlock Text="Arama Sonuçları"
@@ -536,7 +536,20 @@
                                            Foreground="#5F7187" />
                             </StackPanel>
 
-                            <Grid Grid.Row="1"
+                            <Border Grid.Row="1"
+                                    x:Name="EmbeddedBrowserPanel"
+                                    IsVisible="False"
+                                    Background="#FBFDFF"
+                                    BorderBrush="#E2EAF2"
+                                    BorderThickness="1"
+                                    CornerRadius="10"
+                                    Padding="0"
+                                    MinHeight="360">
+                                <NativeWebView x:Name="EmbeddedBrowser"
+                                               Source="about:blank" />
+                            </Border>
+
+                            <Grid Grid.Row="2"
                                   ColumnDefinitions="*,Auto"
                                   ColumnSpacing="12">
                                 <TextBox x:Name="CollectionNameTextBox"
@@ -549,7 +562,7 @@
                                         Click="SaveResultsButton_Click" />
                             </Grid>
 
-                            <Border Grid.Row="2"
+                            <Border Grid.Row="3"
                                     Background="#FBFDFF"
                                     BorderBrush="#E2EAF2"
                                     BorderThickness="1"
