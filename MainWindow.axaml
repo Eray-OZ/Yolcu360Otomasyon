@@ -407,6 +407,7 @@
                                 Click="PaymentsTabButton_Click" />
                         <Button x:Name="NativeWebViewTestButton"
                                 Content="Tarayıcı"
+                                IsVisible="False"
                                 Width="160"
                                 Click="NativeWebViewTestButton_Click" />
                     </StackPanel>
@@ -516,23 +517,17 @@
                                 </Grid>
                             </StackPanel>
 
-                            <StackPanel Orientation="Horizontal"
-                                        Spacing="12">
-                                <Button x:Name="SearchButton"
-                                        Classes="primary"
-                                        Content="Ara"
-                                        Click="SearchButton_Click"
-                                        Width="160" />
-                                <Button x:Name="EmbeddedSearchTestButton"
-                                        Content="Gömülü Ara Test"
-                                        Click="EmbeddedSearchTestButton_Click"
-                                        Width="170" />
-                            </StackPanel>
+                            <Button x:Name="SearchButton"
+                                    Classes="primary"
+                                    Content="Ara"
+                                    Click="SearchButton_Click"
+                                    Width="160" />
                         </StackPanel>
                     </Border>
 
                     <Border Grid.Row="2"
                             x:Name="SearchResultsPanel"
+                            IsVisible="False"
                             Background="White"
                             BorderBrush="#D9E2EC"
                             BorderThickness="1"

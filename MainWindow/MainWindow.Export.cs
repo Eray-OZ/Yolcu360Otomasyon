@@ -104,8 +104,8 @@ public partial class MainWindow : Window
                     new TextBlock
                     {
                         Text =
-                            $"Filtreler: Vites = {string.Join(", ", collections.Select(item => FormatFilterValue(item.SecilenVitesFiltresi)).Distinct())}, " +
-                            $"Yakıt = {string.Join(", ", collections.Select(item => FormatFilterValue(item.SecilenYakitFiltresi)).Distinct())}",
+                            $"Filtreler: Vites = {string.Join(", ", collections.Select(item => FormatFilterValue(item.SecilenVitesFiltresi, isTransmission: true)).Distinct())}, " +
+                            $"Yakıt = {string.Join(", ", collections.Select(item => FormatFilterValue(item.SecilenYakitFiltresi, isTransmission: false)).Distinct())}",
                         Foreground = new SolidColorBrush(Color.Parse("#D6E2F0"))
                     },
                     new TextBlock
@@ -152,7 +152,7 @@ public partial class MainWindow : Window
                         0),
                     CreateSummaryBlock(
                         "Filtreler",
-                        $"Vites: {FormatFilterValue(collection.SecilenVitesFiltresi)} | Yakıt: {FormatFilterValue(collection.SecilenYakitFiltresi)}",
+                        $"Vites: {FormatFilterValue(collection.SecilenVitesFiltresi, isTransmission: true)} | Yakıt: {FormatFilterValue(collection.SecilenYakitFiltresi, isTransmission: false)}",
                         1,
                         1),
                     CreateSummaryBlock("Araç Sayısı", vehicles.Count.ToString(), 2, 0),
@@ -276,8 +276,11 @@ public partial class MainWindow : Window
         return panel;
     }
 
-    private static string FormatFilterValue(string? value)
+    private static string FormatFilterValue(string? value, bool isTransmission = false)
     {
-        return string.IsNullOrWhiteSpace(value) ? "Farketmez" : value;
+        if (string.IsNullOrWhiteSpace(value) || value == "Farketmez")
+            return "-";
+
+        return value;
     }
 }

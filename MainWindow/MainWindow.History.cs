@@ -185,11 +185,11 @@ public partial class MainWindow : Window
             SelectedCollectionDateRangeTextBlock.Text =
                 $"{collection.AlisTarihi:dd.MM.yyyy} {collection.AlisSaati} - {collection.DonusTarihi:dd.MM.yyyy} {collection.DonusSaati}";
 
-            var transmission = string.IsNullOrWhiteSpace(collection.SecilenVitesFiltresi)
-                ? "Farketmez"
+            var transmission = string.IsNullOrWhiteSpace(collection.SecilenVitesFiltresi) || collection.SecilenVitesFiltresi == "Farketmez"
+                ? "-"
                 : collection.SecilenVitesFiltresi;
-            var fuel = string.IsNullOrWhiteSpace(collection.SecilenYakitFiltresi)
-                ? "Farketmez"
+            var fuel = string.IsNullOrWhiteSpace(collection.SecilenYakitFiltresi) || collection.SecilenYakitFiltresi == "Farketmez"
+                ? "-"
                 : collection.SecilenYakitFiltresi;
             SelectedCollectionFiltersTextBlock.Text = $"Vites: {transmission} | Yakıt: {fuel}";
             SelectedCollectionCountTextBlock.Text = collection.AracSayisi.ToString();
@@ -202,8 +202,8 @@ public partial class MainWindow : Window
         SelectedCollectionDateRangeTextBlock.Text =
             $"{collections.Min(item => item.AlisTarihi):dd.MM.yyyy} - {collections.Max(item => item.DonusTarihi):dd.MM.yyyy}";
         SelectedCollectionFiltersTextBlock.Text =
-            $"Vites: {string.Join(", ", collections.Select(item => string.IsNullOrWhiteSpace(item.SecilenVitesFiltresi) ? "Farketmez" : item.SecilenVitesFiltresi).Distinct())} | " +
-            $"Yakıt: {string.Join(", ", collections.Select(item => string.IsNullOrWhiteSpace(item.SecilenYakitFiltresi) ? "Farketmez" : item.SecilenYakitFiltresi).Distinct())}";
+            $"Vites: {string.Join(", ", collections.Select(item => string.IsNullOrWhiteSpace(item.SecilenVitesFiltresi) || item.SecilenVitesFiltresi == "Farketmez" ? "-" : item.SecilenVitesFiltresi).Distinct())} | " +
+            $"Yakıt: {string.Join(", ", collections.Select(item => string.IsNullOrWhiteSpace(item.SecilenYakitFiltresi) || item.SecilenYakitFiltresi == "Farketmez" ? "-" : item.SecilenYakitFiltresi).Distinct())}";
         SelectedCollectionCountTextBlock.Text = collections.Sum(item => item.AracSayisi).ToString();
         SelectedCollectionCreatedAtTextBlock.Text =
             $"{collections.Min(item => item.OlusturmaTarihi).ToLocalTime():dd.MM.yyyy HH:mm} - {collections.Max(item => item.OlusturmaTarihi).ToLocalTime():dd.MM.yyyy HH:mm}";

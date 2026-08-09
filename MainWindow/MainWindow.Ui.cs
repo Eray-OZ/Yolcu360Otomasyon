@@ -9,7 +9,7 @@ public partial class MainWindow : Window
     private void ShowSearchSection()
     {
         SearchPanel.IsVisible = true;
-        SearchResultsPanel.IsVisible = true;
+        SearchResultsPanel.IsVisible = _latestResults is not null && _latestResults.Count > 0;
         HistoryPanel.IsVisible = false;
         PaymentsPanel.IsVisible = false;
         PaymentCheckoutPanel.IsVisible = false;
@@ -18,6 +18,7 @@ public partial class MainWindow : Window
         HistoryTabButton.Classes.Set("primary", false);
         PaymentsTabButton.Classes.Set("primary", false);
         NativeWebViewTestButton.Classes.Set("primary", false);
+        NativeWebViewTestButton.IsVisible = false;
     }
 
     private void ShowHistorySection()
@@ -32,6 +33,7 @@ public partial class MainWindow : Window
         HistoryTabButton.Classes.Set("primary", true);
         PaymentsTabButton.Classes.Set("primary", false);
         NativeWebViewTestButton.Classes.Set("primary", false);
+        NativeWebViewTestButton.IsVisible = false;
     }
 
     private void ShowPaymentsSection()
@@ -46,6 +48,7 @@ public partial class MainWindow : Window
         HistoryTabButton.Classes.Set("primary", false);
         PaymentsTabButton.Classes.Set("primary", true);
         NativeWebViewTestButton.Classes.Set("primary", false);
+        NativeWebViewTestButton.IsVisible = false;
     }
 
     private void ShowPaymentCheckoutSection()
@@ -60,6 +63,7 @@ public partial class MainWindow : Window
         HistoryTabButton.Classes.Set("primary", false);
         PaymentsTabButton.Classes.Set("primary", true);
         NativeWebViewTestButton.Classes.Set("primary", false);
+        NativeWebViewTestButton.IsVisible = false;
     }
 
     private void ShowBrowserSection()
@@ -74,6 +78,7 @@ public partial class MainWindow : Window
         HistoryTabButton.Classes.Set("primary", false);
         PaymentsTabButton.Classes.Set("primary", false);
         NativeWebViewTestButton.Classes.Set("primary", true);
+        NativeWebViewTestButton.IsVisible = true;
     }
 
     private void ConfigureResultsGrid()
@@ -159,7 +164,7 @@ public partial class MainWindow : Window
 
         CollectionsDataGrid.Columns.Add(new DataGridTextColumn
         {
-            Header = "Tarih Aralığı",
+            Header = "Alış",
             Binding = new Binding(nameof(KoleksiyonListItem.AlisTarihi))
             {
                 StringFormat = "dd.MM.yyyy"

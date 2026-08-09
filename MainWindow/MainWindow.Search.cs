@@ -101,11 +101,14 @@ public partial class MainWindow : Window
             {
                 ResultsDataGrid.ItemsSource = null;
                 ResultsDataGrid.ItemsSource = _latestResults;
+                SearchResultsPanel.IsVisible = _latestResults.Count > 0;
             });
 
             SearchStatusTextBlock.Text = _latestResults.Count == 0
                 ? "Arama tamamlandı, sonuç bulunamadı."
                 : $"{_latestResults.Count} sonuç listelendi. İlk sonuç: {_latestResults[0].Title} | {_latestResults[0].Price}";
+
+            await Task.Delay(800);
         }
         catch (Exception ex)
         {
@@ -114,6 +117,7 @@ public partial class MainWindow : Window
         finally
         {
             SearchButton.IsEnabled = true;
+            ShowSearchSection();
         }
     }
 
