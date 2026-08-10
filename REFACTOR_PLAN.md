@@ -48,7 +48,10 @@ Bu dokuman mevcut Avalonia uygulamasinda gereksiz tekrar eden, buyuyen veya iler
 - Tamamlandi: PNG export visual builder kodu rapor header, koleksiyon kartlari ve tablo builder dosyalarina ayrildi.
 - Tamamlandi: Session akisi temizleme, kaydetme ve restore dosyalarina ayrildi.
 - Tamamlandi: SMS dogrulama akisi kod kutusu doldurma ve dogrulama butonu tiklama helper'larina ayrildi.
-- Siradaki adim: Browser automation JS bloklarinda ortak click/input helper kullanimi artirilabilir; `MainWindow.Ui.cs` tarafinda grid/status/navigation sadeleştirmeleri yapilabilir.
+- Tamamlandi: `MainWindow.Ui.cs` navigation, status ve DataGrid kurulum dosyalarina ayrildi.
+- Tamamlandi: `MainWindow` partial dosyalari Auth, Search, History, Payments, Layout ve Export alt klasorlerine ayrildi.
+- Tamamlandi: `Services/BrowserAutomation` partial dosyalari Core, Auth, Search, Results, Session ve Payment alt klasorlerine ayrildi.
+- Siradaki adim: Browser automation JS bloklarinda ortak click/input helper kullanimi artirilabilir; `BAService.PhoneLogin.cs` icindeki telefon girisi/devam butonu/SMS ekran bekleme bloklari daha kucuk helper'lara ayrilabilir.
 
 ## Mevcut Durum Ozeti
 
