@@ -37,7 +37,7 @@ public sealed partial class DatabaseService
 
             _schemaReady = true;
         }
-        catch
+        catch (Exception ex)
         {
             Console.WriteLine($"[DatabaseService] Schema initialization note: {ex.Message}");
         }
