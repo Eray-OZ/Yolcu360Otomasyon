@@ -19,12 +19,12 @@ public partial class MainWindow : Window
                 : $"{collections.Count} kayıt için PNG hazırlanıyor...";
         });
 
-        var collectionsWithVehicles = new List<(KoleksiyonListItem Collection, List<SearchResultItem> Vehicles)>();
-        foreach (var collection in collections)
+        var tasks = collections.Select(async collection =>
         {
             var vehicles = await _databaseService.GetCollectionVehiclesAsync(collection.Id);
-            collectionsWithVehicles.Add((collection, vehicles));
-        }
+            return (Collection: collection, Vehicles: vehicles);
+        });
+        var collectionsWithVehicles = (await Task.WhenAll(tasks)).ToList();
 
         var downloadsDirectory = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
@@ -58,19 +58,8 @@ public partial class MainWindow : Window
 
     private static Control BuildCollectionReportVisual(List<(KoleksiyonListItem Collection, List<SearchResultItem> Vehicles)> items)
     {
-        var root = new Border
-        {
-            Width = 1440,
-            Background = new SolidColorBrush(Color.Parse("#F4F7FB")),
-            Padding = new Thickness(28)
-        };
-
-        var container = new StackPanel
-        {
-            Spacing = 18
-        };
-
         var collections = items.Select(x => x.Collection).ToList();
+        var container = new StackPanel { Spacing = 18 };
 
         container.Children.Add(new Border
         {
@@ -104,8 +93,8 @@ public partial class MainWindow : Window
                     new TextBlock
                     {
                         Text =
-                            $"Filtreler: Vites = {string.Join(", ", collections.Select(item => FormatFilterValue(item.SecilenVitesFiltresi, isTransmission: true)).Distinct())}, " +
-                            $"Yakıt = {string.Join(", ", collections.Select(item => FormatFilterValue(item.SecilenYakitFiltresi, isTransmission: false)).Distinct())}",
+                            $"Filtreler: Vites = {string.Join(", ", collections.Select(item => FormatFilterValue(item.SecilenVitesFiltresi)).Distinct())}, " +
+                            $"Yakıt = {string.Join(", ", collections.Select(item => FormatFilterValue(item.SecilenYakitFiltresi)).Distinct())}",
                         Foreground = new SolidColorBrush(Color.Parse("#D6E2F0"))
                     },
                     new TextBlock
@@ -120,8 +109,13 @@ public partial class MainWindow : Window
         foreach (var (collection, vehicles) in items)
             container.Children.Add(BuildSingleCollectionSummaryCard(collection, vehicles));
 
-        root.Child = container;
-        return root;
+        return new Border
+        {
+            Width = 1440,
+            Background = new SolidColorBrush(Color.Parse("#F4F7FB")),
+            Padding = new Thickness(28),
+            Child = container
+        };
     }
 
     private static Control BuildSingleCollectionSummaryCard(KoleksiyonListItem collection, List<SearchResultItem> vehicles)
@@ -152,7 +146,7 @@ public partial class MainWindow : Window
                         0),
                     CreateSummaryBlock(
                         "Filtreler",
-                        $"Vites: {FormatFilterValue(collection.SecilenVitesFiltresi, isTransmission: true)} | Yakıt: {FormatFilterValue(collection.SecilenYakitFiltresi, isTransmission: false)}",
+                        $"Vites: {FormatFilterValue(collection.SecilenVitesFiltresi)} | Yakıt: {FormatFilterValue(collection.SecilenYakitFiltresi)}",
                         1,
                         1),
                     CreateSummaryBlock("Araç Sayısı", vehicles.Count.ToString(), 2, 0),
@@ -202,11 +196,8 @@ public partial class MainWindow : Window
             ColumnSpacing = 12
         };
 
-        var rowDefs = new RowDefinitions();
-        rowDefs.Add(new RowDefinition(GridLength.Auto));
-        foreach (var _ in vehicles)
-            rowDefs.Add(new RowDefinition(GridLength.Auto));
-        grid.RowDefinitions = rowDefs;
+        for (int i = 0; i <= vehicles.Count; i++)
+            grid.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
 
         AddTableCell(grid, "Araç Adı", 0, 0, isHeader: true);
         AddTableCell(grid, "Detay", 0, 1, isHeader: true);
@@ -276,7 +267,7 @@ public partial class MainWindow : Window
         return panel;
     }
 
-    private static string FormatFilterValue(string? value, bool isTransmission = false)
+    private static string FormatFilterValue(string? value)
     {
         if (string.IsNullOrWhiteSpace(value) || value == "Farketmez")
             return "-";
