@@ -1,0 +1,223 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:models="clr-namespace:Yolcu360Otomasyon.Models"
+             x:Class="Yolcu360Otomasyon.Views.HistoryView">
+    <Border Grid.Row="1"
+            Grid.RowSpan="2"
+            x:Name="HistoryPanel"
+            IsVisible="False"
+            Background="White"
+            BorderBrush="#D9E2EC"
+            BorderThickness="1"
+            CornerRadius="10"
+            Padding="22">
+        <Grid x:Name="HistoryExportRoot">
+
+            <!-- KOLEKSİYONLAR LİSTESİ GÖRÜNÜMÜ -->
+            <Grid x:Name="CollectionsViewPanel"
+                  IsVisible="True"
+                  RowDefinitions="Auto,Auto,*,Auto,Auto"
+                  RowSpacing="16">
+                <StackPanel Spacing="4">
+                    <TextBlock Text="Geçmiş Kayıtlar ve Koleksiyonlar"
+                               FontSize="22"
+                               FontWeight="Bold"
+                               Foreground="#122033" />
+                    <TextBlock Text="Kaydedilen arama listelerinizi inceleyin, araçlarını görüntüleyin veya PNG olarak indirin."
+                               Foreground="#5F7187" />
+                </StackPanel>
+
+                <TextBlock x:Name="HistoryStatusTextBlock"
+                           Grid.Row="1"
+                           Foreground="#132235"
+                           FontWeight="SemiBold"
+                           TextWrapping="Wrap" />
+
+                <Border Grid.Row="2"
+                        Background="#FBFDFF"
+                        BorderBrush="#E2EAF2"
+                        BorderThickness="1"
+                        CornerRadius="10"
+                        Padding="0">
+                    <DataGrid x:Name="CollectionsDataGrid"
+                              AutoGenerateColumns="True"
+                              IsReadOnly="True"
+                              CanUserResizeColumns="True"
+                              CanUserSortColumns="True"
+                              SelectionMode="Extended"
+                              MinHeight="280" />
+                </Border>
+
+                <StackPanel Grid.Row="3"
+                            Orientation="Horizontal"
+                            Spacing="12">
+                    <Button x:Name="ViewVehiclesButton"
+                            Classes="primary"
+                            Content="Araçları Göster"
+                            Width="160" />
+                    <Button x:Name="DeleteCollectionButton"
+                            Content="Sil"
+                            Width="120" />
+                    <Button x:Name="ExportPngButton"
+                            Classes="primary"
+                            Content="PNG Olarak İndir"
+                            Width="180" />
+                </StackPanel>
+
+                <Border Grid.Row="4"
+                        Background="#F7FAFE"
+                        BorderBrush="#DCE6F2"
+                        BorderThickness="1"
+                        CornerRadius="10"
+                        Padding="18">
+                    <Grid ColumnDefinitions="*,*"
+                          RowDefinitions="Auto,Auto,Auto"
+                          ColumnSpacing="18"
+                          RowSpacing="10">
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="Seçili Kayıt"
+                                       FontWeight="Bold"
+                                       Foreground="#122033" />
+                            <TextBlock x:Name="SelectedCollectionNameTextBlock"
+                                       Text="-"
+                                       Foreground="#132235"
+                                       FontWeight="SemiBold"
+                                       TextWrapping="Wrap" />
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="1"
+                                    Spacing="4">
+                            <TextBlock Text="Alış Yeri"
+                                       FontWeight="Bold"
+                                       Foreground="#122033" />
+                            <TextBlock x:Name="SelectedCollectionLocationTextBlock"
+                                       Text="-"
+                                       Foreground="#132235"
+                                       TextWrapping="Wrap" />
+                        </StackPanel>
+
+                        <StackPanel Grid.Row="1"
+                                    Spacing="4">
+                            <TextBlock Text="Tarih ve Saat"
+                                       FontWeight="Bold"
+                                       Foreground="#122033" />
+                            <TextBlock x:Name="SelectedCollectionDateRangeTextBlock"
+                                       Text="-"
+                                       Foreground="#132235"
+                                       TextWrapping="Wrap" />
+                        </StackPanel>
+
+                        <StackPanel Grid.Row="1"
+                                    Grid.Column="1"
+                                    Spacing="4">
+                            <TextBlock Text="Filtreler"
+                                       FontWeight="Bold"
+                                       Foreground="#122033" />
+                            <TextBlock x:Name="SelectedCollectionFiltersTextBlock"
+                                       Text="-"
+                                       Foreground="#132235"
+                                       TextWrapping="Wrap" />
+                        </StackPanel>
+
+                        <StackPanel Grid.Row="2"
+                                    Spacing="4">
+                            <TextBlock Text="Araç Sayısı"
+                                       FontWeight="Bold"
+                                       Foreground="#122033" />
+                            <TextBlock x:Name="SelectedCollectionCountTextBlock"
+                                       Text="-"
+                                       Foreground="#132235"
+                                       TextWrapping="Wrap" />
+                        </StackPanel>
+
+                        <StackPanel Grid.Row="2"
+                                    Grid.Column="1"
+                                    Spacing="4">
+                            <TextBlock Text="Oluşturulma"
+                                       FontWeight="Bold"
+                                       Foreground="#122033" />
+                            <TextBlock x:Name="SelectedCollectionCreatedAtTextBlock"
+                                       Text="-"
+                                       Foreground="#132235"
+                                       TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
+            </Grid>
+
+            <!-- KOLEKSİYON ARAÇLARI LİSTESİ GÖRÜNÜMÜ -->
+            <Grid x:Name="VehiclesViewPanel"
+                  IsVisible="False"
+                  RowDefinitions="Auto,Auto,*,Auto"
+                  RowSpacing="16">
+                <Grid ColumnDefinitions="*,Auto"
+                      VerticalAlignment="Center">
+                    <StackPanel Spacing="4">
+                        <TextBlock x:Name="VehicleViewTitleTextBlock"
+                                   Text="Koleksiyondaki Araçlar"
+                                   FontSize="22"
+                                   FontWeight="Bold"
+                                   Foreground="#122033" />
+                        <TextBlock x:Name="VehicleViewSubtitleTextBlock"
+                                   Text="Aşağıdaki listeden bir araç seçerek ödemesini gerçekleştirebilirsiniz."
+                                   Foreground="#5F7187" />
+                    </StackPanel>
+
+                    <Button Grid.Column="1"
+                            x:Name="BackToCollectionsButton"
+                            Content="← Koleksiyonlara Dön"
+                            Width="190" />
+                </Grid>
+
+                <TextBlock x:Name="VehicleStatusTextBlock"
+                           Grid.Row="1"
+                           Foreground="#132235"
+                           FontWeight="SemiBold"
+                           TextWrapping="Wrap" />
+
+                <Border Grid.Row="2"
+                        Background="#FBFDFF"
+                        BorderBrush="#E2EAF2"
+                        BorderThickness="1"
+                        CornerRadius="10"
+                        Padding="0">
+                    <DataGrid x:Name="CollectionVehiclesDataGrid"
+                              x:DataType="models:SearchResultItem"
+                              AutoGenerateColumns="False"
+                              IsReadOnly="True"
+                              CanUserResizeColumns="True"
+                              CanUserSortColumns="True"
+                              SelectionMode="Single"
+                              MinHeight="300">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Araç" Binding="{Binding Title}" Width="2*" />
+                            <DataGridTextColumn Header="Detay" Binding="{Binding Subtitle}" Width="2*" />
+                            <DataGridTextColumn Header="Fiyat" Binding="{Binding Price}" Width="1*" />
+                            <DataGridTextColumn Header="Günlük Fiyat" Binding="{Binding DailyPrice}" Width="1*" />
+                            <DataGridTextColumn Header="Vites" Binding="{Binding Transmission}" Width="1*" />
+                            <DataGridTextColumn Header="Yakıt" Binding="{Binding FuelType}" Width="1*" />
+                            <DataGridTextColumn Header="Tedarikçi" Binding="{Binding Supplier}" Width="1*" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Border>
+
+                <StackPanel Grid.Row="3"
+                            Orientation="Horizontal"
+                            Spacing="12">
+                    <Button x:Name="BackToCollectionsButtonBottom"
+                            Content="← Koleksiyonlara Dön"
+                            Width="190" />
+                    <Button x:Name="CreatePaymentButton"
+                            Classes="primary"
+                            Content="Seçilen Araç İçin Ödeme"
+                            Width="220" />
+                    <Button x:Name="ExportPngButtonVehicles"
+                            Classes="primary"
+                            Content="PNG Olarak İndir"
+                            Width="180" />
+                </StackPanel>
+            </Grid>
+
+        </Grid>
+    </Border>
+</UserControl>

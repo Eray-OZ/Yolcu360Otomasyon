@@ -40,11 +40,17 @@ public partial class MainWindow : Window
         bool showSearchResults = false,
         bool showNativeWebViewTest = false)
     {
+        SearchViewControl.IsVisible = ReferenceEquals(visiblePanel, SearchPanel);
         SearchPanel.IsVisible = ReferenceEquals(visiblePanel, SearchPanel);
         SearchResultsPanel.IsVisible = showSearchResults;
+        HistoryViewControl.IsVisible = ReferenceEquals(visiblePanel, HistoryPanel);
         HistoryPanel.IsVisible = ReferenceEquals(visiblePanel, HistoryPanel);
+        PaymentsViewControl.IsVisible =
+            ReferenceEquals(visiblePanel, PaymentsPanel) ||
+            ReferenceEquals(visiblePanel, PaymentCheckoutPanel);
         PaymentsPanel.IsVisible = ReferenceEquals(visiblePanel, PaymentsPanel);
         PaymentCheckoutPanel.IsVisible = ReferenceEquals(visiblePanel, PaymentCheckoutPanel);
+        BrowserViewControl.IsVisible = ReferenceEquals(visiblePanel, BrowserSectionPanel);
         BrowserSectionPanel.IsVisible = ReferenceEquals(visiblePanel, BrowserSectionPanel);
 
         SearchTabButton.Classes.Set("primary", ReferenceEquals(activeButton, SearchTabButton));

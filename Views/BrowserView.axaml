@@ -1,0 +1,36 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Yolcu360Otomasyon.Views.BrowserView">
+    <Border Grid.Row="1"
+            Grid.RowSpan="2"
+            x:Name="BrowserSectionPanel"
+            IsVisible="False"
+            Background="White"
+            BorderBrush="#D9E2EC"
+            BorderThickness="1"
+            CornerRadius="10"
+            Padding="22">
+        <Grid RowDefinitions="Auto,*"
+              RowSpacing="16">
+            <StackPanel Spacing="4">
+                <TextBlock Text="Tarayıcı Görünümü"
+                           FontSize="22"
+                           FontWeight="Bold"
+                           Foreground="#122033" />
+                <TextBlock Text="Arama işlemi sırasında gömülü tarayıcı ekranı burada görüntülenir."
+                           Foreground="#5F7187" />
+            </StackPanel>
+
+            <Border Grid.Row="1"
+                    Background="#FBFDFF"
+                    BorderBrush="#E2EAF2"
+                    BorderThickness="1"
+                    CornerRadius="10"
+                    Padding="0"
+                    MinHeight="520">
+                <NativeWebView x:Name="EmbeddedBrowser"
+                               Source="about:blank" />
+            </Border>
+        </Grid>
+    </Border>
+</UserControl>

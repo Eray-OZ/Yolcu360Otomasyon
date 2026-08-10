@@ -1,0 +1,166 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Yolcu360Otomasyon.Views.SearchView">
+    <Grid RowDefinitions="Auto,*"
+          RowSpacing="20">
+        <Border x:Name="SearchPanel"
+                Background="White"
+                BorderBrush="#D9E2EC"
+                BorderThickness="1"
+                CornerRadius="10"
+                Padding="22">
+            <StackPanel Spacing="18">
+                <StackPanel Spacing="4">
+                    <TextBlock Text="Arama ve Filtreleme"
+                               FontSize="22"
+                               FontWeight="Bold"
+                               Foreground="#122033" />
+                    <TextBlock Text="Alış noktası, tarih ve araç filtreleriyle sonuçları listeleyin."
+                               Foreground="#5F7187" />
+                </StackPanel>
+
+                <TextBlock x:Name="SearchStatusTextBlock"
+                           Text=""
+                           VerticalAlignment="Center"
+                           TextWrapping="Wrap"
+                           Foreground="#132235"
+                           FontWeight="SemiBold" />
+
+                <StackPanel Spacing="14">
+                    <StackPanel Spacing="6">
+                        <TextBlock Text="Alış yeri"
+                                   Foreground="#243446"
+                                   FontWeight="SemiBold" />
+                        <TextBox x:Name="PickupLocationTextBox"
+                                 PlaceholderText="Düzce" />
+                    </StackPanel>
+
+                    <Grid ColumnDefinitions="*,*"
+                          ColumnSpacing="14">
+                        <StackPanel Spacing="6">
+                            <TextBlock Text="Alış tarihi"
+                                       Foreground="#243446"
+                                       FontWeight="SemiBold" />
+                            <TextBox x:Name="PickupDateTextBox"
+                                     PlaceholderText="2026-08-10" />
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="1"
+                                    Spacing="6">
+                            <TextBlock Text="Dönüş tarihi"
+                                       Foreground="#243446"
+                                       FontWeight="SemiBold" />
+                            <TextBox x:Name="ReturnDateTextBox"
+                                     PlaceholderText="2026-08-12" />
+                        </StackPanel>
+                    </Grid>
+
+                    <Grid ColumnDefinitions="*,*"
+                          ColumnSpacing="14">
+                        <StackPanel Spacing="6">
+                            <TextBlock Text="Alış saati"
+                                       Foreground="#243446"
+                                       FontWeight="SemiBold" />
+                            <TextBox x:Name="PickupTimeTextBox"
+                                     PlaceholderText="10:00" />
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="1"
+                                    Spacing="6">
+                            <TextBlock Text="Dönüş saati"
+                                       Foreground="#243446"
+                                       FontWeight="SemiBold" />
+                            <TextBox x:Name="ReturnTimeTextBox"
+                                     PlaceholderText="18:00" />
+                        </StackPanel>
+                    </Grid>
+
+                    <Grid ColumnDefinitions="Auto,Auto"
+                          ColumnSpacing="8"
+                          HorizontalAlignment="Left">
+                        <StackPanel Spacing="6">
+                            <TextBlock Text="Vites"
+                                       Foreground="#243446"
+                                       FontWeight="SemiBold" />
+                            <ComboBox x:Name="TransmissionComboBox"
+                                      Width="180"
+                                      SelectedIndex="0">
+                                <ComboBoxItem Content="Farketmez" Tag="" />
+                                <ComboBoxItem Content="Otomatik" Tag="otomatik" />
+                                <ComboBoxItem Content="Manuel" Tag="manuel" />
+                            </ComboBox>
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="1"
+                                    Spacing="6">
+                            <TextBlock Text="Yakıt"
+                                       Foreground="#243446"
+                                       FontWeight="SemiBold" />
+                            <ComboBox x:Name="FuelComboBox"
+                                      Width="180"
+                                      SelectedIndex="0">
+                                <ComboBoxItem Content="Farketmez" Tag="" />
+                                <ComboBoxItem Content="Dizel" Tag="dizel" />
+                                <ComboBoxItem Content="Benzin" Tag="benzin" />
+                            </ComboBox>
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
+
+                <Button x:Name="SearchButton"
+                        Classes="primary"
+                        Content="Ara"
+                        Width="160" />
+            </StackPanel>
+        </Border>
+
+        <Border Grid.Row="1"
+                x:Name="SearchResultsPanel"
+                IsVisible="False"
+                Background="White"
+                BorderBrush="#D9E2EC"
+                BorderThickness="1"
+                CornerRadius="10"
+                Padding="22">
+            <Grid RowDefinitions="Auto,Auto,*"
+                  RowSpacing="16">
+                <StackPanel Spacing="4">
+                    <TextBlock Text="Arama Sonuçları"
+                               FontSize="22"
+                               FontWeight="Bold"
+                               Foreground="#122033" />
+                    <TextBlock Text="Liste doğrudan tarayıcıdan okunan sonuçlarla güncellenir."
+                               Foreground="#5F7187" />
+                </StackPanel>
+
+                <Grid Grid.Row="1"
+                      ColumnDefinitions="*,Auto"
+                      ColumnSpacing="12">
+                    <TextBox x:Name="CollectionNameTextBox"
+                             PlaceholderText="Kaydetmek için özel isim girin" />
+                    <Button Grid.Column="1"
+                            x:Name="SaveResultsButton"
+                            Classes="primary"
+                            Content="Kaydet"
+                            Width="140" />
+                </Grid>
+
+                <Border Grid.Row="2"
+                        Background="#FBFDFF"
+                        BorderBrush="#E2EAF2"
+                        BorderThickness="1"
+                        CornerRadius="10"
+                        Padding="0">
+                    <DataGrid x:Name="ResultsDataGrid"
+                              AutoGenerateColumns="True"
+                              IsReadOnly="True"
+                              CanUserResizeColumns="True"
+                              CanUserSortColumns="True"
+                              VerticalAlignment="Stretch"
+                              HorizontalAlignment="Stretch"
+                              MinHeight="420" />
+                </Border>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

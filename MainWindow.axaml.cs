@@ -11,6 +11,7 @@ public partial class MainWindow : Window
     private readonly DatabaseService _databaseService = new(AppSettings.GetConnectionString());
     private readonly SmsReceiverService _smsReceiverService = new(5001);
     private readonly IyzicoCallbackService _iyzicoCallbackService = new();
+    private readonly CollectionPngExportService _collectionPngExportService;
     private readonly IyzicoPaymentService _iyzicoPaymentService;
     private AppUser? _activeUser;
     private List<SearchResultItem> _latestResults = new();
@@ -26,6 +27,7 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        _collectionPngExportService = new CollectionPngExportService(_databaseService);
         _iyzicoPaymentService = new IyzicoPaymentService(AppSettings.GetIyzicoSettings(), _iyzicoCallbackService);
         PickupDateTextBox.Text = DateTime.Today.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
         ReturnDateTextBox.Text = DateTime.Today.AddDays(2).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
@@ -35,6 +37,9 @@ public partial class MainWindow : Window
         ConfigureCollectionsGrid();
         ConfigurePaymentsGrid();
         ConfigureAuthViewEvents();
+        ConfigureSearchViewEvents();
+        ConfigureHistoryViewEvents();
+        ConfigurePaymentsViewEvents();
         _smsReceiverService.SmsReceived += SmsReceiverService_SmsReceived;
         _ = _databaseService.EnsureDatabaseAsync();
         InitializeSmsReceiver();

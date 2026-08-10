@@ -24,9 +24,18 @@ Bu dokuman mevcut Avalonia uygulamasinda gereksiz tekrar eden, buyuyen veya iler
 - Tamamlandi: Arac entity/model donusumleri `ToAracEntity` ve `ToSearchResultItem` mapper metotlarina ayrildi.
 - Tamamlandi: `MainWindow.axaml` icindeki ortak stiller `Styles/Controls.axaml` dosyasina tasindi.
 - Tamamlandi: Login ve kayit ekranlari `Views/AuthView.axaml` UserControl dosyasina ayrildi.
+- Tamamlandi: Arama ekrani `Views/SearchView.axaml` UserControl dosyasina ayrildi.
+- Tamamlandi: Gecmis kayitlar ekrani `Views/HistoryView.axaml` UserControl dosyasina ayrildi.
+- Tamamlandi: Odeme ve checkout ekranlari `Views/PaymentsView.axaml` UserControl dosyasina ayrildi.
+- Tamamlandi: Gömülü tarayici alani `Views/BrowserView.axaml` UserControl dosyasina ayrildi.
+- Tamamlandi: `MainWindow.axaml` ana ekran iskeleti seviyesine indirildi.
 - Tamamlandi: Odeme formu input doldurma JS'i `SetInputValueAsync` helper'i ile merkezi hale getirildi.
 - Tamamlandi: iyzico sekme/buton click islemleri icin ortak `ClickElementAsync`, `ClickButtonByTextAsync` ve `EnsureEmbeddedClickHelperAsync` helper'lari eklendi.
-- Siradaki adim: Search/History/Payment XAML bloklarini ayri view dosyalarina bolmek veya arama formu icindeki hassas click JS tekrarlarini kademeli olarak helper'lara almak.
+- Tamamlandi: `EmbeddedBrowserAutomationService.SearchForm.cs` alis yeri, tarih secici, saat secici ve arama butonu dosyalarina ayrildi.
+- Tamamlandi: PNG export olusturma mantigi `CollectionPngExportService` servisine tasindi.
+- Tamamlandi: Auth kodu kontrol baglayicilari, login akisi ve kayit akisi olarak ayri partial dosyalara ayrildi.
+- Tamamlandi: `EmbeddedBrowserAutomationService.Auth.cs` telefonla login, SMS dogrulama ve session dosyalarina ayrildi.
+- Siradaki adim: `MainWindow.Search.cs`, `MainWindow.History.cs` ve `MainWindow.Payments.cs` icindeki UI event handler'larini servis/ViewModel benzeri yapilara kademeli olarak tasimak.
 
 ## Mevcut Durum Ozeti
 
@@ -66,33 +75,29 @@ Bu durum su sorunlari olusturuyor:
 - Ayni style veya layout kaliplari farkli yerlerde tekrar ediyor.
 - Kod-behind tarafinda hangi kontrolun hangi ekrana ait oldugu belirsizlesiyor.
 
-### Onerilen Yapi
+### Hedef Yapi
 
-Asagidaki `UserControl` dosyalari olusturulabilir:
+Asagidaki `UserControl` dosyalari olusturuldu:
 
-- `Views/LoginView.axaml`
-- `Views/RegisterView.axaml`
+- `Views/AuthView.axaml`
 - `Views/SearchView.axaml`
 - `Views/BrowserView.axaml`
 - `Views/HistoryView.axaml`
 - `Views/PaymentsView.axaml`
-- `Views/CheckoutView.axaml`
 
 Ortak style dosyalari:
 
-- `Styles/Buttons.axaml`
-- `Styles/Inputs.axaml`
-- `Styles/DataGrid.axaml`
-- `Styles/Layout.axaml`
+- `Styles/Controls.axaml`
 
 ### Uygulama Sirasi
 
-1. Once sadece `LoginView` ve `RegisterView` ayrilmali.
-2. Uygulama build/run ile kontrol edilmeli.
-3. Sonra `SearchView` ayrilmali.
-4. En son `History`, `Payments` ve `Checkout` ayrilmali.
+1. Tamamlandi: Login ve kayit ekranlari `AuthView` icine alindi.
+2. Tamamlandi: Arama ekrani `SearchView` icine alindi.
+3. Tamamlandi: Gecmis ekrani `HistoryView` icine alindi.
+4. Tamamlandi: Odeme ve checkout ekranlari `PaymentsView` icine alindi.
+5. Tamamlandi: Tarayici bolumu `BrowserView` icine alindi.
 
-Tek seferde tum XAML'i bolmek gereksiz risklidir.
+Bu asamada `MainWindow.axaml` sadece ana iskelet, ust navigasyon ve view yerlesimi gorevini tasiyor.
 
 ## Oncelik 2: EmbeddedBrowserAutomationService Icindeki JS Tekrarlarini Azaltma
 
