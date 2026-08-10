@@ -12,94 +12,26 @@ public partial class MainWindow : Window
     private async void SearchButton_Click(object? sender, RoutedEventArgs e)
     {
         SearchButton.IsEnabled = false;
-        SearchStatusTextBlock.Text = "Arama hazırlanıyor...";
+        SetSearchStatus("Arama hazırlanıyor...");
 
         try
         {
-            if (!DateTime.TryParseExact(
-                    PickupDateTextBox.Text?.Trim(),
-                    "yyyy-MM-dd",
-                    CultureInfo.InvariantCulture,
-                    DateTimeStyles.None,
-                    out var pickupDate)
-                || !DateTime.TryParseExact(
-                    ReturnDateTextBox.Text?.Trim(),
-                    "yyyy-MM-dd",
-                    CultureInfo.InvariantCulture,
-                    DateTimeStyles.None,
-                    out var returnDate))
-            {
-                SearchStatusTextBlock.Text = "Tarih formatı gecersiz. Ornek: 2026-08-10";
+            if (!TryBuildSearchFilter(out var filter))
                 return;
-            }
-
-            var pickupTime = PickupTimeTextBox.Text?.Trim() ?? "10:00";
-            var returnTime = ReturnTimeTextBox.Text?.Trim() ?? "18:00";
-
-            var filter = new SearchFilter
-            {
-                PickupLocation = PickupLocationTextBox.Text?.Trim() ?? string.Empty,
-                PickupDate = pickupDate.Date,
-                ReturnDate = returnDate.Date,
-                PickupTime = pickupTime,
-                ReturnTime = returnTime,
-                TransmissionType = GetComboBoxTag(TransmissionComboBox),
-                FuelType = GetComboBoxTag(FuelComboBox)
-            };
-            _latestSearchFilter = filter;
-
-            if (string.IsNullOrWhiteSpace(filter.PickupLocation))
-            {
-                SearchStatusTextBlock.Text = "Alış yeri boş olamaz.";
-                return;
-            }
 
             if (_activeUser is null)
             {
-                SearchStatusTextBlock.Text = "Önce giriş yapılmalı.";
+                SetSearchStatus("Önce giriş yapılmalı.");
                 return;
             }
 
-            ShowBrowserSection();
-            SearchStatusTextBlock.Text = "Gömülü tarayıcı arama formu hazırlanıyor...";
-
-            var embeddedBrowser = CreateEmbeddedBrowserAutomationService();
-            if (_activeUser is not null && !string.IsNullOrWhiteSpace(_activeUser.SessionStatePath))
-            {
-                await embeddedBrowser.RestoreSessionAsync(_activeUser.SessionStatePath);
-            }
-
-            SearchStatusTextBlock.Text = "Araçlar aranıyor...";
-
-            await embeddedBrowser.OpenYolcu360HomeAsync();
-            await embeddedBrowser.FillPickupLocationAsync(filter.PickupLocation);
-            await embeddedBrowser.SelectDateRangeAsync(filter.PickupDate, filter.ReturnDate);
-            await embeddedBrowser.SelectTimeAsync(0, filter.PickupTime);
-            await embeddedBrowser.SelectTimeAsync(1, filter.ReturnTime);
-            await embeddedBrowser.ClickSearchButtonAsync();
-            await embeddedBrowser.WaitForSearchResultsAsync();
-            await embeddedBrowser.ApplyResultFiltersAsync(filter);
-
-            SearchStatusTextBlock.Text = "Arama sonuçları okunuyor...";
-            var results = await embeddedBrowser.ReadSearchResultsAsync();
-            _latestResults = results;
-
-            await Dispatcher.UIThread.InvokeAsync(() =>
-            {
-                ResultsDataGrid.ItemsSource = null;
-                ResultsDataGrid.ItemsSource = _latestResults;
-                SearchResultsPanel.IsVisible = _latestResults.Count > 0;
-            });
-
-            SearchStatusTextBlock.Text = _latestResults.Count == 0
-                ? "Arama tamamlandı, sonuç bulunamadı."
-                : $"{_latestResults.Count} sonuç listelendi. İlk sonuç: {_latestResults[0].Title} | {_latestResults[0].Price}";
-
+            var results = await RunEmbeddedSearchAsync(filter);
+            await DisplaySearchResultsAsync(results);
             await Task.Delay(800);
         }
         catch (Exception ex)
         {
-            SearchStatusTextBlock.Text = $"Arama hatası: {ex.Message}";
+            SetSearchStatus($"Arama hatası: {ex.Message}");
         }
         finally
         {
@@ -108,11 +40,91 @@ public partial class MainWindow : Window
         }
     }
 
+    private bool TryBuildSearchFilter(out SearchFilter filter)
+    {
+        filter = new SearchFilter();
+
+        if (!DateTime.TryParseExact(
+                PickupDateTextBox.Text?.Trim(),
+                "yyyy-MM-dd",
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.None,
+                out var pickupDate)
+            || !DateTime.TryParseExact(
+                ReturnDateTextBox.Text?.Trim(),
+                "yyyy-MM-dd",
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.None,
+                out var returnDate))
+        {
+            SetSearchStatus("Tarih formatı gecersiz. Ornek: 2026-08-10");
+            return false;
+        }
+
+        filter = new SearchFilter
+        {
+            PickupLocation = PickupLocationTextBox.Text?.Trim() ?? string.Empty,
+            PickupDate = pickupDate.Date,
+            ReturnDate = returnDate.Date,
+            PickupTime = PickupTimeTextBox.Text?.Trim() ?? "10:00",
+            ReturnTime = ReturnTimeTextBox.Text?.Trim() ?? "18:00",
+            TransmissionType = GetComboBoxTag(TransmissionComboBox),
+            FuelType = GetComboBoxTag(FuelComboBox)
+        };
+        _latestSearchFilter = filter;
+
+        if (!string.IsNullOrWhiteSpace(filter.PickupLocation))
+            return true;
+
+        SetSearchStatus("Alış yeri boş olamaz.");
+        return false;
+    }
+
+    private async Task<List<SearchResultItem>> RunEmbeddedSearchAsync(SearchFilter filter)
+    {
+        ShowBrowserSection();
+        SetSearchStatus("Gömülü tarayıcı arama formu hazırlanıyor...");
+
+        var embeddedBrowser = GetEmbeddedBrowserAutomationService();
+        if (_activeUser is not null && !string.IsNullOrWhiteSpace(_activeUser.SessionStatePath))
+            await embeddedBrowser.RestoreSessionAsync(_activeUser.SessionStatePath);
+
+        SetSearchStatus("Araçlar aranıyor...");
+
+        await embeddedBrowser.OpenYolcu360HomeAsync();
+        await embeddedBrowser.FillPickupLocationAsync(filter.PickupLocation);
+        await embeddedBrowser.SelectDateRangeAsync(filter.PickupDate, filter.ReturnDate);
+        await embeddedBrowser.SelectTimeAsync(0, filter.PickupTime);
+        await embeddedBrowser.SelectTimeAsync(1, filter.ReturnTime);
+        await embeddedBrowser.ClickSearchButtonAsync();
+        await embeddedBrowser.WaitForSearchResultsAsync();
+        await embeddedBrowser.ApplyResultFiltersAsync(filter);
+
+        SetSearchStatus("Arama sonuçları okunuyor...");
+        return await embeddedBrowser.ReadSearchResultsAsync();
+    }
+
+    private async Task DisplaySearchResultsAsync(List<SearchResultItem> results)
+    {
+        _latestResults = results;
+
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            ResultsDataGrid.ItemsSource = null;
+            ResultsDataGrid.ItemsSource = _latestResults;
+            SearchResultsPanel.IsVisible = _latestResults.Count > 0;
+        });
+
+        SetSearchStatus(_latestResults.Count == 0
+            ? "Arama tamamlandı, sonuç bulunamadı."
+            : $"{_latestResults.Count} sonuç listelendi. İlk sonuç: {_latestResults[0].Title} | {_latestResults[0].Price}");
+    }
+
     private async void SaveResultsButton_Click(object? sender, RoutedEventArgs e)
     {
         if (_activeUser is null)
         {
-            SearchStatusTextBlock.Text = "Önce giriş yapılmalı.";
+            SetSearchStatus("Önce giriş yapılmalı.");
             return;
         }
 
@@ -121,7 +133,7 @@ public partial class MainWindow : Window
             var latestUser = await _databaseService.GetUserByEmailAsync(_activeUser.Email);
             if (latestUser is null)
             {
-                SearchStatusTextBlock.Text = "Aktif kullanıcı veritabanında bulunamadı.";
+                SetSearchStatus("Aktif kullanıcı veritabanında bulunamadı.");
                 return;
             }
 
@@ -130,20 +142,20 @@ public partial class MainWindow : Window
 
         if (_latestResults.Count == 0)
         {
-            SearchStatusTextBlock.Text = "Kaydedilecek sonuç yok.";
+            SetSearchStatus("Kaydedilecek sonuç yok.");
             return;
         }
 
         if (_latestSearchFilter is null)
         {
-            SearchStatusTextBlock.Text = "Önce geçerli bir arama yapılmalı.";
+            SetSearchStatus("Önce geçerli bir arama yapılmalı.");
             return;
         }
 
         var ozelAd = CollectionNameTextBox.Text?.Trim() ?? string.Empty;
         if (string.IsNullOrWhiteSpace(ozelAd))
         {
-            SearchStatusTextBlock.Text = "Özel kayıt adı girin.";
+            SetSearchStatus("Özel kayıt adı girin.");
             return;
         }
 
@@ -152,7 +164,7 @@ public partial class MainWindow : Window
         {
             var collectionId = await _databaseService.SaveCollectionAsync(_activeUser.Id, ozelAd, _latestSearchFilter, _latestResults);
             CollectionNameTextBox.Text = string.Empty;
-            SearchStatusTextBlock.Text = $"{_latestResults.Count} sonuç \"{ozelAd}\" adıyla kaydedildi.";
+            SetSearchStatus($"{_latestResults.Count} sonuç \"{ozelAd}\" adıyla kaydedildi.");
             await LoadHistoryAsync();
             ShowHistorySection();
 
@@ -163,7 +175,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            SearchStatusTextBlock.Text = $"Kaydetme hatası: {ex.Message}";
+            SetSearchStatus($"Kaydetme hatası: {ex.Message}");
         }
         finally
         {
@@ -188,31 +200,35 @@ public partial class MainWindow : Window
         try
         {
             ShowBrowserSection();
-            SearchStatusTextBlock.Text = "Gömülü tarayıcı açılıyor...";
+            SetSearchStatus("Gömülü tarayıcı açılıyor...");
 
-            var embeddedBrowser = CreateEmbeddedBrowserAutomationService();
+            var embeddedBrowser = GetEmbeddedBrowserAutomationService();
             await embeddedBrowser.OpenYolcu360HomeAsync();
 
             var title = await embeddedBrowser.GetTitleAsync();
-            SearchStatusTextBlock.Text = $"Gömülü tarayıcı hazır. Title: {title}";
+            SetSearchStatus($"Gömülü tarayıcı hazır. Title: {title}");
         }
         catch (Exception ex)
         {
-            SearchStatusTextBlock.Text = $"Gömülü tarayıcı hatası: {ex.Message}";
+            SetSearchStatus($"Gömülü tarayıcı hatası: {ex.Message}");
         }
     }
 
-    private EmbeddedBrowserAutomationService CreateEmbeddedBrowserAutomationService()
+    private EmbeddedBrowserAutomationService GetEmbeddedBrowserAutomationService()
     {
-        var embeddedBrowser = new EmbeddedBrowserAutomationService(EmbeddedBrowser);
-        embeddedBrowser.ProgressChanged += message =>
+        if (_embeddedBrowserAutomationService is not null)
+            return _embeddedBrowserAutomationService;
+
+        _embeddedBrowserAutomationService = new EmbeddedBrowserAutomationService(EmbeddedBrowser);
+        _embeddedBrowserAutomationService.ProgressChanged += message =>
         {
             Dispatcher.UIThread.Post(() =>
             {
-                SearchStatusTextBlock.Text = message;
+                SetSearchStatus(message);
             });
         };
 
-        return embeddedBrowser;
+        return _embeddedBrowserAutomationService;
     }
+
 }

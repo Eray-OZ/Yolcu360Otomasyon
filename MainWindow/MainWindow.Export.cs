@@ -10,22 +10,43 @@ namespace Yolcu360Otomasyon;
 
 public partial class MainWindow : Window
 {
+    private const double CollectionReportWidth = 1440;
+
     private async Task<string> ExportHistorySelectionAsPngAsync(IReadOnlyList<KoleksiyonListItem> collections)
     {
         await Dispatcher.UIThread.InvokeAsync(() =>
         {
-            HistoryStatusTextBlock.Text = collections.Count == 1
+            SetHistoryStatus(collections.Count == 1
                 ? $"{collections[0].OzelAd} PNG olarak hazırlanıyor..."
-                : $"{collections.Count} kayıt için PNG hazırlanıyor...";
+                : $"{collections.Count} kayıt için PNG hazırlanıyor...");
         });
 
+        var collectionsWithVehicles = await LoadCollectionsWithVehiclesAsync(collections);
+        var filePath = BuildHistoryExportPath(collections);
+
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            var report = BuildCollectionReportVisual(collectionsWithVehicles);
+            RenderControlToPng(report, filePath, CollectionReportWidth);
+        });
+
+        return filePath;
+    }
+
+    private async Task<List<(KoleksiyonListItem Collection, List<SearchResultItem> Vehicles)>> LoadCollectionsWithVehiclesAsync(
+        IReadOnlyList<KoleksiyonListItem> collections)
+    {
         var tasks = collections.Select(async collection =>
         {
             var vehicles = await _databaseService.GetCollectionVehiclesAsync(collection.Id);
             return (Collection: collection, Vehicles: vehicles);
         });
-        var collectionsWithVehicles = (await Task.WhenAll(tasks)).ToList();
 
+        return (await Task.WhenAll(tasks)).ToList();
+    }
+
+    private static string BuildHistoryExportPath(IReadOnlyList<KoleksiyonListItem> collections)
+    {
         var downloadsDirectory = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
             "Downloads");
@@ -34,26 +55,22 @@ public partial class MainWindow : Window
 
         var baseName = collections.Count == 1 ? collections[0].OzelAd : $"{collections.Count}_kayit";
         var safeName = string.Concat(baseName.Select(ch => char.IsLetterOrDigit(ch) ? ch : '_'));
-        var filePath = Path.Combine(downloadsDirectory, $"{safeName}_{DateTime.Now:yyyyMMdd_HHmmss}.png");
+        return Path.Combine(downloadsDirectory, $"{safeName}_{DateTime.Now:yyyyMMdd_HHmmss}.png");
+    }
 
-        await Dispatcher.UIThread.InvokeAsync(() =>
-        {
-            const double reportWidth = 1440;
-            var report = BuildCollectionReportVisual(collectionsWithVehicles);
-            report.Measure(new Size(reportWidth, double.PositiveInfinity));
-            report.Arrange(new Rect(0, 0, reportWidth, report.DesiredSize.Height));
+    private static void RenderControlToPng(Control report, string filePath, double width)
+    {
+        report.Measure(new Size(width, double.PositiveInfinity));
+        report.Arrange(new Rect(0, 0, width, report.DesiredSize.Height));
 
-            var width = Math.Max(1, (int)Math.Ceiling(report.Bounds.Width));
-            var height = Math.Max(1, (int)Math.Ceiling(report.Bounds.Height));
+        var pixelWidth = Math.Max(1, (int)Math.Ceiling(report.Bounds.Width));
+        var pixelHeight = Math.Max(1, (int)Math.Ceiling(report.Bounds.Height));
 
-            using var bitmap = new RenderTargetBitmap(new PixelSize(width, height), new Vector(96, 96));
-            bitmap.Render(report);
+        using var bitmap = new RenderTargetBitmap(new PixelSize(pixelWidth, pixelHeight), new Vector(96, 96));
+        bitmap.Render(report);
 
-            using var stream = File.Create(filePath);
-            bitmap.Save(stream, PngBitmapEncoderOptions.Default);
-        });
-
-        return filePath;
+        using var stream = File.Create(filePath);
+        bitmap.Save(stream, PngBitmapEncoderOptions.Default);
     }
 
     private static Control BuildCollectionReportVisual(List<(KoleksiyonListItem Collection, List<SearchResultItem> Vehicles)> items)
@@ -111,7 +128,7 @@ public partial class MainWindow : Window
 
         return new Border
         {
-            Width = 1440,
+            Width = CollectionReportWidth,
             Background = new SolidColorBrush(Color.Parse("#F4F7FB")),
             Padding = new Thickness(28),
             Child = container

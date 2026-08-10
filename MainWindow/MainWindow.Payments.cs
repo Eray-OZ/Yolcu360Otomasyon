@@ -19,14 +19,14 @@ public partial class MainWindow : Window
     {
         if (_activeUser is null || _selectedCollection is null)
         {
-            HistoryStatusTextBlock.Text = "Ödeme oluşturmak için lütfen bir koleksiyon seçin.";
+            SetHistoryStatus("Ödeme oluşturmak için lütfen bir koleksiyon seçin.");
             return;
         }
 
         var vehicle = _selectedVehicle ?? _selectedCollectionVehicles.FirstOrDefault();
         if (vehicle is null)
         {
-            HistoryStatusTextBlock.Text = "Ödeme yapmak için lütfen koleksiyon içerisinden bir araç seçin.";
+            SetHistoryStatus("Ödeme yapmak için lütfen koleksiyon içerisinden bir araç seçin.");
             return;
         }
 
@@ -50,7 +50,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            HistoryStatusTextBlock.Text = $"Ödeme oluşturma hatası: {ex.Message}";
+            SetHistoryStatus($"Ödeme oluşturma hatası: {ex.Message}");
         }
         finally
         {
@@ -73,7 +73,7 @@ public partial class MainWindow : Window
     {
         if (_activeUser is null || _paymentPreviewItems.Count == 0)
         {
-            CheckoutStatusTextBlock.Text = "Ödeme için seçili kayıt bulunamadı.";
+            SetCheckoutStatus("Ödeme için seçili kayıt bulunamadı.");
             return;
         }
 
@@ -81,26 +81,14 @@ public partial class MainWindow : Window
         try
         {
             var paymentCard = BuildSandboxPaymentCardInput();
-            CheckoutStatusTextBlock.Text = "Ödeme sayfası hazırlanıyor...";
-
-            var session = await _iyzicoPaymentService.InitializeCheckoutAsync(_activeUser, _paymentPreviewItems);
-
-            ShowBrowserSection();
-            CheckoutStatusTextBlock.Text = "Ödeme formu dolduruluyor...";
-
-            var embeddedBrowser = CreateEmbeddedBrowserAutomationService();
-            await embeddedBrowser.CompleteIyzicoSandboxPaymentAsync(session.PaymentPageUrl, paymentCard);
-
-            CheckoutStatusTextBlock.Text = "Ödeme onayı bekleniyor...";
-
-            await _iyzicoPaymentService.WaitForCallbackAsync(session.Token, TimeSpan.FromMinutes(5));
-            var paymentResult = await _iyzicoPaymentService.RetrievePaymentResultAsync(session.ConversationId, session.Token);
+            var session = await InitializeCheckoutSessionAsync();
+            await CompleteCheckoutInBrowserAsync(session, paymentCard);
+            var paymentResult = await WaitForPaymentResultAsync(session);
 
             if (!string.Equals(paymentResult.Status, "success", StringComparison.OrdinalIgnoreCase) ||
                 !string.Equals(paymentResult.PaymentStatus, "SUCCESS", StringComparison.OrdinalIgnoreCase))
             {
-                CheckoutStatusTextBlock.Text =
-                    $"Ödeme tamamlanmadı. Durum: {paymentResult.Status} / {paymentResult.PaymentStatus}";
+                SetCheckoutStatus($"Ödeme tamamlanmadı. Durum: {paymentResult.Status} / {paymentResult.PaymentStatus}");
                 return;
             }
 
@@ -109,19 +97,43 @@ public partial class MainWindow : Window
                 _paymentPreviewItems,
                 paymentResult);
 
-            CheckoutStatusTextBlock.Text = "iyzico sandbox ödeme kaydı oluşturuldu.";
+            SetCheckoutStatus("iyzico sandbox ödeme kaydı oluşturuldu.");
             ClearCheckoutForm();
             ShowPaymentsSection();
             await LoadPaymentsAsync();
         }
         catch (Exception ex)
         {
-            CheckoutStatusTextBlock.Text = $"Ödeme hatası: {ex.Message}";
+            SetCheckoutStatus($"Ödeme hatası: {ex.Message}");
         }
         finally
         {
             ConfirmPaymentButton.IsEnabled = true;
         }
+    }
+
+    private async Task<IyzicoCheckoutSession> InitializeCheckoutSessionAsync()
+    {
+        SetCheckoutStatus("Ödeme sayfası hazırlanıyor...");
+        return await _iyzicoPaymentService.InitializeCheckoutAsync(_activeUser!, _paymentPreviewItems);
+    }
+
+    private async Task CompleteCheckoutInBrowserAsync(
+        IyzicoCheckoutSession session,
+        SandboxPaymentCardInput paymentCard)
+    {
+        ShowBrowserSection();
+        SetCheckoutStatus("Ödeme formu dolduruluyor...");
+
+        var embeddedBrowser = GetEmbeddedBrowserAutomationService();
+        await embeddedBrowser.CompleteIyzicoSandboxPaymentAsync(session.PaymentPageUrl, paymentCard);
+    }
+
+    private async Task<IyzicoPaymentResult> WaitForPaymentResultAsync(IyzicoCheckoutSession session)
+    {
+        SetCheckoutStatus("Ödeme onayı bekleniyor...");
+        await _iyzicoPaymentService.WaitForCallbackAsync(session.Token, TimeSpan.FromMinutes(5));
+        return await _iyzicoPaymentService.RetrievePaymentResultAsync(session.ConversationId, session.Token);
     }
 
     private async Task LoadPaymentsAsync()
@@ -132,9 +144,9 @@ public partial class MainWindow : Window
         var payments = await _databaseService.GetPaymentsAsync(_activeUser.Id);
         PaymentsDataGrid.ItemsSource = null;
         PaymentsDataGrid.ItemsSource = payments;
-        PaymentsStatusTextBlock.Text = payments.Count == 0
+        SetPaymentsStatus(payments.Count == 0
             ? "Ödeme kaydı bulunamadı."
-            : $"{payments.Count} ödeme kaydı listelendi.";
+            : $"{payments.Count} ödeme kaydı listelendi.");
     }
 
     private void PrepareCheckoutSummary()
@@ -145,7 +157,7 @@ public partial class MainWindow : Window
             $"{item.KoleksiyonAdi} - {item.Tutar.ToString("N2", trCulture)} TL"));
         PaymentSummaryCountTextBlock.Text = $"{_paymentPreviewItems.Count} kayıt seçildi";
         PaymentSummaryTotalTextBlock.Text = $"{total.ToString("N2", trCulture)} TL";
-        CheckoutStatusTextBlock.Text = "Ödeme iyzico sandbox sayfasında tamamlanacak.";
+        SetCheckoutStatus("Ödeme iyzico sandbox sayfasında tamamlanacak.");
     }
 
     private void ClearCheckoutForm()

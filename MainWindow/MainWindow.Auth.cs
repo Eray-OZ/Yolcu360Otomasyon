@@ -1,9 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
-using System.Net;
-using System.Net.NetworkInformation;
-using System.Net.Sockets;
 using Yolcu360Otomasyon.Models;
 using Yolcu360Otomasyon.Services;
 
@@ -31,7 +28,7 @@ public partial class MainWindow : Window
 
         if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
         {
-            StatusTextBlock.Text = "Email ve şifre boş olamaz.";
+            SetAuthStatus("Email ve şifre boş olamaz.");
             return;
         }
 
@@ -41,7 +38,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            StatusTextBlock.Text = $"Login hatası: {ex.Message}";
+            SetAuthStatus($"Login hatası: {ex.Message}");
         }
     }
 
@@ -68,7 +65,7 @@ public partial class MainWindow : Window
                 return;
             }
 
-            var sessionStatePath = BuildSessionStatePath(email);
+            var sessionStatePath = AppPaths.BuildSessionStatePath(email);
             if (File.Exists(sessionStatePath))
             {
                 try { File.Delete(sessionStatePath); } catch { }
@@ -78,7 +75,7 @@ public partial class MainWindow : Window
 
             LoginEmailTextBox.Text = email;
             LoginPasswordTextBox.Text = password;
-            StatusTextBlock.Text = "Kayıt oluşturuldu. Gömülü tarayıcıda giriş başlatılıyor...";
+            SetAuthStatus("Kayıt oluşturuldu. Gömülü tarayıcıda giriş başlatılıyor...");
 
             await PerformLoginAsync(email, password, forceBrowserLogin: true);
         }
@@ -98,79 +95,25 @@ public partial class MainWindow : Window
         SetNavigationEnabled(false);
         try
         {
-            StatusTextBlock.Text = "Kullanıcı bilgileri kontrol ediliyor...";
+            SetAuthStatus("Kullanıcı bilgileri kontrol ediliyor...");
             var user = await _databaseService.GetUserByCredentialsAsync(email, password);
             if (user is null)
             {
-                StatusTextBlock.Text = "Kullanıcı bulunamadı veya şifre hatalı.";
+                SetAuthStatus("Kullanıcı bulunamadı veya şifre hatalı.");
                 return;
             }
 
-            var sessionStatePath = BuildSessionStatePath(email);
-            if (!forceBrowserLogin && File.Exists(sessionStatePath))
-            {
-                _activeUser = new AppUser
-                {
-                    Id = user.Id,
-                    Email = email,
-                    Password = password,
-                    PhoneNumber = user.PhoneNumber,
-                    SessionStatePath = sessionStatePath
-                };
-
-                StatusTextBlock.Text = "Kayıtlı oturum bulundu.";
-                ShowMainView();
-                await LoadHistoryAsync();
+            var sessionStatePath = AppPaths.BuildSessionStatePath(email);
+            if (await TryUseSavedSessionAsync(user, email, password, sessionStatePath, forceBrowserLogin))
                 return;
-            }
 
-            // Gömülü tarayıcıyı canlı göstermek için Ana Görünüme ve Tarayıcı Paneline geç
-            LoginView.IsVisible = false;
-            RegisterView.IsVisible = false;
-            MainView.IsVisible = true;
-            ShowBrowserSection();
-            SetNavigationVisibility(false);
+            ShowBrowserLoginView();
+            var embeddedBrowser = await RunPhoneLoginAsync(user.PhoneNumber);
+            var code = await WaitForSmsCodeAsync();
+            await SubmitSmsCodeAndWaitForLoginAsync(embeddedBrowser, code);
+            await SaveLoginSessionAsync(embeddedBrowser, user, email, password, sessionStatePath);
 
-            StatusTextBlock.Text = "Gömülü tarayıcı hazırlanıyor...";
-
-            var embeddedBrowser = CreateEmbeddedBrowserAutomationService();
-            await embeddedBrowser.ClearBrowserSessionAsync();
-
-            StatusTextBlock.Text = "Yolcu360 giriş ekranı dolduruluyor...";
-            _smsReceiverService.ClearLatestCode();
-            await embeddedBrowser.LoginWithPhoneAsync(user.PhoneNumber);
-
-            StatusTextBlock.Text = "SMS doğrulama kodu bekleniyor...";
-            string code;
-            try
-            {
-                code = await _smsReceiverService.WaitForCodeAsync(TimeSpan.FromMinutes(2));
-            }
-            catch (OperationCanceledException)
-            {
-                throw new InvalidOperationException(
-                    $"SMS kodu 2 dakika içinde uygulamaya gelmedi. MacroDroid URL'i şu formatta olmalı: http://{SmsReceiverService.GetPreferredLocalIpAddress()}:{_smsReceiverService.Port}/sms?message={{sms_message}}");
-            }
-
-            StatusTextBlock.Text = $"SMS kodu alındı: {code}";
-            await embeddedBrowser.FillSmsVerificationCodeAsync(code);
-            StatusTextBlock.Text = "Girişin tamamlanması bekleniyor...";
-            await embeddedBrowser.WaitForLoginCompletedAsync();
-
-            StatusTextBlock.Text = "Oturum kaydediliyor...";
-            await embeddedBrowser.SaveSessionAsync(sessionStatePath);
-            await _databaseService.SaveOrUpdateUserAsync(email, password, user.PhoneNumber, sessionStatePath);
-
-            _activeUser = new AppUser
-            {
-                Id = user.Id,
-                Email = email,
-                Password = password,
-                PhoneNumber = user.PhoneNumber,
-                SessionStatePath = sessionStatePath
-            };
-
-            StatusTextBlock.Text = "Giriş tamamlandı.";
+            SetAuthStatus("Giriş tamamlandı.");
             ShowMainView();
             SetNavigationVisibility(true);
             ShowSearchSection();
@@ -180,7 +123,7 @@ public partial class MainWindow : Window
         {
             SetNavigationVisibility(true);
             ShowLoginView();
-            StatusTextBlock.Text = $"Giriş hatası: {ex.Message}";
+            SetAuthStatus($"Giriş hatası: {ex.Message}");
         }
         finally
         {
@@ -189,12 +132,100 @@ public partial class MainWindow : Window
         }
     }
 
+    private async Task<bool> TryUseSavedSessionAsync(
+        AppUser user,
+        string email,
+        string password,
+        string sessionStatePath,
+        bool forceBrowserLogin)
+    {
+        if (forceBrowserLogin || !File.Exists(sessionStatePath))
+            return false;
+
+        SetActiveUser(user, email, password, sessionStatePath);
+        SetAuthStatus("Kayıtlı oturum bulundu.");
+        ShowMainView();
+        await LoadHistoryAsync();
+        return true;
+    }
+
+    private void ShowBrowserLoginView()
+    {
+        LoginView.IsVisible = false;
+        RegisterView.IsVisible = false;
+        MainView.IsVisible = true;
+        ShowBrowserSection();
+        SetNavigationVisibility(false);
+    }
+
+    private async Task<EmbeddedBrowserAutomationService> RunPhoneLoginAsync(string phoneNumber)
+    {
+        SetAuthStatus("Gömülü tarayıcı hazırlanıyor...");
+
+        var embeddedBrowser = GetEmbeddedBrowserAutomationService();
+        await embeddedBrowser.ClearBrowserSessionAsync();
+
+        SetAuthStatus("Yolcu360 giriş ekranı dolduruluyor...");
+        _smsReceiverService.ClearLatestCode();
+        await embeddedBrowser.LoginWithPhoneAsync(phoneNumber);
+
+        return embeddedBrowser;
+    }
+
+    private async Task<string> WaitForSmsCodeAsync()
+    {
+        SetAuthStatus("SMS doğrulama kodu bekleniyor...");
+
+        try
+        {
+            return await _smsReceiverService.WaitForCodeAsync(TimeSpan.FromMinutes(2));
+        }
+        catch (OperationCanceledException)
+        {
+            throw new InvalidOperationException(
+                $"SMS kodu 2 dakika içinde uygulamaya gelmedi. MacroDroid URL'i şu formatta olmalı: http://{SmsReceiverService.GetPreferredLocalIpAddress()}:{_smsReceiverService.Port}/sms?message={{sms_message}}");
+        }
+    }
+
+    private async Task SubmitSmsCodeAndWaitForLoginAsync(EmbeddedBrowserAutomationService embeddedBrowser, string code)
+    {
+        SetAuthStatus($"SMS kodu alındı: {code}");
+        await embeddedBrowser.FillSmsVerificationCodeAsync(code);
+        SetAuthStatus("Girişin tamamlanması bekleniyor...");
+        await embeddedBrowser.WaitForLoginCompletedAsync();
+    }
+
+    private async Task SaveLoginSessionAsync(
+        EmbeddedBrowserAutomationService embeddedBrowser,
+        AppUser user,
+        string email,
+        string password,
+        string sessionStatePath)
+    {
+        SetAuthStatus("Oturum kaydediliyor...");
+        await embeddedBrowser.SaveSessionAsync(sessionStatePath);
+        await _databaseService.SaveOrUpdateUserAsync(email, password, user.PhoneNumber, sessionStatePath);
+        SetActiveUser(user, email, password, sessionStatePath);
+    }
+
+    private void SetActiveUser(AppUser user, string email, string password, string sessionStatePath)
+    {
+        _activeUser = new AppUser
+        {
+            Id = user.Id,
+            Email = email,
+            Password = password,
+            PhoneNumber = user.PhoneNumber,
+            SessionStatePath = sessionStatePath
+        };
+    }
+
     private void LogoutButton_Click(object? sender, RoutedEventArgs e)
     {
         if (_isAuthenticating) return;
         _activeUser = null;
         ShowLoginView();
-        StatusTextBlock.Text = "Çıkış yapıldı.";
+        SetAuthStatus("Çıkış yapıldı.");
     }
 
     private void GoToRegisterButton_Click(object? sender, RoutedEventArgs e) => ShowRegisterView();
@@ -212,28 +243,6 @@ public partial class MainWindow : Window
     {
         RegisterView.IsVisible = false;
         LoginView.IsVisible = true;
-    }
-
-    private static string BuildSessionStatePath(string email)
-    {
-        var safeFileName = string.Concat(email.Select(ch => char.IsLetterOrDigit(ch) ? ch : '_'));
-        var sessionsDirectory = Path.Combine(ResolveAppDataDirectory(), "sessions");
-        return Path.Combine(sessionsDirectory, $"{safeFileName}.json");
-    }
-
-    private static string ResolveAppDataDirectory()
-    {
-        var current = new DirectoryInfo(AppContext.BaseDirectory);
-
-        while (current is not null)
-        {
-            if (File.Exists(Path.Combine(current.FullName, "Yolcu360Otomasyon.csproj")))
-                return current.FullName;
-
-            current = current.Parent;
-        }
-
-        return AppContext.BaseDirectory;
     }
 
     private void ShowMainView()

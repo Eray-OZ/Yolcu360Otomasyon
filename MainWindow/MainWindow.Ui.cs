@@ -8,77 +8,75 @@ public partial class MainWindow : Window
 {
     private void ShowSearchSection()
     {
-        SearchPanel.IsVisible = true;
-        SearchResultsPanel.IsVisible = _latestResults is not null && _latestResults.Count > 0;
-        HistoryPanel.IsVisible = false;
-        PaymentsPanel.IsVisible = false;
-        PaymentCheckoutPanel.IsVisible = false;
-        BrowserSectionPanel.IsVisible = false;
-        SearchTabButton.Classes.Set("primary", true);
-        HistoryTabButton.Classes.Set("primary", false);
-        PaymentsTabButton.Classes.Set("primary", false);
-        NativeWebViewTestButton.Classes.Set("primary", false);
-        NativeWebViewTestButton.IsVisible = false;
+        ShowContentSection(
+            visiblePanel: SearchPanel,
+            activeButton: SearchTabButton,
+            showSearchResults: _latestResults is not null && _latestResults.Count > 0);
     }
 
     private void ShowHistorySection()
     {
-        SearchPanel.IsVisible = false;
-        SearchResultsPanel.IsVisible = false;
-        HistoryPanel.IsVisible = true;
-        PaymentsPanel.IsVisible = false;
-        PaymentCheckoutPanel.IsVisible = false;
-        BrowserSectionPanel.IsVisible = false;
-        SearchTabButton.Classes.Set("primary", false);
-        HistoryTabButton.Classes.Set("primary", true);
-        PaymentsTabButton.Classes.Set("primary", false);
-        NativeWebViewTestButton.Classes.Set("primary", false);
-        NativeWebViewTestButton.IsVisible = false;
+        ShowContentSection(HistoryPanel, HistoryTabButton);
     }
 
     private void ShowPaymentsSection()
     {
-        SearchPanel.IsVisible = false;
-        SearchResultsPanel.IsVisible = false;
-        HistoryPanel.IsVisible = false;
-        PaymentsPanel.IsVisible = true;
-        PaymentCheckoutPanel.IsVisible = false;
-        BrowserSectionPanel.IsVisible = false;
-        SearchTabButton.Classes.Set("primary", false);
-        HistoryTabButton.Classes.Set("primary", false);
-        PaymentsTabButton.Classes.Set("primary", true);
-        NativeWebViewTestButton.Classes.Set("primary", false);
-        NativeWebViewTestButton.IsVisible = false;
+        ShowContentSection(PaymentsPanel, PaymentsTabButton);
     }
 
     private void ShowPaymentCheckoutSection()
     {
-        SearchPanel.IsVisible = false;
-        SearchResultsPanel.IsVisible = false;
-        HistoryPanel.IsVisible = false;
-        PaymentsPanel.IsVisible = false;
-        PaymentCheckoutPanel.IsVisible = true;
-        BrowserSectionPanel.IsVisible = false;
-        SearchTabButton.Classes.Set("primary", false);
-        HistoryTabButton.Classes.Set("primary", false);
-        PaymentsTabButton.Classes.Set("primary", true);
-        NativeWebViewTestButton.Classes.Set("primary", false);
-        NativeWebViewTestButton.IsVisible = false;
+        ShowContentSection(PaymentCheckoutPanel, PaymentsTabButton);
     }
 
     private void ShowBrowserSection()
     {
-        SearchPanel.IsVisible = false;
-        SearchResultsPanel.IsVisible = false;
-        HistoryPanel.IsVisible = false;
-        PaymentsPanel.IsVisible = false;
-        PaymentCheckoutPanel.IsVisible = false;
-        BrowserSectionPanel.IsVisible = true;
-        SearchTabButton.Classes.Set("primary", false);
-        HistoryTabButton.Classes.Set("primary", false);
-        PaymentsTabButton.Classes.Set("primary", false);
-        NativeWebViewTestButton.Classes.Set("primary", true);
-        NativeWebViewTestButton.IsVisible = true;
+        ShowContentSection(BrowserSectionPanel, NativeWebViewTestButton, showNativeWebViewTest: true);
+    }
+
+    private void ShowContentSection(
+        Control visiblePanel,
+        Button activeButton,
+        bool showSearchResults = false,
+        bool showNativeWebViewTest = false)
+    {
+        SearchPanel.IsVisible = ReferenceEquals(visiblePanel, SearchPanel);
+        SearchResultsPanel.IsVisible = showSearchResults;
+        HistoryPanel.IsVisible = ReferenceEquals(visiblePanel, HistoryPanel);
+        PaymentsPanel.IsVisible = ReferenceEquals(visiblePanel, PaymentsPanel);
+        PaymentCheckoutPanel.IsVisible = ReferenceEquals(visiblePanel, PaymentCheckoutPanel);
+        BrowserSectionPanel.IsVisible = ReferenceEquals(visiblePanel, BrowserSectionPanel);
+
+        SearchTabButton.Classes.Set("primary", ReferenceEquals(activeButton, SearchTabButton));
+        HistoryTabButton.Classes.Set("primary", ReferenceEquals(activeButton, HistoryTabButton));
+        PaymentsTabButton.Classes.Set("primary", ReferenceEquals(activeButton, PaymentsTabButton));
+        NativeWebViewTestButton.Classes.Set("primary", ReferenceEquals(activeButton, NativeWebViewTestButton));
+        NativeWebViewTestButton.IsVisible = showNativeWebViewTest;
+    }
+
+    private void SetSearchStatus(string message)
+    {
+        SearchStatusTextBlock.Text = message;
+    }
+
+    private void SetHistoryStatus(string message)
+    {
+        HistoryStatusTextBlock.Text = message;
+    }
+
+    private void SetVehicleStatus(string message)
+    {
+        VehicleStatusTextBlock.Text = message;
+    }
+
+    private void SetCheckoutStatus(string message)
+    {
+        CheckoutStatusTextBlock.Text = message;
+    }
+
+    private void SetPaymentsStatus(string message)
+    {
+        PaymentsStatusTextBlock.Text = message;
     }
 
     private void ConfigureResultsGrid()
@@ -86,61 +84,14 @@ public partial class MainWindow : Window
         ResultsDataGrid.AutoGenerateColumns = false;
         ResultsDataGrid.Columns.Clear();
 
-        ResultsDataGrid.Columns.Add(new DataGridTextColumn
-        {
-            Header = "Araç",
-            Binding = new Binding(nameof(SearchResultItem.Title)),
-            Width = new DataGridLength(2, DataGridLengthUnitType.Star)
-        });
-
-        ResultsDataGrid.Columns.Add(new DataGridTextColumn
-        {
-            Header = "Detay",
-            Binding = new Binding(nameof(SearchResultItem.Subtitle)),
-            Width = new DataGridLength(2, DataGridLengthUnitType.Star)
-        });
-
-        ResultsDataGrid.Columns.Add(new DataGridTextColumn
-        {
-            Header = "Toplam Fiyat",
-            Binding = new Binding(nameof(SearchResultItem.Price)),
-            Width = new DataGridLength(1, DataGridLengthUnitType.Star)
-        });
-
-        ResultsDataGrid.Columns.Add(new DataGridTextColumn
-        {
-            Header = "Günlük",
-            Binding = new Binding(nameof(SearchResultItem.DailyPrice)),
-            Width = new DataGridLength(1, DataGridLengthUnitType.Star)
-        });
-
-        ResultsDataGrid.Columns.Add(new DataGridTextColumn
-        {
-            Header = "Vites",
-            Binding = new Binding(nameof(SearchResultItem.Transmission)),
-            Width = new DataGridLength(1, DataGridLengthUnitType.Star)
-        });
-
-        ResultsDataGrid.Columns.Add(new DataGridTextColumn
-        {
-            Header = "Yakıt",
-            Binding = new Binding(nameof(SearchResultItem.FuelType)),
-            Width = new DataGridLength(1, DataGridLengthUnitType.Star)
-        });
-
-        ResultsDataGrid.Columns.Add(new DataGridTextColumn
-        {
-            Header = "Şirket",
-            Binding = new Binding(nameof(SearchResultItem.Supplier)),
-            Width = new DataGridLength(1, DataGridLengthUnitType.Star)
-        });
-
-        ResultsDataGrid.Columns.Add(new DataGridTextColumn
-        {
-            Header = "Teslim",
-            Binding = new Binding(nameof(SearchResultItem.PickupInfo)),
-            Width = new DataGridLength(2, DataGridLengthUnitType.Star)
-        });
+        AddTextColumn(ResultsDataGrid, "Araç", nameof(SearchResultItem.Title), 2);
+        AddTextColumn(ResultsDataGrid, "Detay", nameof(SearchResultItem.Subtitle), 2);
+        AddTextColumn(ResultsDataGrid, "Toplam Fiyat", nameof(SearchResultItem.Price), 1);
+        AddTextColumn(ResultsDataGrid, "Günlük", nameof(SearchResultItem.DailyPrice), 1);
+        AddTextColumn(ResultsDataGrid, "Vites", nameof(SearchResultItem.Transmission), 1);
+        AddTextColumn(ResultsDataGrid, "Yakıt", nameof(SearchResultItem.FuelType), 1);
+        AddTextColumn(ResultsDataGrid, "Şirket", nameof(SearchResultItem.Supplier), 1);
+        AddTextColumn(ResultsDataGrid, "Teslim", nameof(SearchResultItem.PickupInfo), 2);
     }
 
     private void ConfigureCollectionsGrid()
@@ -148,70 +99,14 @@ public partial class MainWindow : Window
         CollectionsDataGrid.AutoGenerateColumns = false;
         CollectionsDataGrid.Columns.Clear();
 
-        CollectionsDataGrid.Columns.Add(new DataGridTextColumn
-        {
-            Header = "Kayıt Adı",
-            Binding = new Binding(nameof(KoleksiyonListItem.OzelAd)),
-            Width = new DataGridLength(1.8, DataGridLengthUnitType.Star)
-        });
-
-        CollectionsDataGrid.Columns.Add(new DataGridTextColumn
-        {
-            Header = "Alış Yeri",
-            Binding = new Binding(nameof(KoleksiyonListItem.AlisYeri)),
-            Width = new DataGridLength(1.4, DataGridLengthUnitType.Star)
-        });
-
-        CollectionsDataGrid.Columns.Add(new DataGridTextColumn
-        {
-            Header = "Alış",
-            Binding = new Binding(nameof(KoleksiyonListItem.AlisTarihi))
-            {
-                StringFormat = "dd.MM.yyyy"
-            },
-            Width = new DataGridLength(1.1, DataGridLengthUnitType.Star)
-        });
-
-        CollectionsDataGrid.Columns.Add(new DataGridTextColumn
-        {
-            Header = "Dönüş",
-            Binding = new Binding(nameof(KoleksiyonListItem.DonusTarihi))
-            {
-                StringFormat = "dd.MM.yyyy"
-            },
-            Width = new DataGridLength(1.1, DataGridLengthUnitType.Star)
-        });
-
-        CollectionsDataGrid.Columns.Add(new DataGridTextColumn
-        {
-            Header = "Vites",
-            Binding = new Binding(nameof(KoleksiyonListItem.SecilenVitesFiltresi)),
-            Width = new DataGridLength(1, DataGridLengthUnitType.Star)
-        });
-
-        CollectionsDataGrid.Columns.Add(new DataGridTextColumn
-        {
-            Header = "Yakıt",
-            Binding = new Binding(nameof(KoleksiyonListItem.SecilenYakitFiltresi)),
-            Width = new DataGridLength(1, DataGridLengthUnitType.Star)
-        });
-
-        CollectionsDataGrid.Columns.Add(new DataGridTextColumn
-        {
-            Header = "Araç Sayısı",
-            Binding = new Binding(nameof(KoleksiyonListItem.AracSayisi)),
-            Width = new DataGridLength(1, DataGridLengthUnitType.Star)
-        });
-
-        CollectionsDataGrid.Columns.Add(new DataGridTextColumn
-        {
-            Header = "Tarih",
-            Binding = new Binding(nameof(KoleksiyonListItem.OlusturmaTarihi))
-            {
-                StringFormat = "dd.MM.yyyy HH:mm"
-            },
-            Width = new DataGridLength(1.4, DataGridLengthUnitType.Star)
-        });
+        AddTextColumn(CollectionsDataGrid, "Kayıt Adı", nameof(KoleksiyonListItem.OzelAd), 1.8);
+        AddTextColumn(CollectionsDataGrid, "Alış Yeri", nameof(KoleksiyonListItem.AlisYeri), 1.4);
+        AddTextColumn(CollectionsDataGrid, "Alış", nameof(KoleksiyonListItem.AlisTarihi), 1.1, "dd.MM.yyyy");
+        AddTextColumn(CollectionsDataGrid, "Dönüş", nameof(KoleksiyonListItem.DonusTarihi), 1.1, "dd.MM.yyyy");
+        AddTextColumn(CollectionsDataGrid, "Vites", nameof(KoleksiyonListItem.SecilenVitesFiltresi), 1);
+        AddTextColumn(CollectionsDataGrid, "Yakıt", nameof(KoleksiyonListItem.SecilenYakitFiltresi), 1);
+        AddTextColumn(CollectionsDataGrid, "Araç Sayısı", nameof(KoleksiyonListItem.AracSayisi), 1);
+        AddTextColumn(CollectionsDataGrid, "Tarih", nameof(KoleksiyonListItem.OlusturmaTarihi), 1.4, "dd.MM.yyyy HH:mm");
     }
 
     private void ConfigurePaymentsGrid()
@@ -219,66 +114,31 @@ public partial class MainWindow : Window
         PaymentsDataGrid.AutoGenerateColumns = false;
         PaymentsDataGrid.Columns.Clear();
 
-        PaymentsDataGrid.Columns.Add(new DataGridTextColumn
-        {
-            Header = "Referans",
-            Binding = new Binding(nameof(OdemeListItem.ReferansNo)),
-            Width = new DataGridLength(1.6, DataGridLengthUnitType.Star)
-        });
+        AddTextColumn(PaymentsDataGrid, "Referans", nameof(OdemeListItem.ReferansNo), 1.6);
+        AddTextColumn(PaymentsDataGrid, "Kayıt", nameof(OdemeListItem.KoleksiyonAdi), 1.8);
+        AddTextColumn(PaymentsDataGrid, "Tutar", nameof(OdemeListItem.Tutar), 1, "N2");
+        AddTextColumn(PaymentsDataGrid, "PB", nameof(OdemeListItem.ParaBirimi), 0.7);
+        AddTextColumn(PaymentsDataGrid, "Durum", nameof(OdemeListItem.Durum), 1);
+        AddTextColumn(PaymentsDataGrid, "Sağlayıcı", nameof(OdemeListItem.Saglayici), 1.1);
+        AddTextColumn(PaymentsDataGrid, "Kart", nameof(OdemeListItem.KartSon4), 0.8);
+        AddTextColumn(PaymentsDataGrid, "Tarih", nameof(OdemeListItem.OdemeTarihi), 1.3, "dd.MM.yyyy HH:mm");
+    }
 
-        PaymentsDataGrid.Columns.Add(new DataGridTextColumn
+    private static void AddTextColumn(
+        DataGrid dataGrid,
+        string header,
+        string bindingPath,
+        double width,
+        string? stringFormat = null)
+    {
+        dataGrid.Columns.Add(new DataGridTextColumn
         {
-            Header = "Kayıt",
-            Binding = new Binding(nameof(OdemeListItem.KoleksiyonAdi)),
-            Width = new DataGridLength(1.8, DataGridLengthUnitType.Star)
-        });
-
-        PaymentsDataGrid.Columns.Add(new DataGridTextColumn
-        {
-            Header = "Tutar",
-            Binding = new Binding(nameof(OdemeListItem.Tutar))
+            Header = header,
+            Binding = new Binding(bindingPath)
             {
-                StringFormat = "N2"
+                StringFormat = stringFormat
             },
-            Width = new DataGridLength(1, DataGridLengthUnitType.Star)
-        });
-
-        PaymentsDataGrid.Columns.Add(new DataGridTextColumn
-        {
-            Header = "PB",
-            Binding = new Binding(nameof(OdemeListItem.ParaBirimi)),
-            Width = new DataGridLength(0.7, DataGridLengthUnitType.Star)
-        });
-
-        PaymentsDataGrid.Columns.Add(new DataGridTextColumn
-        {
-            Header = "Durum",
-            Binding = new Binding(nameof(OdemeListItem.Durum)),
-            Width = new DataGridLength(1, DataGridLengthUnitType.Star)
-        });
-
-        PaymentsDataGrid.Columns.Add(new DataGridTextColumn
-        {
-            Header = "Sağlayıcı",
-            Binding = new Binding(nameof(OdemeListItem.Saglayici)),
-            Width = new DataGridLength(1.1, DataGridLengthUnitType.Star)
-        });
-
-        PaymentsDataGrid.Columns.Add(new DataGridTextColumn
-        {
-            Header = "Kart",
-            Binding = new Binding(nameof(OdemeListItem.KartSon4)),
-            Width = new DataGridLength(0.8, DataGridLengthUnitType.Star)
-        });
-
-        PaymentsDataGrid.Columns.Add(new DataGridTextColumn
-        {
-            Header = "Tarih",
-            Binding = new Binding(nameof(OdemeListItem.OdemeTarihi))
-            {
-                StringFormat = "dd.MM.yyyy HH:mm"
-            },
-            Width = new DataGridLength(1.3, DataGridLengthUnitType.Star)
+            Width = new DataGridLength(width, DataGridLengthUnitType.Star)
         });
     }
 

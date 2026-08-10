@@ -16,24 +16,19 @@ public partial class MainWindow : Window
 
     private async void CollectionsDataGrid_SelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
-        _selectedCollections = CollectionsDataGrid.SelectedItems?.OfType<KoleksiyonListItem>().ToList()
-            ?? (CollectionsDataGrid.SelectedItem is KoleksiyonListItem single ? [single] : new List<KoleksiyonListItem>());
+        SetSelectedCollectionsFromGrid();
 
         if (_selectedCollections.Count == 0)
         {
-            _selectedCollection = null;
-            _selectedVehicle = null;
-            _selectedCollectionVehicles = new List<SearchResultItem>();
-            CollectionVehiclesDataGrid.ItemsSource = null;
-            ClearSelectedCollectionSummary();
+            ClearSelectedCollectionState();
             return;
         }
 
         _selectedCollection = _selectedCollections[0];
         UpdateSelectedCollectionSummary(_selectedCollections);
-        HistoryStatusTextBlock.Text = _selectedCollections.Count == 1
+        SetHistoryStatus(_selectedCollections.Count == 1
             ? $"{_selectedCollection.OzelAd} kaydı seçildi."
-            : $"{_selectedCollections.Count} kayıt seçildi.";
+            : $"{_selectedCollections.Count} kayıt seçildi.");
     }
 
     private async void ViewVehiclesButton_Click(object? sender, RoutedEventArgs e)
@@ -50,27 +45,13 @@ public partial class MainWindow : Window
     {
         if (_selectedCollection is null)
         {
-            HistoryStatusTextBlock.Text = "Araçlarını görüntülemek için lütfen bir koleksiyon seçin.";
+            SetHistoryStatus("Araçlarını görüntülemek için lütfen bir koleksiyon seçin.");
             return;
         }
 
-        _selectedCollectionVehicles = await _databaseService.GetCollectionVehiclesAsync(_selectedCollection.Id);
-        CollectionVehiclesDataGrid.ItemsSource = null;
-        CollectionVehiclesDataGrid.ItemsSource = _selectedCollectionVehicles;
-
-        if (_selectedCollectionVehicles.Count > 0)
-        {
-            CollectionVehiclesDataGrid.SelectedItem = _selectedCollectionVehicles[0];
-            _selectedVehicle = _selectedCollectionVehicles[0];
-        }
-        else
-        {
-            _selectedVehicle = null;
-        }
-
-        VehicleViewTitleTextBlock.Text = $"{_selectedCollection.OzelAd} (Araç Listesi)";
-        VehicleViewSubtitleTextBlock.Text = $"Alış Yeri: {_selectedCollection.AlisYeri} | Toplam {_selectedCollectionVehicles.Count} Araç Kayıtlı";
-        VehicleStatusTextBlock.Text = $"{_selectedCollection.OzelAd} koleksiyonu için {_selectedCollectionVehicles.Count} araç listelendi.";
+        var vehicles = await _databaseService.GetCollectionVehiclesAsync(_selectedCollection.Id);
+        DisplayCollectionVehicles(_selectedCollection, vehicles);
+        SetVehicleStatus($"{_selectedCollection.OzelAd} koleksiyonu için {_selectedCollectionVehicles.Count} araç listelendi.");
 
         CollectionsViewPanel.IsVisible = false;
         VehiclesViewPanel.IsVisible = true;
@@ -80,7 +61,7 @@ public partial class MainWindow : Window
     {
         VehiclesViewPanel.IsVisible = false;
         CollectionsViewPanel.IsVisible = true;
-        HistoryStatusTextBlock.Text = "Koleksiyonlar listesine dönüldü.";
+        SetHistoryStatus("Koleksiyonlar listesine dönüldü.");
     }
 
     private void CollectionVehiclesDataGrid_SelectionChanged(object? sender, SelectionChangedEventArgs e)
@@ -88,7 +69,7 @@ public partial class MainWindow : Window
         if (CollectionVehiclesDataGrid.SelectedItem is SearchResultItem vehicle)
         {
             _selectedVehicle = vehicle;
-            VehicleStatusTextBlock.Text = $"{_selectedCollection?.OzelAd} - {vehicle.Title} seçildi ({vehicle.Price}).";
+            SetVehicleStatus($"{_selectedCollection?.OzelAd} - {vehicle.Title} seçildi ({vehicle.Price}).");
         }
     }
 
@@ -96,7 +77,7 @@ public partial class MainWindow : Window
     {
         if (_activeUser is null || _selectedCollections.Count == 0)
         {
-            HistoryStatusTextBlock.Text = "Silmek için bir kayıt seçin.";
+            SetHistoryStatus("Silmek için bir kayıt seçin.");
             return;
         }
 
@@ -106,16 +87,13 @@ public partial class MainWindow : Window
             foreach (var collection in _selectedCollections)
                 await _databaseService.DeleteCollectionAsync(collection.Id, _activeUser.Id);
 
-            _selectedCollection = null;
-            _selectedCollections = new List<KoleksiyonListItem>();
-            _selectedCollectionVehicles = new List<SearchResultItem>();
-            ClearSelectedCollectionSummary();
+            ClearSelectedCollectionState();
             await LoadHistoryAsync();
-            HistoryStatusTextBlock.Text = "Seçili kayıtlar silindi.";
+            SetHistoryStatus("Seçili kayıtlar silindi.");
         }
         catch (Exception ex)
         {
-            HistoryStatusTextBlock.Text = $"Silme hatası: {ex.Message}";
+            SetHistoryStatus($"Silme hatası: {ex.Message}");
         }
         finally
         {
@@ -127,7 +105,7 @@ public partial class MainWindow : Window
     {
         if (_selectedCollections.Count == 0)
         {
-            HistoryStatusTextBlock.Text = "PNG indirmek için bir kayıt seçin.";
+            SetHistoryStatus("PNG indirmek için bir kayıt seçin.");
             return;
         }
 
@@ -135,11 +113,11 @@ public partial class MainWindow : Window
         try
         {
             var filePath = await ExportHistorySelectionAsPngAsync(_selectedCollections);
-            HistoryStatusTextBlock.Text = $"PNG kaydedildi: {filePath}";
+            SetHistoryStatus($"PNG kaydedildi: {filePath}");
         }
         catch (Exception ex)
         {
-            HistoryStatusTextBlock.Text = $"PNG oluşturma hatası: {ex.Message}";
+            SetHistoryStatus($"PNG oluşturma hatası: {ex.Message}");
         }
         finally
         {
@@ -161,18 +139,54 @@ public partial class MainWindow : Window
 
         if (collections.Count == 0)
         {
-            _selectedCollection = null;
-            _selectedCollections = new List<KoleksiyonListItem>();
-            _selectedCollectionVehicles = new List<SearchResultItem>();
-            ClearSelectedCollectionSummary();
-            HistoryStatusTextBlock.Text = "Kayıt bulunamadı.";
+            ClearSelectedCollectionState();
+            SetHistoryStatus("Kayıt bulunamadı.");
             return;
         }
 
         if (_selectedCollection is null || collections.All(item => item.Id != _selectedCollection.Id))
             CollectionsDataGrid.SelectedItem = collections[0];
 
-        HistoryStatusTextBlock.Text = $"{collections.Count} kayıt listelendi.";
+        SetHistoryStatus($"{collections.Count} kayıt listelendi.");
+    }
+
+    private void SetSelectedCollectionsFromGrid()
+    {
+        _selectedCollections = CollectionsDataGrid.SelectedItems?.OfType<KoleksiyonListItem>().ToList()
+            ?? (CollectionsDataGrid.SelectedItem is KoleksiyonListItem single ? [single] : new List<KoleksiyonListItem>());
+    }
+
+    private void ClearSelectedCollectionState()
+    {
+        _selectedCollection = null;
+        _selectedVehicle = null;
+        _selectedCollections = new List<KoleksiyonListItem>();
+        _selectedCollectionVehicles = new List<SearchResultItem>();
+        CollectionVehiclesDataGrid.ItemsSource = null;
+        ClearSelectedCollectionSummary();
+    }
+
+    private void DisplayCollectionVehicles(KoleksiyonListItem collection, List<SearchResultItem> vehicles)
+    {
+        _selectedCollectionVehicles = vehicles;
+        CollectionVehiclesDataGrid.ItemsSource = null;
+        CollectionVehiclesDataGrid.ItemsSource = _selectedCollectionVehicles;
+        SelectFirstVehicleIfAny();
+
+        VehicleViewTitleTextBlock.Text = $"{collection.OzelAd} (Araç Listesi)";
+        VehicleViewSubtitleTextBlock.Text = $"Alış Yeri: {collection.AlisYeri} | Toplam {_selectedCollectionVehicles.Count} Araç Kayıtlı";
+    }
+
+    private void SelectFirstVehicleIfAny()
+    {
+        if (_selectedCollectionVehicles.Count == 0)
+        {
+            _selectedVehicle = null;
+            return;
+        }
+
+        CollectionVehiclesDataGrid.SelectedItem = _selectedCollectionVehicles[0];
+        _selectedVehicle = _selectedCollectionVehicles[0];
     }
 
     private void UpdateSelectedCollectionSummary(IReadOnlyList<KoleksiyonListItem> collections)
