@@ -1,5 +1,4 @@
 using Avalonia.Interactivity;
-using Yolcu360Otomasyon.Models;
 
 namespace Yolcu360Otomasyon;
 
@@ -46,77 +45,5 @@ public partial class MainWindow
         {
             ConfirmPaymentButtonControl.IsEnabled = true;
         }
-    }
-
-    private async Task<IyzicoCheckoutSession> InitializeCheckoutSessionAsync()
-    {
-        SetCheckoutStatus("Ödeme sayfası hazırlanıyor...");
-        return await _iyzicoPaymentService.InitializeCheckoutAsync(_activeUser!, _paymentPreviewItems);
-    }
-
-    private async Task CompleteCheckoutInBrowserAsync(
-        IyzicoCheckoutSession session,
-        SandboxPaymentCardInput paymentCard)
-    {
-        ShowBrowserSection();
-        SetCheckoutStatus("Ödeme formu dolduruluyor...");
-
-        var baService = GetBAService();
-        await baService.CompleteIyzicoSandboxPaymentAsync(session.PaymentPageUrl, paymentCard);
-    }
-
-    private async Task<IyzicoPaymentResult> WaitForPaymentResultAsync(IyzicoCheckoutSession session)
-    {
-        SetCheckoutStatus("Ödeme onayı bekleniyor...");
-        await _iyzicoPaymentService.WaitForCallbackAsync(session.Token, TimeSpan.FromMinutes(5));
-        return await _iyzicoPaymentService.RetrievePaymentResultAsync(session.ConversationId, session.Token);
-    }
-
-    private void PrepareCheckoutSummary()
-    {
-        var trCulture = new System.Globalization.CultureInfo("tr-TR");
-        var total = _paymentPreviewItems.Sum(item => item.Tutar);
-        PaymentSummaryCollectionsTextBlockControl.Text = string.Join(Environment.NewLine, _paymentPreviewItems.Select(item =>
-            $"{item.KoleksiyonAdi} - {item.Tutar.ToString("N2", trCulture)} TL"));
-        PaymentSummaryCountTextBlockControl.Text = $"{_paymentPreviewItems.Count} kayıt seçildi";
-        PaymentSummaryTotalTextBlockControl.Text = $"{total.ToString("N2", trCulture)} TL";
-        SetCheckoutStatus("Ödeme iyzico sandbox sayfasında tamamlanacak.");
-    }
-
-    private void ClearCheckoutForm()
-    {
-        PaymentCardHolderTextBoxControl.Text = string.Empty;
-        PaymentCardNumberTextBoxControl.Text = string.Empty;
-        PaymentExpiryMonthTextBoxControl.Text = string.Empty;
-        PaymentExpiryYearTextBoxControl.Text = string.Empty;
-        PaymentCvvTextBoxControl.Text = string.Empty;
-        _paymentPreviewItems = new List<OdemeHazirlikItem>();
-    }
-
-    private SandboxPaymentCardInput BuildSandboxPaymentCardInput()
-    {
-        var cardHolderName = PaymentCardHolderTextBoxControl.Text?.Trim() ?? string.Empty;
-        var cardNumber = PaymentCardNumberTextBoxControl.Text?.Trim() ?? string.Empty;
-        var expiryMonth = PaymentExpiryMonthTextBoxControl.Text?.Trim() ?? string.Empty;
-        var expiryYear = PaymentExpiryYearTextBoxControl.Text?.Trim() ?? string.Empty;
-        var cvc = PaymentCvvTextBoxControl.Text?.Trim() ?? string.Empty;
-
-        if (string.IsNullOrWhiteSpace(cardHolderName) ||
-            string.IsNullOrWhiteSpace(cardNumber) ||
-            string.IsNullOrWhiteSpace(expiryMonth) ||
-            string.IsNullOrWhiteSpace(expiryYear) ||
-            string.IsNullOrWhiteSpace(cvc))
-        {
-            throw new InvalidOperationException("Test kartı alanlarının tamamı zorunlu.");
-        }
-
-        return new SandboxPaymentCardInput
-        {
-            CardHolderName = cardHolderName,
-            CardNumber = cardNumber,
-            ExpiryMonth = expiryMonth,
-            ExpiryYear = expiryYear,
-            Cvc = cvc
-        };
     }
 }

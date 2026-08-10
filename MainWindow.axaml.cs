@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Yolcu360Otomasyon.Configuration;
 using Yolcu360Otomasyon.Models;
 using Yolcu360Otomasyon.Services;
+using Yolcu360Otomasyon.Services.Auth;
 
 namespace Yolcu360Otomasyon;
 
@@ -13,6 +14,7 @@ public partial class MainWindow : Window
     private readonly IyzicoCallbackService _iyzicoCallbackService = new();
     private readonly CollectionPngExportService _collectionPngExportService;
     private readonly IyzicoPaymentService _iyzicoPaymentService;
+    private readonly AuthWorkflowService _authWorkflowService;
     private AppUser? _activeUser;
     private List<SearchResultItem> _latestResults = new();
     private List<SearchResultItem> _selectedCollectionVehicles = new();
@@ -29,6 +31,7 @@ public partial class MainWindow : Window
         InitializeComponent();
         _collectionPngExportService = new CollectionPngExportService(_databaseService);
         _iyzicoPaymentService = new IyzicoPaymentService(AppSettings.GetIyzicoSettings(), _iyzicoCallbackService);
+        _authWorkflowService = new AuthWorkflowService(_databaseService, _smsReceiverService, GetBAService, SetAuthStatus, ShowBrowserLoginView);
         PickupDateTextBoxControl.Text = DateTime.Today.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
         ReturnDateTextBoxControl.Text = DateTime.Today.AddDays(2).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
         PickupTimeTextBoxControl.Text = "10:00";

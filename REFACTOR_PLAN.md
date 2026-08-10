@@ -51,7 +51,20 @@ Bu dokuman mevcut Avalonia uygulamasinda gereksiz tekrar eden, buyuyen veya iler
 - Tamamlandi: `MainWindow.Ui.cs` navigation, status ve DataGrid kurulum dosyalarina ayrildi.
 - Tamamlandi: `MainWindow` partial dosyalari Auth, Search, History, Payments, Layout ve Export alt klasorlerine ayrildi.
 - Tamamlandi: `Services/BrowserAutomation` partial dosyalari Core, Auth, Search, Results, Session ve Payment alt klasorlerine ayrildi.
-- Siradaki adim: Browser automation JS bloklarinda ortak click/input helper kullanimi artirilabilir; `BAService.PhoneLogin.cs` icindeki telefon girisi/devam butonu/SMS ekran bekleme bloklari daha kucuk helper'lara ayrilabilir.
+- Tamamlandi: PNG export servis dosyalari `Services/Export` alt klasorune tasindi.
+- Tamamlandi: `BAService.PhoneLogin.cs` sayfa acma, telefon inputu, devam butonu ve SMS ekran bekleme dosyalarina ayrildi.
+- Tamamlandi: Takvim otomasyonu ay navigasyonu, gun secimi ve ay sabitleri dosyalarina ayrildi.
+- Tamamlandi: DOM helper kodlari script calistirma, input set etme ve click helper dosyalarina ayrildi.
+- Tamamlandi: Alis yeri autocomplete bekleme ve secim durumu kontrolleri ayri dosyalara ayrildi.
+- Tamamlandi: Login/session workflow'u `Services/Auth/AuthWorkflowService.cs` servisine tasindi; UI gecisleri `MainWindow` icinde kaldi.
+- Tamamlandi: SMS dogrulama akisi input doldurma ve buton tiklama dosyalarina ayrildi.
+- Tamamlandi: Navigation kodu ana navigasyon, sayfa durumu, ana sayfa acma, popup kapatma ve DOM diagnostic dosyalarina ayrildi.
+- Tamamlandi: DatePicker kodu ana tarih akisi, datepicker acma, menu bekleme ve onaylama dosyalarina ayrildi.
+- Tamamlandi: Sonuc filtreleme kodu ana filtre akisi, hedef metin olusturma ve filtre secenegine tiklama dosyalarina ayrildi.
+- Tamamlandi: `MainWindow.SearchRun.cs` arama handler, filtre olusturma, gömülü arama calistirma ve sonuc gosterme dosyalarina ayrildi.
+- Tamamlandi: Saat secme otomasyonu saat kutusu acma ve saat secenegi secme dosyalarina ayrildi.
+- Tamamlandi: `MainWindow.PaymentsCheckout.cs` checkout handler, browser odeme akisi, ozet/form temizleme ve kart input okuma dosyalarina ayrildi.
+- Siradaki adim: Kalan buyuk JS bloklari daha kucuk helper'lara ayrilabilir; selector davranisi etkilenebilecegi icin her adim build ile dogrulanmali.
 
 ## Mevcut Durum Ozeti
 
