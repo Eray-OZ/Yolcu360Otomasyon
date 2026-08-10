@@ -16,7 +16,7 @@ public partial class MainWindow : Window
         try
         {
             await _smsReceiverService.StartAsync();
-            SetAuthStatus(BuildSmsReceiverStatus());
+            SetAuthStatus(_smsReceiverService.GetStatusMessage());
         }
         catch (Exception ex)
         {
@@ -150,7 +150,7 @@ public partial class MainWindow : Window
             catch (OperationCanceledException)
             {
                 throw new InvalidOperationException(
-                    $"SMS kodu 2 dakika içinde uygulamaya gelmedi. MacroDroid URL'i şu formatta olmalı: http://{GetPreferredLocalIpAddress()}:{_smsReceiverService.Port}/sms?message={{sms_message}}");
+                    $"SMS kodu 2 dakika içinde uygulamaya gelmedi. MacroDroid URL'i şu formatta olmalı: http://{SmsReceiverService.GetPreferredLocalIpAddress()}:{_smsReceiverService.Port}/sms?message={{sms_message}}");
             }
 
             StatusTextBlock.Text = $"SMS kodu alındı: {code}";
@@ -259,59 +259,5 @@ public partial class MainWindow : Window
 
         if (RegisterView.IsVisible)
             RegisterStatusTextBlock.Text = message;
-    }
-
-    private string BuildSmsReceiverStatus()
-    {
-        var addresses = GetLocalIpAddresses().ToArray();
-        var primaryAddress = addresses.FirstOrDefault() ?? "127.0.0.1";
-        var alternatives = addresses.Length > 1
-            ? $" Alternatif IP: {string.Join(", ", addresses.Skip(1))}"
-            : string.Empty;
-
-        return $"SMS alıcısı hazır. MacroDroid URL: http://{primaryAddress}:{_smsReceiverService.Port}/sms?message={{sms_message}}{alternatives}";
-    }
-
-    private static string GetPreferredLocalIpAddress()
-    {
-        return GetLocalIpAddresses().FirstOrDefault() ?? "127.0.0.1";
-    }
-
-    private static IEnumerable<string> GetLocalIpAddresses()
-    {
-        var addresses = new List<string>();
-
-        foreach (var networkInterface in NetworkInterface.GetAllNetworkInterfaces())
-        {
-            if (networkInterface.OperationalStatus != OperationalStatus.Up)
-                continue;
-
-            if (networkInterface.NetworkInterfaceType is not (NetworkInterfaceType.Wireless80211 or NetworkInterfaceType.Ethernet))
-                continue;
-
-            var properties = networkInterface.GetIPProperties();
-            foreach (var address in properties.UnicastAddresses)
-            {
-                var ip = address.Address;
-                if (ip.AddressFamily == AddressFamily.InterNetwork && !IPAddress.IsLoopback(ip))
-                    addresses.Add(ip.ToString());
-            }
-        }
-
-        if (addresses.Count > 0)
-            return addresses.Distinct();
-
-        try
-        {
-            return Dns.GetHostEntry(Dns.GetHostName())
-                .AddressList
-                .Where(ip => ip.AddressFamily == AddressFamily.InterNetwork && !IPAddress.IsLoopback(ip))
-                .Select(ip => ip.ToString())
-                .Distinct();
-        }
-        catch
-        {
-            return [];
-        }
     }
 }

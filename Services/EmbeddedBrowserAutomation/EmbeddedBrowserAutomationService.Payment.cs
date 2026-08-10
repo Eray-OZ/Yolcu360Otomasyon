@@ -51,7 +51,7 @@ public sealed partial class EmbeddedBrowserAutomationService
         await Task.Delay(1250);
 
         Report("iyzico ödeme onay butonuna tıklanıyor...");
-        var paymentClicked = await EvaluateScriptAsync(
+        var paymentClicked = await EvaluateBooleanScriptAsync(
             """
             (() => {
                 const btn = document.querySelector('#iyz-payment-button') ||
@@ -66,7 +66,7 @@ public sealed partial class EmbeddedBrowserAutomationService
             })();
             """);
 
-        if (!IsScriptTrue(paymentClicked))
+        if (!paymentClicked)
             throw new InvalidOperationException("Gömülü tarayıcıda iyzico ödeme butonu tıklanamadı.");
 
         Report("iyzico ödeme işlemi gömülü tarayıcıda tamamlandı.");

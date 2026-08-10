@@ -58,4 +58,12 @@ public partial class MainWindow : Window
         if (LogoutButton is not null)
             LogoutButton.IsVisible = visible;
     }
+
+    protected override async void OnClosed(EventArgs e)
+    {
+        await _smsReceiverService.DisposeAsync();
+        await _iyzicoCallbackService.DisposeAsync();
+
+        base.OnClosed(e);
+    }
 }

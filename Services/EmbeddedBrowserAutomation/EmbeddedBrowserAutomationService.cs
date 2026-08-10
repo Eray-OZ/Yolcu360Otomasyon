@@ -56,6 +56,34 @@ public sealed partial class EmbeddedBrowserAutomationService
         return Dispatcher.UIThread.InvokeAsync(() => _browser.InvokeScript(script));
     }
 
+    public async Task<bool> EvaluateBooleanScriptAsync(string script)
+    {
+        var result = await EvaluateScriptAsync(script);
+        return IsScriptTrue(result);
+    }
+
+    public async Task<T?> EvaluateJsonScriptAsync<T>(string script)
+    {
+        var result = await EvaluateScriptAsync(script);
+        if (string.IsNullOrWhiteSpace(result))
+            return default;
+
+        var cleanJson = result.Trim();
+        if (cleanJson.StartsWith("\"") && cleanJson.EndsWith("\""))
+        {
+            try
+            {
+                cleanJson = System.Text.Json.JsonSerializer.Deserialize<string>(cleanJson) ?? cleanJson;
+            }
+            catch
+            {
+                // Fallback to original cleanJson if unescaping fails
+            }
+        }
+
+        return System.Text.Json.JsonSerializer.Deserialize<T>(cleanJson);
+    }
+
     public async Task<string> GetTitleAsync()
     {
         return await EvaluateScriptAsync("document.title") ?? string.Empty;
