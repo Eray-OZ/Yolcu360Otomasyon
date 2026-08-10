@@ -853,8 +853,6 @@
                                            FontSize="22"
                                            FontWeight="Bold"
                                            Foreground="#122033" />
-                                <TextBlock Text="iyzico sandbox üzerinden tamamlanan ödeme kayıtları burada listelenir."
-                                           Foreground="#5F7187" />
                             </StackPanel>
 
                             <TextBlock x:Name="PaymentsStatusTextBlock"
@@ -900,18 +898,15 @@
                                                 CornerRadius="999"
                                                 Padding="14,6"
                                                 HorizontalAlignment="Left">
-                                            <TextBlock Text="iyzico"
+                                            <TextBlock Text="Ödeme"
                                                        FontSize="18"
                                                        FontWeight="Bold"
                                                        Foreground="White" />
                                         </Border>
-                                        <TextBlock Text="Güvenli ödeme"
+                                        <TextBlock Text="Güvenli Ödeme"
                                                    FontSize="30"
                                                    FontWeight="Bold"
                                                    Foreground="White" />
-                                        <TextBlock Text="Seçtiğiniz kayıtlar için resmi iyzico sandbox ödeme adımı burada başlatılır."
-                                                   Foreground="#DCE8FF"
-                                                   TextWrapping="Wrap" />
                                     </StackPanel>
 
                                     <Border Grid.Row="1"
@@ -956,23 +951,6 @@
                                         </StackPanel>
                                     </Border>
 
-                                    <Border Grid.Row="2"
-                                            Background="#0D4AD0"
-                                            CornerRadius="14"
-                                            Padding="18">
-                                        <StackPanel Spacing="8">
-                                            <TextBlock Text="Sandbox Bilgisi"
-                                                       FontSize="16"
-                                                       FontWeight="Bold"
-                                                       Foreground="White" />
-                                            <TextBlock Text="Kart bilgileri uygulama içinde değil, iyzico'nun açtığı resmi sandbox sayfasında girilir."
-                                                       Foreground="#E8F0FF"
-                                                       TextWrapping="Wrap" />
-                                            <TextBlock Text="Sandbox OTP: 123456"
-                                                       Foreground="#E8F0FF" />
-                                        </StackPanel>
-                                    </Border>
-
                                     <TextBlock x:Name="CheckoutStatusTextBlock"
                                                Grid.Row="3"
                                                Text=""
@@ -986,16 +964,13 @@
                                     Background="#FBFCFE"
                                     Padding="30"
                                     CornerRadius="0,10,10,0">
-                                <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,*"
+                                <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,*"
                                       RowSpacing="16">
                                     <StackPanel Spacing="6">
-                                        <TextBlock Text="iyzico Sandbox"
+                                        <TextBlock Text="Ödeme Bilgileri"
                                                    FontSize="24"
                                                    FontWeight="Bold"
                                                    Foreground="#122033" />
-                                        <TextBlock Text="Test kartı bilgileri burada girilir, tarayıcıda otomatik doldurulup onaylanır."
-                                                   Foreground="#61758A"
-                                                   TextWrapping="Wrap" />
                                     </StackPanel>
 
                                     <Border Grid.Row="1"
@@ -1072,18 +1047,7 @@
                                         </Border>
                                     </Grid>
 
-                                    <Border Grid.Row="4"
-                                            Background="#F4F7FC"
-                                            BorderBrush="#E2E9F2"
-                                            BorderThickness="1"
-                                            CornerRadius="12"
-                                            Padding="14">
-                                        <TextBlock Text="Uygulama tarayıcıyı açar, bu alanlardaki test kartını iyzico sandbox formuna yazar, ödeme butonuna basar ve callback sonucunu kaydeder."
-                                                   Foreground="#5F7187"
-                                                   TextWrapping="Wrap" />
-                                    </Border>
-
-                                    <StackPanel Grid.Row="5"
+                                    <StackPanel Grid.Row="4"
                                                 Orientation="Horizontal"
                                                 HorizontalAlignment="Stretch"
                                                 Spacing="12">
