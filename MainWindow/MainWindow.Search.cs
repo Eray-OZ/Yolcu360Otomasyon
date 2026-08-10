@@ -69,30 +69,18 @@ public partial class MainWindow : Window
                 await embeddedBrowser.RestoreSessionAsync(_activeUser.SessionStatePath);
             }
 
+            SearchStatusTextBlock.Text = "Araçlar aranıyor...";
+
             await embeddedBrowser.OpenYolcu360HomeAsync();
-
-            SearchStatusTextBlock.Text = "Gömülü tarayıcı alış yeri seçiyor...";
             await embeddedBrowser.FillPickupLocationAsync(filter.PickupLocation);
-
-            SearchStatusTextBlock.Text = "Gömülü tarayıcı tarihleri seçiyor...";
             await embeddedBrowser.SelectDateRangeAsync(filter.PickupDate, filter.ReturnDate);
-
-            SearchStatusTextBlock.Text = "Gömülü tarayıcı alış saatini seçiyor...";
             await embeddedBrowser.SelectTimeAsync(0, filter.PickupTime);
-
-            SearchStatusTextBlock.Text = "Gömülü tarayıcı bırakış saatini seçiyor...";
             await embeddedBrowser.SelectTimeAsync(1, filter.ReturnTime);
-
-            SearchStatusTextBlock.Text = "Gömülü tarayıcı araç ara butonuna tıklıyor...";
             await embeddedBrowser.ClickSearchButtonAsync();
-
-            SearchStatusTextBlock.Text = "Gömülü tarayıcı sonuçları bekliyor...";
             await embeddedBrowser.WaitForSearchResultsAsync();
-
-            SearchStatusTextBlock.Text = "Gömülü tarayıcı filtreleri uyguluyor...";
             await embeddedBrowser.ApplyResultFiltersAsync(filter);
 
-            SearchStatusTextBlock.Text = "Gömülü tarayıcı sonuçları okuyor...";
+            SearchStatusTextBlock.Text = "Arama sonuçları okunuyor...";
             var results = await embeddedBrowser.ReadSearchResultsAsync();
             _latestResults = results;
 
@@ -219,7 +207,6 @@ public partial class MainWindow : Window
         var embeddedBrowser = new EmbeddedBrowserAutomationService(EmbeddedBrowser);
         embeddedBrowser.ProgressChanged += message =>
         {
-            Console.WriteLine($"[EmbeddedWebViewUI] {message}");
             Dispatcher.UIThread.Post(() =>
             {
                 SearchStatusTextBlock.Text = message;

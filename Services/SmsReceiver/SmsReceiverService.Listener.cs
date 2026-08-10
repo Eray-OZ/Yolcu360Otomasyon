@@ -37,20 +37,17 @@ public sealed partial class SmsReceiverService
             var (message, sender) = await ReadIncomingMessageAsync(context.Request);
             var code = ExtractCode(message);
 
-            Console.WriteLine($"[SMS] Istek alindi ({requestPath}). Sender='{sender}', Message='{message}'");
             SmsReceived?.Invoke(string.IsNullOrWhiteSpace(message)
                 ? $"{sender} | SMS isteği geldi ama mesaj alanı boş. URL: {context.Request.Url}"
                 : $"{sender} | {message}");
 
             if (string.IsNullOrWhiteSpace(code))
             {
-                Console.WriteLine("[SMS] Kod ayiklanamadi.");
                 context.Response.StatusCode = 400;
                 await WriteResponseAsync(context.Response, """{"error":"OTP code not found in message."}""");
                 return;
             }
 
-            Console.WriteLine($"[SMS] Kod yakalandi: {code}");
             SmsReceived?.Invoke($"Kod yakalandı: {code}");
 
             lock (_sync)

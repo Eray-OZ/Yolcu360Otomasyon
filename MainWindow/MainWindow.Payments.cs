@@ -81,18 +81,17 @@ public partial class MainWindow : Window
         try
         {
             var paymentCard = BuildSandboxPaymentCardInput();
-            CheckoutStatusTextBlock.Text = "iyzico sandbox ödeme sayfası hazırlanıyor...";
+            CheckoutStatusTextBlock.Text = "Ödeme sayfası hazırlanıyor...";
 
             var session = await _iyzicoPaymentService.InitializeCheckoutAsync(_activeUser, _paymentPreviewItems);
 
             ShowBrowserSection();
-            CheckoutStatusTextBlock.Text = "Gömülü tarayıcıda iyzico ödeme sayfası dolduruluyor...";
+            CheckoutStatusTextBlock.Text = "Ödeme formu dolduruluyor...";
 
             var embeddedBrowser = CreateEmbeddedBrowserAutomationService();
             await embeddedBrowser.CompleteIyzicoSandboxPaymentAsync(session.PaymentPageUrl, paymentCard);
 
-            CheckoutStatusTextBlock.Text =
-                $"iyzico sandbox formu gömülü tarayıcıda dolduruldu. Callback bekleniyor: {_iyzicoCallbackService.CallbackUrl}";
+            CheckoutStatusTextBlock.Text = "Ödeme onayı bekleniyor...";
 
             await _iyzicoPaymentService.WaitForCallbackAsync(session.Token, TimeSpan.FromMinutes(5));
             var paymentResult = await _iyzicoPaymentService.RetrievePaymentResultAsync(session.ConversationId, session.Token);
