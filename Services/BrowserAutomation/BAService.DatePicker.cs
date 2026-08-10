@@ -1,6 +1,6 @@
 namespace Yolcu360Otomasyon.Services;
 
-public sealed partial class EmbeddedBrowserAutomationService
+public sealed partial class BAService
 {
     public async Task SelectDateRangeAsync(DateTime pickupDate, DateTime returnDate)
     {

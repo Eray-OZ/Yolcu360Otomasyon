@@ -21,7 +21,7 @@ public partial class MainWindow : Window
     private List<KoleksiyonListItem> _selectedCollections = new();
     private List<OdemeHazirlikItem> _paymentPreviewItems = new();
     private SearchFilter? _latestSearchFilter;
-    private EmbeddedBrowserAutomationService? _embeddedBrowserAutomationService;
+    private BAService? _baService;
     private bool _isAuthenticating;
 
     public MainWindow()

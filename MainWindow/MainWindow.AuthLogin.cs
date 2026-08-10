@@ -46,10 +46,10 @@ public partial class MainWindow
                 return;
 
             ShowBrowserLoginView();
-            var embeddedBrowser = await RunPhoneLoginAsync(user.PhoneNumber);
+            var baService = await RunPhoneLoginAsync(user.PhoneNumber);
             var code = await WaitForSmsCodeAsync();
-            await SubmitSmsCodeAndWaitForLoginAsync(embeddedBrowser, code);
-            await SaveLoginSessionAsync(embeddedBrowser, user, email, password, sessionStatePath);
+            await SubmitSmsCodeAndWaitForLoginAsync(baService, code);
+            await SaveLoginSessionAsync(baService, user, email, password, sessionStatePath);
 
             SetAuthStatus("Giriş tamamlandı.");
             ShowMainView();
@@ -87,18 +87,18 @@ public partial class MainWindow
         return true;
     }
 
-    private async Task<EmbeddedBrowserAutomationService> RunPhoneLoginAsync(string phoneNumber)
+    private async Task<BAService> RunPhoneLoginAsync(string phoneNumber)
     {
         SetAuthStatus("Gömülü tarayıcı hazırlanıyor...");
 
-        var embeddedBrowser = GetEmbeddedBrowserAutomationService();
-        await embeddedBrowser.ClearBrowserSessionAsync();
+        var baService = GetBAService();
+        await baService.ClearBrowserSessionAsync();
 
         SetAuthStatus("Yolcu360 giriş ekranı dolduruluyor...");
         _smsReceiverService.ClearLatestCode();
-        await embeddedBrowser.LoginWithPhoneAsync(phoneNumber);
+        await baService.LoginWithPhoneAsync(phoneNumber);
 
-        return embeddedBrowser;
+        return baService;
     }
 
     private async Task<string> WaitForSmsCodeAsync()
@@ -116,23 +116,23 @@ public partial class MainWindow
         }
     }
 
-    private async Task SubmitSmsCodeAndWaitForLoginAsync(EmbeddedBrowserAutomationService embeddedBrowser, string code)
+    private async Task SubmitSmsCodeAndWaitForLoginAsync(BAService baService, string code)
     {
         SetAuthStatus($"SMS kodu alındı: {code}");
-        await embeddedBrowser.FillSmsVerificationCodeAsync(code);
+        await baService.FillSmsVerificationCodeAsync(code);
         SetAuthStatus("Girişin tamamlanması bekleniyor...");
-        await embeddedBrowser.WaitForLoginCompletedAsync();
+        await baService.WaitForLoginCompletedAsync();
     }
 
     private async Task SaveLoginSessionAsync(
-        EmbeddedBrowserAutomationService embeddedBrowser,
+        BAService baService,
         AppUser user,
         string email,
         string password,
         string sessionStatePath)
     {
         SetAuthStatus("Oturum kaydediliyor...");
-        await embeddedBrowser.SaveSessionAsync(sessionStatePath);
+        await baService.SaveSessionAsync(sessionStatePath);
         await _databaseService.SaveOrUpdateUserAsync(email, password, user.PhoneNumber, sessionStatePath);
         SetActiveUser(user, email, password, sessionStatePath);
     }

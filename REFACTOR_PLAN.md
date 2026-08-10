@@ -5,7 +5,7 @@ Bu dokuman mevcut Avalonia uygulamasinda gereksiz tekrar eden, buyuyen veya iler
 ## Ilerleme Durumu
 
 - Tamamlandi: Build'i kiran `DatabaseService` `catch` hatasi giderildi.
-- Tamamlandi: Gömülü tarayici otomasyon servisi `MainWindow` icinde tekil hale getirildi. Arama, login ve odeme akislari artik ayni `EmbeddedBrowserAutomationService` instance'ini kullaniyor.
+- Tamamlandi: Gömülü tarayici otomasyon servisi `MainWindow` icinde tekil hale getirildi. Arama, login ve odeme akislari artik ayni `BAService` instance'ini kullaniyor.
 - Tamamlandi: Arama status mesajlari `SetSearchStatus` helper'i uzerinden gecirilmeye baslandi.
 - Tamamlandi: Gecmis, arac listesi, odeme ve checkout status mesajlari helper metotlara alindi.
 - Tamamlandi: `SearchButton_Click` akisi `TryBuildSearchFilter`, `RunEmbeddedSearchAsync` ve `DisplaySearchResultsAsync` metotlarina ayrildi.
@@ -16,7 +16,7 @@ Bu dokuman mevcut Avalonia uygulamasinda gereksiz tekrar eden, buyuyen veya iler
 - Tamamlandi: Gecmis ekraninda secili koleksiyon, arac listesi ve state temizleme bloklari helper metotlara ayrildi.
 - Tamamlandi: PNG export akisi dosya yolu olusturma, koleksiyon/arac verilerini yukleme ve render/kaydetme metotlarina ayrildi.
 - Tamamlandi: Ekran gecislerindeki tekrar eden panel/buton gorunurluk kodlari `ShowContentSection` helper'i ile sadeleştirildi.
-- Tamamlandi: `EmbeddedBrowserAutomationService` icinde tekrar eden JSON serialize kullanimi `ToJson` helper'i ile merkezi hale getirildi.
+- Tamamlandi: `BAService` icinde tekrar eden JSON serialize kullanimi `ToJson` helper'i ile merkezi hale getirildi.
 - Tamamlandi: Gömülü tarayici sayfa hazirlik/polling beklemeleri isimli sabitlere alindi.
 - Tamamlandi: Sonuc filtreleme, takvim, saat ve arama butonu akişlarindaki ham sabit beklemeler isimli sabitlere alindi.
 - Tamamlandi: Veritabani servislerinde tekrar eden schema/context olusturma kodlari `CreateContextAsync` helper'i ile merkezi hale getirildi.
@@ -31,17 +31,21 @@ Bu dokuman mevcut Avalonia uygulamasinda gereksiz tekrar eden, buyuyen veya iler
 - Tamamlandi: `MainWindow.axaml` ana ekran iskeleti seviyesine indirildi.
 - Tamamlandi: Odeme formu input doldurma JS'i `SetInputValueAsync` helper'i ile merkezi hale getirildi.
 - Tamamlandi: iyzico sekme/buton click islemleri icin ortak `ClickElementAsync`, `ClickButtonByTextAsync` ve `EnsureEmbeddedClickHelperAsync` helper'lari eklendi.
-- Tamamlandi: `EmbeddedBrowserAutomationService.SearchForm.cs` alis yeri, tarih secici, saat secici ve arama butonu dosyalarina ayrildi.
+- Tamamlandi: `BAService.SearchForm.cs` alis yeri, tarih secici, saat secici ve arama butonu dosyalarina ayrildi.
 - Tamamlandi: PNG export olusturma mantigi `CollectionPngExportService` servisine tasindi.
 - Tamamlandi: Auth kodu kontrol baglayicilari, login akisi ve kayit akisi olarak ayri partial dosyalara ayrildi.
-- Tamamlandi: `EmbeddedBrowserAutomationService.Auth.cs` telefonla login, SMS dogrulama ve session dosyalarina ayrildi.
-- Siradaki adim: `MainWindow.Search.cs`, `MainWindow.History.cs` ve `MainWindow.Payments.cs` icindeki UI event handler'larini servis/ViewModel benzeri yapilara kademeli olarak tasimak.
+- Tamamlandi: `BAService.Auth.cs` telefonla login, SMS dogrulama ve session dosyalarina ayrildi.
+- Tamamlandi: `EmbeddedBrowserAutomationService` adi `BAService`, klasoru `Services/BrowserAutomation` olarak kisaltildi.
+- Tamamlandi: Search kodu kontrol baglayicilari, arama calistirma ve sonuc kaydetme dosyalarina ayrildi.
+- Tamamlandi: History kodu kontrol baglayicilari, veri gosterimi ve koleksiyon aksiyonlari dosyalarina ayrildi.
+- Tamamlandi: Payments kodu kontrol baglayicilari, odeme olusturma, checkout ve odeme listesi dosyalarina ayrildi.
+- Siradaki adim: Browser automation JS bloklarinda ortak click/input helper kullanimi artirilabilir ve `BAService.cs` cekirdek dosyasi daha kucuk altyapi dosyalarina ayrilabilir.
 
 ## Mevcut Durum Ozeti
 
 - Uygulama Avalonia ile yaziliyor.
 - Gömülü tarayici icin `Avalonia.Controls.WebView` ve `NativeWebView` kullaniliyor.
-- Yolcu360 uzerindeki arama, login, SMS dogrulama, sonuc okuma ve odeme akislari `EmbeddedBrowserAutomationService` altinda parcali dosyalara ayrilmis durumda.
+- Yolcu360 uzerindeki arama, login, SMS dogrulama, sonuc okuma ve odeme akislari `BAService` altinda parcali dosyalara ayrilmis durumda.
 - UI kodu `MainWindow` partial dosyalara bolunmus durumda.
 - Veritabani islemleri Entity Framework Core ve MySQL uzerinden yapiliyor.
 - Iyzico sandbox odeme akisi ayri servislerde tutuluyor.
@@ -99,11 +103,11 @@ Ortak style dosyalari:
 
 Bu asamada `MainWindow.axaml` sadece ana iskelet, ust navigasyon ve view yerlesimi gorevini tasiyor.
 
-## Oncelik 2: EmbeddedBrowserAutomationService Icindeki JS Tekrarlarini Azaltma
+## Oncelik 2: BAService Icindeki JS Tekrarlarini Azaltma
 
 ### Sorun
 
-`EmbeddedBrowserAutomationService.SearchForm.cs` cok buyuk ve cok sayida inline JavaScript barindiriyor. Ayni mantik birden fazla yerde tekrar ediyor:
+`BAService.SearchForm.cs` cok buyuk ve cok sayida inline JavaScript barindiriyor. Ayni mantik birden fazla yerde tekrar ediyor:
 
 - Element gorunur mu kontrolu
 - Element merkezine click atma
@@ -116,7 +120,7 @@ Bu tekrarlar yuzunden kucuk selector veya event degisikligi farkli yerlerde unut
 
 ### Onerilen Helper Metotlar
 
-`EmbeddedBrowserAutomationService.cs` icine veya ayri bir `EmbeddedDomAutomation.cs` dosyasina su metotlar alinabilir:
+`BAService.cs` icine veya ayri bir `EmbeddedDomAutomation.cs` dosyasina su metotlar alinabilir:
 
 ```csharp
 private Task<bool> WaitForVisibleAsync(string selector, TimeSpan timeout);
@@ -177,7 +181,7 @@ const clickCenter = el => {
 
 ### Sorun
 
-`MainWindow.Search.cs` icindeki `SearchButton_Click` birden fazla sorumluluk tasiyor:
+Eski tek dosyali Search akisi icindeki `SearchButton_Click` birden fazla sorumluluk tasiyordu:
 
 - UI buton durumunu ayarliyor.
 - Tarih parse ediyor.
@@ -195,12 +199,20 @@ const clickCenter = el => {
 private bool TryBuildSearchFilter(out SearchFilter filter);
 private Task<List<SearchResultItem>> RunSearchAsync(SearchFilter filter);
 private void DisplaySearchResults(List<SearchResultItem> results);
-private Task RestoreBrowserSessionIfNeededAsync(EmbeddedBrowserAutomationService browser);
+private Task RestoreBrowserSessionIfNeededAsync(BAService baService);
 ```
 
 ### Beklenen Kazanc
 
 Arama sonucunun gelmemesi, filtre uygulanmamasi veya grid'e basilmamasi gibi sorunlar tek tek izole edilir. Simdiki haliyle tek handler icinde hata kaynagi bulmak zor.
+
+### Mevcut Durum
+
+Bu akis su dosyalara ayrildi:
+
+- `MainWindow.SearchControls.cs`
+- `MainWindow.SearchRun.cs`
+- `MainWindow.SearchSave.cs`
 
 ## Oncelik 4: Login ve Session Akisini Servise Ayirma
 
@@ -242,31 +254,31 @@ UI sadece status ve ekran gecisleriyle ilgilenmeli.
 
 Session saklama, SMS bekleme ve tarayici login adimlari birbirinden ayrilir. Captcha veya SMS tarafinda sorun oldugunda UI koduna dokunmadan debug yapilir.
 
-## Oncelik 5: EmbeddedBrowserAutomationService Nesnesini Tekil Kullanma
+## Oncelik 5: BAService Nesnesini Tekil Kullanma
 
 ### Sorun
 
-`CreateEmbeddedBrowserAutomationService()` her cagrildiginda yeni servis uretiyor ve `ProgressChanged` eventini yeniden bagliyor.
+`CreateBAService()` her cagrildiginda yeni servis uretiyor ve `ProgressChanged` eventini yeniden bagliyor.
 
 ### Onerilen Cozum
 
 `MainWindow.axaml.cs` icinde bir field tutulabilir:
 
 ```csharp
-private EmbeddedBrowserAutomationService? _embeddedBrowserAutomationService;
+private BAService? _baService;
 ```
 
 Lazy init:
 
 ```csharp
-private EmbeddedBrowserAutomationService GetEmbeddedBrowserAutomationService()
+private BAService GetBAService()
 {
-    if (_embeddedBrowserAutomationService is not null)
-        return _embeddedBrowserAutomationService;
+    if (_baService is not null)
+        return _baService;
 
-    _embeddedBrowserAutomationService = new EmbeddedBrowserAutomationService(EmbeddedBrowser);
-    _embeddedBrowserAutomationService.ProgressChanged += OnEmbeddedBrowserProgressChanged;
-    return _embeddedBrowserAutomationService;
+    _baService = new BAService(EmbeddedBrowser);
+    _baService.ProgressChanged += OnEmbeddedBrowserProgressChanged;
+    return _baService;
 }
 ```
 
@@ -425,7 +437,7 @@ NativeWebViewTestButton.IsVisible = false;
 
 1. Build hatalarini temizle.
 2. XAML'i once auth ekranlarindan baslayarak parcala.
-3. `EmbeddedBrowserAutomationService` icindeki JS helper tekrarlarini azalt.
+3. `BAService` icindeki JS helper tekrarlarini azalt.
 4. Search handler'i kucuk metotlara bol.
 5. Login/session akisini servis haline getir.
 6. Status mesajlarini merkezi helperlara tasi.

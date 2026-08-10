@@ -1,96 +1,10 @@
-using Avalonia.Controls;
 using Avalonia.Interactivity;
-using Avalonia.Threading;
 using Yolcu360Otomasyon.Models;
-using Yolcu360Otomasyon.Services;
 
 namespace Yolcu360Otomasyon;
 
-public partial class MainWindow : Window
+public partial class MainWindow
 {
-    private Border PaymentsPanel => PaymentsViewControl.FindControl<Border>("PaymentsPanel")!;
-    private TextBlock PaymentsStatusTextBlock => PaymentsViewControl.FindControl<TextBlock>("PaymentsStatusTextBlock")!;
-    private DataGrid PaymentsDataGrid => PaymentsViewControl.FindControl<DataGrid>("PaymentsDataGrid")!;
-    private Border PaymentCheckoutPanel => PaymentsViewControl.FindControl<Border>("PaymentCheckoutPanel")!;
-    private TextBlock PaymentSummaryCollectionsTextBlock => PaymentsViewControl.FindControl<TextBlock>("PaymentSummaryCollectionsTextBlock")!;
-    private TextBlock PaymentSummaryCountTextBlock => PaymentsViewControl.FindControl<TextBlock>("PaymentSummaryCountTextBlock")!;
-    private TextBlock PaymentSummaryTotalTextBlock => PaymentsViewControl.FindControl<TextBlock>("PaymentSummaryTotalTextBlock")!;
-    private TextBox PaymentCardHolderTextBox => PaymentsViewControl.FindControl<TextBox>("PaymentCardHolderTextBox")!;
-    private TextBox PaymentCardNumberTextBox => PaymentsViewControl.FindControl<TextBox>("PaymentCardNumberTextBox")!;
-    private TextBox PaymentExpiryMonthTextBox => PaymentsViewControl.FindControl<TextBox>("PaymentExpiryMonthTextBox")!;
-    private TextBox PaymentExpiryYearTextBox => PaymentsViewControl.FindControl<TextBox>("PaymentExpiryYearTextBox")!;
-    private TextBox PaymentCvvTextBox => PaymentsViewControl.FindControl<TextBox>("PaymentCvvTextBox")!;
-    private TextBlock CheckoutStatusTextBlock => PaymentsViewControl.FindControl<TextBlock>("CheckoutStatusTextBlock")!;
-    private Button BackFromCheckoutButton => PaymentsViewControl.FindControl<Button>("BackFromCheckoutButton")!;
-    private Button ConfirmPaymentButton => PaymentsViewControl.FindControl<Button>("ConfirmPaymentButton")!;
-
-    private void ConfigurePaymentsViewEvents()
-    {
-        BackFromCheckoutButton.Click += BackFromCheckoutButton_Click;
-        ConfirmPaymentButton.Click += ConfirmPaymentButton_Click;
-    }
-
-    private async void PaymentsTabButton_Click(object? sender, RoutedEventArgs e)
-    {
-        if (_isAuthenticating) return;
-        ShowPaymentsSection();
-        await LoadPaymentsAsync();
-    }
-
-    private void CreatePaymentButton_Click(object? sender, RoutedEventArgs e)
-    {
-        if (_activeUser is null || _selectedCollection is null)
-        {
-            SetHistoryStatus("Ödeme oluşturmak için lütfen bir koleksiyon seçin.");
-            return;
-        }
-
-        var vehicle = _selectedVehicle ?? _selectedCollectionVehicles.FirstOrDefault();
-        if (vehicle is null)
-        {
-            SetHistoryStatus("Ödeme yapmak için lütfen koleksiyon içerisinden bir araç seçin.");
-            return;
-        }
-
-        CreatePaymentButton.IsEnabled = false;
-        try
-        {
-            var vehiclePrice = ParseVehiclePrice(vehicle.Price);
-
-            _paymentPreviewItems = new List<OdemeHazirlikItem>
-            {
-                new OdemeHazirlikItem
-                {
-                    KoleksiyonId = _selectedCollection.Id,
-                    KoleksiyonAdi = $"{_selectedCollection.OzelAd} ({vehicle.Title})",
-                    Tutar = vehiclePrice
-                }
-            };
-
-            PrepareCheckoutSummary();
-            ShowPaymentCheckoutSection();
-        }
-        catch (Exception ex)
-        {
-            SetHistoryStatus($"Ödeme oluşturma hatası: {ex.Message}");
-        }
-        finally
-        {
-            CreatePaymentButton.IsEnabled = true;
-        }
-    }
-
-    private static decimal ParseVehiclePrice(string? priceText)
-    {
-        var parsed = DatabaseService.ParseCurrency(priceText ?? string.Empty);
-        return parsed > 0 ? parsed : 100.00m;
-    }
-
-    private void BackFromCheckoutButton_Click(object? sender, RoutedEventArgs e)
-    {
-        ShowHistorySection();
-    }
-
     private async void ConfirmPaymentButton_Click(object? sender, RoutedEventArgs e)
     {
         if (_activeUser is null || _paymentPreviewItems.Count == 0)
@@ -147,8 +61,8 @@ public partial class MainWindow : Window
         ShowBrowserSection();
         SetCheckoutStatus("Ödeme formu dolduruluyor...");
 
-        var embeddedBrowser = GetEmbeddedBrowserAutomationService();
-        await embeddedBrowser.CompleteIyzicoSandboxPaymentAsync(session.PaymentPageUrl, paymentCard);
+        var baService = GetBAService();
+        await baService.CompleteIyzicoSandboxPaymentAsync(session.PaymentPageUrl, paymentCard);
     }
 
     private async Task<IyzicoPaymentResult> WaitForPaymentResultAsync(IyzicoCheckoutSession session)
@@ -156,19 +70,6 @@ public partial class MainWindow : Window
         SetCheckoutStatus("Ödeme onayı bekleniyor...");
         await _iyzicoPaymentService.WaitForCallbackAsync(session.Token, TimeSpan.FromMinutes(5));
         return await _iyzicoPaymentService.RetrievePaymentResultAsync(session.ConversationId, session.Token);
-    }
-
-    private async Task LoadPaymentsAsync()
-    {
-        if (_activeUser is null)
-            return;
-
-        var payments = await _databaseService.GetPaymentsAsync(_activeUser.Id);
-        PaymentsDataGrid.ItemsSource = null;
-        PaymentsDataGrid.ItemsSource = payments;
-        SetPaymentsStatus(payments.Count == 0
-            ? "Ödeme kaydı bulunamadı."
-            : $"{payments.Count} ödeme kaydı listelendi.");
     }
 
     private void PrepareCheckoutSummary()
