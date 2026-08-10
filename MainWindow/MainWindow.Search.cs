@@ -62,7 +62,6 @@ public partial class MainWindow : Window
 
             ShowBrowserSection();
             SearchStatusTextBlock.Text = "Gömülü tarayıcı arama formu hazırlanıyor...";
-            await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Render);
 
             var embeddedBrowser = CreateEmbeddedBrowserAutomationService();
             if (_activeUser is not null && !string.IsNullOrWhiteSpace(_activeUser.SessionStatePath))
@@ -202,7 +201,6 @@ public partial class MainWindow : Window
         {
             ShowBrowserSection();
             SearchStatusTextBlock.Text = "Gömülü tarayıcı açılıyor...";
-            await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Render);
 
             var embeddedBrowser = CreateEmbeddedBrowserAutomationService();
             await embeddedBrowser.OpenYolcu360HomeAsync();

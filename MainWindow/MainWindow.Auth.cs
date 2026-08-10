@@ -132,7 +132,6 @@ public partial class MainWindow : Window
             SetNavigationVisibility(false);
 
             StatusTextBlock.Text = "Gömülü tarayıcı hazırlanıyor...";
-            await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Render);
 
             var embeddedBrowser = CreateEmbeddedBrowserAutomationService();
             await embeddedBrowser.ClearBrowserSessionAsync();

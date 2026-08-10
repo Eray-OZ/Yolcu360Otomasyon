@@ -87,7 +87,6 @@ public partial class MainWindow : Window
 
             ShowBrowserSection();
             CheckoutStatusTextBlock.Text = "Gömülü tarayıcıda iyzico ödeme sayfası dolduruluyor...";
-            await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Render);
 
             var embeddedBrowser = CreateEmbeddedBrowserAutomationService();
             await embeddedBrowser.CompleteIyzicoSandboxPaymentAsync(session.PaymentPageUrl, paymentCard);

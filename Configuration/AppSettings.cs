@@ -1,5 +1,4 @@
 using System.Text.Json;
-using System.Text.RegularExpressions;
 
 namespace Yolcu360Otomasyon.Configuration;
 
@@ -80,11 +79,10 @@ public static class AppSettings
             if (!File.Exists(candidatePath))
                 continue;
 
-            var raw = File.ReadAllText(candidatePath);
-
             try
             {
-                using var document = JsonDocument.Parse(raw);
+                using var stream = File.OpenRead(candidatePath);
+                using var document = JsonDocument.Parse(stream);
                 if (document.RootElement.TryGetProperty("ConnectionStrings", out var connectionStrings))
                 {
                     if (connectionStrings.TryGetProperty("Yolcu360Database", out var yolcu360Value))
@@ -94,15 +92,9 @@ public static class AppSettings
                         return defaultValue.GetString();
                 }
             }
-            catch (JsonException)
+            catch
             {
-                var match = Regex.Match(
-                    raw,
-                    "\"DefaultConnection\"\\s*:\\s*\"(?<value>[^\"]+)\"",
-                    RegexOptions.IgnoreCase);
-
-                if (match.Success)
-                    return match.Groups["value"].Value;
+                // Ignore invalid or unparseable config files
             }
         }
 
