@@ -6,26 +6,26 @@ namespace Yolcu360Otomasyon;
 
 public partial class MainWindow
 {
-    private Border LoginView => AuthViewControl.FindControl<Border>("LoginView")!;
-    private Border RegisterView => AuthViewControl.FindControl<Border>("RegisterView")!;
-    private TextBox LoginEmailTextBox => AuthViewControl.FindControl<TextBox>("LoginEmailTextBox")!;
-    private TextBox LoginPasswordTextBox => AuthViewControl.FindControl<TextBox>("LoginPasswordTextBox")!;
-    private TextBox RegisterEmailTextBox => AuthViewControl.FindControl<TextBox>("RegisterEmailTextBox")!;
-    private TextBox RegisterPasswordTextBox => AuthViewControl.FindControl<TextBox>("RegisterPasswordTextBox")!;
-    private TextBox RegisterPhoneNumberTextBox => AuthViewControl.FindControl<TextBox>("RegisterPhoneNumberTextBox")!;
-    private Button LoginButton => AuthViewControl.FindControl<Button>("LoginButton")!;
-    private Button RegisterButton => AuthViewControl.FindControl<Button>("RegisterButton")!;
-    private Button GoToRegisterButton => AuthViewControl.FindControl<Button>("GoToRegisterButton")!;
-    private Button BackToLoginButton => AuthViewControl.FindControl<Button>("BackToLoginButton")!;
-    private TextBlock StatusTextBlock => AuthViewControl.FindControl<TextBlock>("StatusTextBlock")!;
-    private TextBlock RegisterStatusTextBlock => AuthViewControl.FindControl<TextBlock>("RegisterStatusTextBlock")!;
+    private Border LoginViewControl => AuthViewRootControl.FindControl<Border>("LoginView")!;
+    private Border RegisterViewControl => AuthViewRootControl.FindControl<Border>("RegisterView")!;
+    private TextBox LoginEmailTextBoxControl => AuthViewRootControl.FindControl<TextBox>("LoginEmailTextBox")!;
+    private TextBox LoginPasswordTextBoxControl => AuthViewRootControl.FindControl<TextBox>("LoginPasswordTextBox")!;
+    private TextBox RegisterEmailTextBoxControl => AuthViewRootControl.FindControl<TextBox>("RegisterEmailTextBox")!;
+    private TextBox RegisterPasswordTextBoxControl => AuthViewRootControl.FindControl<TextBox>("RegisterPasswordTextBox")!;
+    private TextBox RegisterPhoneNumberTextBoxControl => AuthViewRootControl.FindControl<TextBox>("RegisterPhoneNumberTextBox")!;
+    private Button LoginButtonControl => AuthViewRootControl.FindControl<Button>("LoginButton")!;
+    private Button RegisterButtonControl => AuthViewRootControl.FindControl<Button>("RegisterButton")!;
+    private Button GoToRegisterButtonControl => AuthViewRootControl.FindControl<Button>("GoToRegisterButton")!;
+    private Button BackToLoginButtonControl => AuthViewRootControl.FindControl<Button>("BackToLoginButton")!;
+    private TextBlock StatusTextBlockControl => AuthViewRootControl.FindControl<TextBlock>("StatusTextBlock")!;
+    private TextBlock RegisterStatusTextBlockControl => AuthViewRootControl.FindControl<TextBlock>("RegisterStatusTextBlock")!;
 
     private void ConfigureAuthViewEvents()
     {
-        LoginButton.Click += LoginButton_Click;
-        RegisterButton.Click += RegisterButton_Click;
-        GoToRegisterButton.Click += GoToRegisterButton_Click;
-        BackToLoginButton.Click += BackToLoginButton_Click;
+        LoginButtonControl.Click += LoginButton_Click;
+        RegisterButtonControl.Click += RegisterButton_Click;
+        GoToRegisterButtonControl.Click += GoToRegisterButton_Click;
+        BackToLoginButtonControl.Click += BackToLoginButton_Click;
     }
 
     private async void InitializeSmsReceiver()
@@ -55,29 +55,29 @@ public partial class MainWindow
 
     private void ShowRegisterView()
     {
-        LoginView.IsVisible = false;
-        RegisterView.IsVisible = true;
-        RegisterStatusTextBlock.Text = string.Empty;
+        LoginViewControl.IsVisible = false;
+        RegisterViewControl.IsVisible = true;
+        RegisterStatusTextBlockControl.Text = string.Empty;
     }
 
     private void ShowLoginView()
     {
-        RegisterView.IsVisible = false;
-        LoginView.IsVisible = true;
+        RegisterViewControl.IsVisible = false;
+        LoginViewControl.IsVisible = true;
     }
 
     private void ShowMainView()
     {
-        LoginView.IsVisible = false;
-        RegisterView.IsVisible = false;
+        LoginViewControl.IsVisible = false;
+        RegisterViewControl.IsVisible = false;
         MainView.IsVisible = true;
         ShowSearchSection();
     }
 
     private void ShowBrowserLoginView()
     {
-        LoginView.IsVisible = false;
-        RegisterView.IsVisible = false;
+        LoginViewControl.IsVisible = false;
+        RegisterViewControl.IsVisible = false;
         MainView.IsVisible = true;
         ShowBrowserSection();
         SetNavigationVisibility(false);
@@ -93,9 +93,9 @@ public partial class MainWindow
 
     private void SetAuthStatus(string message)
     {
-        StatusTextBlock.Text = message;
+        StatusTextBlockControl.Text = message;
 
-        if (RegisterView.IsVisible)
-            RegisterStatusTextBlock.Text = message;
+        if (RegisterViewControl.IsVisible)
+            RegisterStatusTextBlockControl.Text = message;
     }
 }

@@ -46,7 +46,9 @@ Bu dokuman mevcut Avalonia uygulamasinda gereksiz tekrar eden, buyuyen veya iler
 - Tamamlandi: Alis yeri autocomplete akisi input yazma ve oneri secme dosyalarina ayrildi.
 - Tamamlandi: Sonuc akisi filtre uygulama, sonuc bekleme ve sonuc okuma dosyalarina ayrildi.
 - Tamamlandi: PNG export visual builder kodu rapor header, koleksiyon kartlari ve tablo builder dosyalarina ayrildi.
-- Siradaki adim: Browser automation JS bloklarinda ortak click/input helper kullanimi artirilabilir; `BAService.Session.cs`, `BAService.SmsVerification.cs` ve `MainWindow.Ui.cs` tarafinda kucuk sadeleştirmeler yapilabilir.
+- Tamamlandi: Session akisi temizleme, kaydetme ve restore dosyalarina ayrildi.
+- Tamamlandi: SMS dogrulama akisi kod kutusu doldurma ve dogrulama butonu tiklama helper'larina ayrildi.
+- Siradaki adim: Browser automation JS bloklarinda ortak click/input helper kullanimi artirilabilir; `MainWindow.Ui.cs` tarafinda grid/status/navigation sadeleştirmeleri yapilabilir.
 
 ## Mevcut Durum Ozeti
 

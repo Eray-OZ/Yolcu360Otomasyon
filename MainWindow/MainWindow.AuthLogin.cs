@@ -8,8 +8,8 @@ public partial class MainWindow
 {
     private async void LoginButton_Click(object? sender, RoutedEventArgs e)
     {
-        var email = LoginEmailTextBox.Text?.Trim() ?? string.Empty;
-        var password = LoginPasswordTextBox.Text?.Trim() ?? string.Empty;
+        var email = LoginEmailTextBoxControl.Text?.Trim() ?? string.Empty;
+        var password = LoginPasswordTextBoxControl.Text?.Trim() ?? string.Empty;
 
         if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
         {
@@ -29,7 +29,7 @@ public partial class MainWindow
 
     private async Task PerformLoginAsync(string email, string password, bool forceBrowserLogin = false)
     {
-        LoginButton.IsEnabled = false;
+        LoginButtonControl.IsEnabled = false;
         SetNavigationEnabled(false);
         try
         {
@@ -65,7 +65,7 @@ public partial class MainWindow
         }
         finally
         {
-            LoginButton.IsEnabled = true;
+            LoginButtonControl.IsEnabled = true;
             SetNavigationEnabled(true);
         }
     }

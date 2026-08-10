@@ -7,27 +7,27 @@ namespace Yolcu360Otomasyon;
 
 public partial class MainWindow
 {
-    private Border SearchPanel => SearchViewControl.FindControl<Border>("SearchPanel")!;
-    private Border SearchResultsPanel => SearchViewControl.FindControl<Border>("SearchResultsPanel")!;
-    private TextBlock SearchStatusTextBlock => SearchViewControl.FindControl<TextBlock>("SearchStatusTextBlock")!;
-    private TextBox PickupLocationTextBox => SearchViewControl.FindControl<TextBox>("PickupLocationTextBox")!;
-    private TextBox PickupDateTextBox => SearchViewControl.FindControl<TextBox>("PickupDateTextBox")!;
-    private TextBox ReturnDateTextBox => SearchViewControl.FindControl<TextBox>("ReturnDateTextBox")!;
-    private TextBox PickupTimeTextBox => SearchViewControl.FindControl<TextBox>("PickupTimeTextBox")!;
-    private TextBox ReturnTimeTextBox => SearchViewControl.FindControl<TextBox>("ReturnTimeTextBox")!;
-    private ComboBox TransmissionComboBox => SearchViewControl.FindControl<ComboBox>("TransmissionComboBox")!;
-    private ComboBox FuelComboBox => SearchViewControl.FindControl<ComboBox>("FuelComboBox")!;
-    private Button SearchButton => SearchViewControl.FindControl<Button>("SearchButton")!;
-    private TextBox CollectionNameTextBox => SearchViewControl.FindControl<TextBox>("CollectionNameTextBox")!;
-    private Button SaveResultsButton => SearchViewControl.FindControl<Button>("SaveResultsButton")!;
-    private DataGrid ResultsDataGrid => SearchViewControl.FindControl<DataGrid>("ResultsDataGrid")!;
-    private Border BrowserSectionPanel => BrowserViewControl.FindControl<Border>("BrowserSectionPanel")!;
-    private NativeWebView EmbeddedBrowser => BrowserViewControl.FindControl<NativeWebView>("EmbeddedBrowser")!;
+    private Border SearchPanelControl => SearchViewRootControl.FindControl<Border>("SearchPanel")!;
+    private Border SearchResultsPanelControl => SearchViewRootControl.FindControl<Border>("SearchResultsPanel")!;
+    private TextBlock SearchStatusTextBlockControl => SearchViewRootControl.FindControl<TextBlock>("SearchStatusTextBlock")!;
+    private TextBox PickupLocationTextBoxControl => SearchViewRootControl.FindControl<TextBox>("PickupLocationTextBox")!;
+    private TextBox PickupDateTextBoxControl => SearchViewRootControl.FindControl<TextBox>("PickupDateTextBox")!;
+    private TextBox ReturnDateTextBoxControl => SearchViewRootControl.FindControl<TextBox>("ReturnDateTextBox")!;
+    private TextBox PickupTimeTextBoxControl => SearchViewRootControl.FindControl<TextBox>("PickupTimeTextBox")!;
+    private TextBox ReturnTimeTextBoxControl => SearchViewRootControl.FindControl<TextBox>("ReturnTimeTextBox")!;
+    private ComboBox TransmissionComboBoxControl => SearchViewRootControl.FindControl<ComboBox>("TransmissionComboBox")!;
+    private ComboBox FuelComboBoxControl => SearchViewRootControl.FindControl<ComboBox>("FuelComboBox")!;
+    private Button SearchButtonControl => SearchViewRootControl.FindControl<Button>("SearchButton")!;
+    private TextBox CollectionNameTextBoxControl => SearchViewRootControl.FindControl<TextBox>("CollectionNameTextBox")!;
+    private Button SaveResultsButtonControl => SearchViewRootControl.FindControl<Button>("SaveResultsButton")!;
+    private DataGrid ResultsDataGridControl => SearchViewRootControl.FindControl<DataGrid>("ResultsDataGrid")!;
+    private Border BrowserSectionPanelControl => BrowserViewRootControl.FindControl<Border>("BrowserSectionPanel")!;
+    private NativeWebView EmbeddedBrowserControl => BrowserViewRootControl.FindControl<NativeWebView>("EmbeddedBrowser")!;
 
     private void ConfigureSearchViewEvents()
     {
-        SearchButton.Click += SearchButton_Click;
-        SaveResultsButton.Click += SaveResultsButton_Click;
+        SearchButtonControl.Click += SearchButton_Click;
+        SaveResultsButtonControl.Click += SaveResultsButton_Click;
     }
 
     private void SearchTabButton_Click(object? sender, RoutedEventArgs e)
@@ -61,7 +61,7 @@ public partial class MainWindow
         if (_baService is not null)
             return _baService;
 
-        _baService = new BAService(EmbeddedBrowser);
+        _baService = new BAService(EmbeddedBrowserControl);
         _baService.ProgressChanged += message =>
         {
             Dispatcher.UIThread.Post(() =>

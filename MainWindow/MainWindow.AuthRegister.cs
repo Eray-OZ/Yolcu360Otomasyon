@@ -7,24 +7,24 @@ public partial class MainWindow
 {
     private async void RegisterButton_Click(object? sender, RoutedEventArgs e)
     {
-        RegisterButton.IsEnabled = false;
-        RegisterStatusTextBlock.Text = "Kullanıcı kaydı hazırlanıyor...";
+        RegisterButtonControl.IsEnabled = false;
+        RegisterStatusTextBlockControl.Text = "Kullanıcı kaydı hazırlanıyor...";
 
         try
         {
-            var email = RegisterEmailTextBox.Text?.Trim() ?? string.Empty;
-            var password = RegisterPasswordTextBox.Text?.Trim() ?? string.Empty;
-            var phoneNumber = RegisterPhoneNumberTextBox.Text?.Trim() ?? string.Empty;
+            var email = RegisterEmailTextBoxControl.Text?.Trim() ?? string.Empty;
+            var password = RegisterPasswordTextBoxControl.Text?.Trim() ?? string.Empty;
+            var phoneNumber = RegisterPhoneNumberTextBoxControl.Text?.Trim() ?? string.Empty;
 
             if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password) || string.IsNullOrWhiteSpace(phoneNumber))
             {
-                RegisterStatusTextBlock.Text = "Email, şifre ve telefon numarası zorunlu.";
+                RegisterStatusTextBlockControl.Text = "Email, şifre ve telefon numarası zorunlu.";
                 return;
             }
 
             if (await _databaseService.UserExistsAsync(email))
             {
-                RegisterStatusTextBlock.Text = "Bu email zaten kayıtlı.";
+                RegisterStatusTextBlockControl.Text = "Bu email zaten kayıtlı.";
                 return;
             }
 
@@ -36,19 +36,19 @@ public partial class MainWindow
 
             await _databaseService.SaveOrUpdateUserAsync(email, password, phoneNumber, sessionStatePath);
 
-            LoginEmailTextBox.Text = email;
-            LoginPasswordTextBox.Text = password;
+            LoginEmailTextBoxControl.Text = email;
+            LoginPasswordTextBoxControl.Text = password;
             SetAuthStatus("Kayıt oluşturuldu. Gömülü tarayıcıda giriş başlatılıyor...");
 
             await PerformLoginAsync(email, password, forceBrowserLogin: true);
         }
         catch (Exception ex)
         {
-            RegisterStatusTextBlock.Text = $"Kayıt hatası: {ex.Message}";
+            RegisterStatusTextBlockControl.Text = $"Kayıt hatası: {ex.Message}";
         }
         finally
         {
-            RegisterButton.IsEnabled = true;
+            RegisterButtonControl.IsEnabled = true;
         }
     }
 }

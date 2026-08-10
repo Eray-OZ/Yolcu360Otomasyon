@@ -10,7 +10,7 @@ public partial class MainWindow
 {
     private async void SearchButton_Click(object? sender, RoutedEventArgs e)
     {
-        SearchButton.IsEnabled = false;
+        SearchButtonControl.IsEnabled = false;
         SetSearchStatus("Arama hazırlanıyor...");
 
         try
@@ -34,7 +34,7 @@ public partial class MainWindow
         }
         finally
         {
-            SearchButton.IsEnabled = true;
+            SearchButtonControl.IsEnabled = true;
             ShowSearchSection();
         }
     }
@@ -44,13 +44,13 @@ public partial class MainWindow
         filter = new SearchFilter();
 
         if (!DateTime.TryParseExact(
-                PickupDateTextBox.Text?.Trim(),
+                PickupDateTextBoxControl.Text?.Trim(),
                 "yyyy-MM-dd",
                 CultureInfo.InvariantCulture,
                 DateTimeStyles.None,
                 out var pickupDate)
             || !DateTime.TryParseExact(
-                ReturnDateTextBox.Text?.Trim(),
+                ReturnDateTextBoxControl.Text?.Trim(),
                 "yyyy-MM-dd",
                 CultureInfo.InvariantCulture,
                 DateTimeStyles.None,
@@ -62,13 +62,13 @@ public partial class MainWindow
 
         filter = new SearchFilter
         {
-            PickupLocation = PickupLocationTextBox.Text?.Trim() ?? string.Empty,
+            PickupLocation = PickupLocationTextBoxControl.Text?.Trim() ?? string.Empty,
             PickupDate = pickupDate.Date,
             ReturnDate = returnDate.Date,
-            PickupTime = PickupTimeTextBox.Text?.Trim() ?? "10:00",
-            ReturnTime = ReturnTimeTextBox.Text?.Trim() ?? "18:00",
-            TransmissionType = GetComboBoxTag(TransmissionComboBox),
-            FuelType = GetComboBoxTag(FuelComboBox)
+            PickupTime = PickupTimeTextBoxControl.Text?.Trim() ?? "10:00",
+            ReturnTime = ReturnTimeTextBoxControl.Text?.Trim() ?? "18:00",
+            TransmissionType = GetComboBoxTag(TransmissionComboBoxControl),
+            FuelType = GetComboBoxTag(FuelComboBoxControl)
         };
         _latestSearchFilter = filter;
 
@@ -109,9 +109,9 @@ public partial class MainWindow
 
         await Dispatcher.UIThread.InvokeAsync(() =>
         {
-            ResultsDataGrid.ItemsSource = null;
-            ResultsDataGrid.ItemsSource = _latestResults;
-            SearchResultsPanel.IsVisible = _latestResults.Count > 0;
+            ResultsDataGridControl.ItemsSource = null;
+            ResultsDataGridControl.ItemsSource = _latestResults;
+            SearchResultsPanelControl.IsVisible = _latestResults.Count > 0;
         });
 
         SetSearchStatus(_latestResults.Count == 0

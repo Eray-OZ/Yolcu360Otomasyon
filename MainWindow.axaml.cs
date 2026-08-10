@@ -29,10 +29,10 @@ public partial class MainWindow : Window
         InitializeComponent();
         _collectionPngExportService = new CollectionPngExportService(_databaseService);
         _iyzicoPaymentService = new IyzicoPaymentService(AppSettings.GetIyzicoSettings(), _iyzicoCallbackService);
-        PickupDateTextBox.Text = DateTime.Today.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
-        ReturnDateTextBox.Text = DateTime.Today.AddDays(2).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
-        PickupTimeTextBox.Text = "10:00";
-        ReturnTimeTextBox.Text = "18:00";
+        PickupDateTextBoxControl.Text = DateTime.Today.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+        ReturnDateTextBoxControl.Text = DateTime.Today.AddDays(2).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+        PickupTimeTextBoxControl.Text = "10:00";
+        ReturnTimeTextBoxControl.Text = "18:00";
         ConfigureResultsGrid();
         ConfigureCollectionsGrid();
         ConfigurePaymentsGrid();

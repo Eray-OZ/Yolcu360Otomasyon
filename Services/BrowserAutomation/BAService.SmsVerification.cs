@@ -11,9 +11,21 @@ public sealed partial class BAService
         await Task.Delay(Random.Shared.Next(800, 1400));
 
         var cleanCode = code.Trim();
-        var codeJson = ToJson(cleanCode);
+        var fillResultJson = await FillSmsCodeInputAsync(cleanCode);
+        Report($"SMS kutu dolum sonucu: {fillResultJson}");
 
-        var fillResultJson = await EvaluateScriptAsync(
+        Report("SMS kodu yazıldı, doğrulama butonuna basmadan önce 3.5 saniye bekleniyor...");
+        await Task.Delay(Random.Shared.Next(3200, 4200));
+
+        Report("SMS doğrulama butonu tıklanıyor...");
+        var clickResult = await ClickSmsVerificationButtonAsync();
+        Report(IsScriptTrue(clickResult) ? "SMS doğrulama butonu tıklandı." : "SMS doğrulama butonu bulunamadı, gömülü tarayıcıdan manuel tıklayabilirsiniz.");
+    }
+
+    private Task<string?> FillSmsCodeInputAsync(string cleanCode)
+    {
+        var codeJson = ToJson(cleanCode);
+        return EvaluateScriptAsync(
             $$"""
             (() => {
                 const code = {{codeJson}};
@@ -105,14 +117,11 @@ public sealed partial class BAService
                 return JSON.stringify({ success: false, reason: "SMS kutusu bulunamadı", totalInputs: allInputs.length });
             })();
             """);
+    }
 
-        Report($"SMS kutu dolum sonucu: {fillResultJson}");
-
-        Report("SMS kodu yazıldı, doğrulama butonuna basmadan önce 3.5 saniye bekleniyor...");
-        await Task.Delay(Random.Shared.Next(3200, 4200));
-
-        Report("SMS doğrulama butonu tıklanıyor...");
-        var clickResult = await EvaluateScriptAsync(
+    private Task<string?> ClickSmsVerificationButtonAsync()
+    {
+        return EvaluateScriptAsync(
             """
             (() => {
                 const applyBtn = document.querySelector('button[data-cms-key="button_apply"]');
@@ -143,7 +152,5 @@ public sealed partial class BAService
                 return false;
             })();
             """);
-
-        Report(IsScriptTrue(clickResult) ? "SMS doğrulama butonu tıklandı." : "SMS doğrulama butonu bulunamadı, gömülü tarayıcıdan manuel tıklayabilirsiniz.");
     }
 }

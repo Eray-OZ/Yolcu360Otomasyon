@@ -8,8 +8,8 @@ public partial class MainWindow
             return;
 
         var payments = await _databaseService.GetPaymentsAsync(_activeUser.Id);
-        PaymentsDataGrid.ItemsSource = null;
-        PaymentsDataGrid.ItemsSource = payments;
+        PaymentsDataGridControl.ItemsSource = null;
+        PaymentsDataGridControl.ItemsSource = payments;
         SetPaymentsStatus(payments.Count == 0
             ? "Ödeme kaydı bulunamadı."
             : $"{payments.Count} ödeme kaydı listelendi.");

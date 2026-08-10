@@ -9,29 +9,29 @@ public partial class MainWindow : Window
     private void ShowSearchSection()
     {
         ShowContentSection(
-            visiblePanel: SearchPanel,
+            visiblePanel: SearchPanelControl,
             activeButton: SearchTabButton,
             showSearchResults: _latestResults is not null && _latestResults.Count > 0);
     }
 
     private void ShowHistorySection()
     {
-        ShowContentSection(HistoryPanel, HistoryTabButton);
+        ShowContentSection(HistoryPanelControl, HistoryTabButton);
     }
 
     private void ShowPaymentsSection()
     {
-        ShowContentSection(PaymentsPanel, PaymentsTabButton);
+        ShowContentSection(PaymentsPanelControl, PaymentsTabButton);
     }
 
     private void ShowPaymentCheckoutSection()
     {
-        ShowContentSection(PaymentCheckoutPanel, PaymentsTabButton);
+        ShowContentSection(PaymentCheckoutPanelControl, PaymentsTabButton);
     }
 
     private void ShowBrowserSection()
     {
-        ShowContentSection(BrowserSectionPanel, NativeWebViewTestButton, showNativeWebViewTest: true);
+        ShowContentSection(BrowserSectionPanelControl, NativeWebViewTestButton, showNativeWebViewTest: true);
     }
 
     private void ShowContentSection(
@@ -40,18 +40,18 @@ public partial class MainWindow : Window
         bool showSearchResults = false,
         bool showNativeWebViewTest = false)
     {
-        SearchViewControl.IsVisible = ReferenceEquals(visiblePanel, SearchPanel);
-        SearchPanel.IsVisible = ReferenceEquals(visiblePanel, SearchPanel);
-        SearchResultsPanel.IsVisible = showSearchResults;
-        HistoryViewControl.IsVisible = ReferenceEquals(visiblePanel, HistoryPanel);
-        HistoryPanel.IsVisible = ReferenceEquals(visiblePanel, HistoryPanel);
-        PaymentsViewControl.IsVisible =
-            ReferenceEquals(visiblePanel, PaymentsPanel) ||
-            ReferenceEquals(visiblePanel, PaymentCheckoutPanel);
-        PaymentsPanel.IsVisible = ReferenceEquals(visiblePanel, PaymentsPanel);
-        PaymentCheckoutPanel.IsVisible = ReferenceEquals(visiblePanel, PaymentCheckoutPanel);
-        BrowserViewControl.IsVisible = ReferenceEquals(visiblePanel, BrowserSectionPanel);
-        BrowserSectionPanel.IsVisible = ReferenceEquals(visiblePanel, BrowserSectionPanel);
+        SearchViewRootControl.IsVisible = ReferenceEquals(visiblePanel, SearchPanelControl);
+        SearchPanelControl.IsVisible = ReferenceEquals(visiblePanel, SearchPanelControl);
+        SearchResultsPanelControl.IsVisible = showSearchResults;
+        HistoryViewRootControl.IsVisible = ReferenceEquals(visiblePanel, HistoryPanelControl);
+        HistoryPanelControl.IsVisible = ReferenceEquals(visiblePanel, HistoryPanelControl);
+        PaymentsViewRootControl.IsVisible =
+            ReferenceEquals(visiblePanel, PaymentsPanelControl) ||
+            ReferenceEquals(visiblePanel, PaymentCheckoutPanelControl);
+        PaymentsPanelControl.IsVisible = ReferenceEquals(visiblePanel, PaymentsPanelControl);
+        PaymentCheckoutPanelControl.IsVisible = ReferenceEquals(visiblePanel, PaymentCheckoutPanelControl);
+        BrowserViewRootControl.IsVisible = ReferenceEquals(visiblePanel, BrowserSectionPanelControl);
+        BrowserSectionPanelControl.IsVisible = ReferenceEquals(visiblePanel, BrowserSectionPanelControl);
 
         SearchTabButton.Classes.Set("primary", ReferenceEquals(activeButton, SearchTabButton));
         HistoryTabButton.Classes.Set("primary", ReferenceEquals(activeButton, HistoryTabButton));
@@ -62,72 +62,72 @@ public partial class MainWindow : Window
 
     private void SetSearchStatus(string message)
     {
-        SearchStatusTextBlock.Text = message;
+        SearchStatusTextBlockControl.Text = message;
     }
 
     private void SetHistoryStatus(string message)
     {
-        HistoryStatusTextBlock.Text = message;
+        HistoryStatusTextBlockControl.Text = message;
     }
 
     private void SetVehicleStatus(string message)
     {
-        VehicleStatusTextBlock.Text = message;
+        VehicleStatusTextBlockControl.Text = message;
     }
 
     private void SetCheckoutStatus(string message)
     {
-        CheckoutStatusTextBlock.Text = message;
+        CheckoutStatusTextBlockControl.Text = message;
     }
 
     private void SetPaymentsStatus(string message)
     {
-        PaymentsStatusTextBlock.Text = message;
+        PaymentsStatusTextBlockControl.Text = message;
     }
 
     private void ConfigureResultsGrid()
     {
-        ResultsDataGrid.AutoGenerateColumns = false;
-        ResultsDataGrid.Columns.Clear();
+        ResultsDataGridControl.AutoGenerateColumns = false;
+        ResultsDataGridControl.Columns.Clear();
 
-        AddTextColumn(ResultsDataGrid, "Araç", nameof(SearchResultItem.Title), 2);
-        AddTextColumn(ResultsDataGrid, "Detay", nameof(SearchResultItem.Subtitle), 2);
-        AddTextColumn(ResultsDataGrid, "Toplam Fiyat", nameof(SearchResultItem.Price), 1);
-        AddTextColumn(ResultsDataGrid, "Günlük", nameof(SearchResultItem.DailyPrice), 1);
-        AddTextColumn(ResultsDataGrid, "Vites", nameof(SearchResultItem.Transmission), 1);
-        AddTextColumn(ResultsDataGrid, "Yakıt", nameof(SearchResultItem.FuelType), 1);
-        AddTextColumn(ResultsDataGrid, "Şirket", nameof(SearchResultItem.Supplier), 1);
-        AddTextColumn(ResultsDataGrid, "Teslim", nameof(SearchResultItem.PickupInfo), 2);
+        AddTextColumn(ResultsDataGridControl, "Araç", nameof(SearchResultItem.Title), 2);
+        AddTextColumn(ResultsDataGridControl, "Detay", nameof(SearchResultItem.Subtitle), 2);
+        AddTextColumn(ResultsDataGridControl, "Toplam Fiyat", nameof(SearchResultItem.Price), 1);
+        AddTextColumn(ResultsDataGridControl, "Günlük", nameof(SearchResultItem.DailyPrice), 1);
+        AddTextColumn(ResultsDataGridControl, "Vites", nameof(SearchResultItem.Transmission), 1);
+        AddTextColumn(ResultsDataGridControl, "Yakıt", nameof(SearchResultItem.FuelType), 1);
+        AddTextColumn(ResultsDataGridControl, "Şirket", nameof(SearchResultItem.Supplier), 1);
+        AddTextColumn(ResultsDataGridControl, "Teslim", nameof(SearchResultItem.PickupInfo), 2);
     }
 
     private void ConfigureCollectionsGrid()
     {
-        CollectionsDataGrid.AutoGenerateColumns = false;
-        CollectionsDataGrid.Columns.Clear();
+        CollectionsDataGridControl.AutoGenerateColumns = false;
+        CollectionsDataGridControl.Columns.Clear();
 
-        AddTextColumn(CollectionsDataGrid, "Kayıt Adı", nameof(KoleksiyonListItem.OzelAd), 1.8);
-        AddTextColumn(CollectionsDataGrid, "Alış Yeri", nameof(KoleksiyonListItem.AlisYeri), 1.4);
-        AddTextColumn(CollectionsDataGrid, "Alış", nameof(KoleksiyonListItem.AlisTarihi), 1.1, "dd.MM.yyyy");
-        AddTextColumn(CollectionsDataGrid, "Dönüş", nameof(KoleksiyonListItem.DonusTarihi), 1.1, "dd.MM.yyyy");
-        AddTextColumn(CollectionsDataGrid, "Vites", nameof(KoleksiyonListItem.SecilenVitesFiltresi), 1);
-        AddTextColumn(CollectionsDataGrid, "Yakıt", nameof(KoleksiyonListItem.SecilenYakitFiltresi), 1);
-        AddTextColumn(CollectionsDataGrid, "Araç Sayısı", nameof(KoleksiyonListItem.AracSayisi), 1);
-        AddTextColumn(CollectionsDataGrid, "Tarih", nameof(KoleksiyonListItem.OlusturmaTarihi), 1.4, "dd.MM.yyyy HH:mm");
+        AddTextColumn(CollectionsDataGridControl, "Kayıt Adı", nameof(KoleksiyonListItem.OzelAd), 1.8);
+        AddTextColumn(CollectionsDataGridControl, "Alış Yeri", nameof(KoleksiyonListItem.AlisYeri), 1.4);
+        AddTextColumn(CollectionsDataGridControl, "Alış", nameof(KoleksiyonListItem.AlisTarihi), 1.1, "dd.MM.yyyy");
+        AddTextColumn(CollectionsDataGridControl, "Dönüş", nameof(KoleksiyonListItem.DonusTarihi), 1.1, "dd.MM.yyyy");
+        AddTextColumn(CollectionsDataGridControl, "Vites", nameof(KoleksiyonListItem.SecilenVitesFiltresi), 1);
+        AddTextColumn(CollectionsDataGridControl, "Yakıt", nameof(KoleksiyonListItem.SecilenYakitFiltresi), 1);
+        AddTextColumn(CollectionsDataGridControl, "Araç Sayısı", nameof(KoleksiyonListItem.AracSayisi), 1);
+        AddTextColumn(CollectionsDataGridControl, "Tarih", nameof(KoleksiyonListItem.OlusturmaTarihi), 1.4, "dd.MM.yyyy HH:mm");
     }
 
     private void ConfigurePaymentsGrid()
     {
-        PaymentsDataGrid.AutoGenerateColumns = false;
-        PaymentsDataGrid.Columns.Clear();
+        PaymentsDataGridControl.AutoGenerateColumns = false;
+        PaymentsDataGridControl.Columns.Clear();
 
-        AddTextColumn(PaymentsDataGrid, "Referans", nameof(OdemeListItem.ReferansNo), 1.6);
-        AddTextColumn(PaymentsDataGrid, "Kayıt", nameof(OdemeListItem.KoleksiyonAdi), 1.8);
-        AddTextColumn(PaymentsDataGrid, "Tutar", nameof(OdemeListItem.Tutar), 1, "N2");
-        AddTextColumn(PaymentsDataGrid, "PB", nameof(OdemeListItem.ParaBirimi), 0.7);
-        AddTextColumn(PaymentsDataGrid, "Durum", nameof(OdemeListItem.Durum), 1);
-        AddTextColumn(PaymentsDataGrid, "Sağlayıcı", nameof(OdemeListItem.Saglayici), 1.1);
-        AddTextColumn(PaymentsDataGrid, "Kart", nameof(OdemeListItem.KartSon4), 0.8);
-        AddTextColumn(PaymentsDataGrid, "Tarih", nameof(OdemeListItem.OdemeTarihi), 1.3, "dd.MM.yyyy HH:mm");
+        AddTextColumn(PaymentsDataGridControl, "Referans", nameof(OdemeListItem.ReferansNo), 1.6);
+        AddTextColumn(PaymentsDataGridControl, "Kayıt", nameof(OdemeListItem.KoleksiyonAdi), 1.8);
+        AddTextColumn(PaymentsDataGridControl, "Tutar", nameof(OdemeListItem.Tutar), 1, "N2");
+        AddTextColumn(PaymentsDataGridControl, "PB", nameof(OdemeListItem.ParaBirimi), 0.7);
+        AddTextColumn(PaymentsDataGridControl, "Durum", nameof(OdemeListItem.Durum), 1);
+        AddTextColumn(PaymentsDataGridControl, "Sağlayıcı", nameof(OdemeListItem.Saglayici), 1.1);
+        AddTextColumn(PaymentsDataGridControl, "Kart", nameof(OdemeListItem.KartSon4), 0.8);
+        AddTextColumn(PaymentsDataGridControl, "Tarih", nameof(OdemeListItem.OdemeTarihi), 1.3, "dd.MM.yyyy HH:mm");
     }
 
     private static void AddTextColumn(

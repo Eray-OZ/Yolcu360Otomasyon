@@ -6,41 +6,41 @@ namespace Yolcu360Otomasyon;
 
 public partial class MainWindow
 {
-    private Border HistoryPanel => HistoryViewControl.FindControl<Border>("HistoryPanel")!;
-    private Grid CollectionsViewPanel => HistoryViewControl.FindControl<Grid>("CollectionsViewPanel")!;
-    private Grid VehiclesViewPanel => HistoryViewControl.FindControl<Grid>("VehiclesViewPanel")!;
-    private TextBlock HistoryStatusTextBlock => HistoryViewControl.FindControl<TextBlock>("HistoryStatusTextBlock")!;
-    private DataGrid CollectionsDataGrid => HistoryViewControl.FindControl<DataGrid>("CollectionsDataGrid")!;
-    private Button ViewVehiclesButton => HistoryViewControl.FindControl<Button>("ViewVehiclesButton")!;
-    private Button DeleteCollectionButton => HistoryViewControl.FindControl<Button>("DeleteCollectionButton")!;
-    private Button ExportPngButton => HistoryViewControl.FindControl<Button>("ExportPngButton")!;
-    private TextBlock SelectedCollectionNameTextBlock => HistoryViewControl.FindControl<TextBlock>("SelectedCollectionNameTextBlock")!;
-    private TextBlock SelectedCollectionLocationTextBlock => HistoryViewControl.FindControl<TextBlock>("SelectedCollectionLocationTextBlock")!;
-    private TextBlock SelectedCollectionDateRangeTextBlock => HistoryViewControl.FindControl<TextBlock>("SelectedCollectionDateRangeTextBlock")!;
-    private TextBlock SelectedCollectionFiltersTextBlock => HistoryViewControl.FindControl<TextBlock>("SelectedCollectionFiltersTextBlock")!;
-    private TextBlock SelectedCollectionCountTextBlock => HistoryViewControl.FindControl<TextBlock>("SelectedCollectionCountTextBlock")!;
-    private TextBlock SelectedCollectionCreatedAtTextBlock => HistoryViewControl.FindControl<TextBlock>("SelectedCollectionCreatedAtTextBlock")!;
-    private TextBlock VehicleViewTitleTextBlock => HistoryViewControl.FindControl<TextBlock>("VehicleViewTitleTextBlock")!;
-    private TextBlock VehicleViewSubtitleTextBlock => HistoryViewControl.FindControl<TextBlock>("VehicleViewSubtitleTextBlock")!;
-    private Button BackToCollectionsButton => HistoryViewControl.FindControl<Button>("BackToCollectionsButton")!;
-    private TextBlock VehicleStatusTextBlock => HistoryViewControl.FindControl<TextBlock>("VehicleStatusTextBlock")!;
-    private DataGrid CollectionVehiclesDataGrid => HistoryViewControl.FindControl<DataGrid>("CollectionVehiclesDataGrid")!;
-    private Button BackToCollectionsButtonBottom => HistoryViewControl.FindControl<Button>("BackToCollectionsButtonBottom")!;
-    private Button CreatePaymentButton => HistoryViewControl.FindControl<Button>("CreatePaymentButton")!;
-    private Button ExportPngButtonVehicles => HistoryViewControl.FindControl<Button>("ExportPngButtonVehicles")!;
+    private Border HistoryPanelControl => HistoryViewRootControl.FindControl<Border>("HistoryPanel")!;
+    private Grid CollectionsViewPanelControl => HistoryViewRootControl.FindControl<Grid>("CollectionsViewPanel")!;
+    private Grid VehiclesViewPanelControl => HistoryViewRootControl.FindControl<Grid>("VehiclesViewPanel")!;
+    private TextBlock HistoryStatusTextBlockControl => HistoryViewRootControl.FindControl<TextBlock>("HistoryStatusTextBlock")!;
+    private DataGrid CollectionsDataGridControl => HistoryViewRootControl.FindControl<DataGrid>("CollectionsDataGrid")!;
+    private Button ViewVehiclesButtonControl => HistoryViewRootControl.FindControl<Button>("ViewVehiclesButton")!;
+    private Button DeleteCollectionButtonControl => HistoryViewRootControl.FindControl<Button>("DeleteCollectionButton")!;
+    private Button ExportPngButtonControl => HistoryViewRootControl.FindControl<Button>("ExportPngButton")!;
+    private TextBlock SelectedCollectionNameTextBlockControl => HistoryViewRootControl.FindControl<TextBlock>("SelectedCollectionNameTextBlock")!;
+    private TextBlock SelectedCollectionLocationTextBlockControl => HistoryViewRootControl.FindControl<TextBlock>("SelectedCollectionLocationTextBlock")!;
+    private TextBlock SelectedCollectionDateRangeTextBlockControl => HistoryViewRootControl.FindControl<TextBlock>("SelectedCollectionDateRangeTextBlock")!;
+    private TextBlock SelectedCollectionFiltersTextBlockControl => HistoryViewRootControl.FindControl<TextBlock>("SelectedCollectionFiltersTextBlock")!;
+    private TextBlock SelectedCollectionCountTextBlockControl => HistoryViewRootControl.FindControl<TextBlock>("SelectedCollectionCountTextBlock")!;
+    private TextBlock SelectedCollectionCreatedAtTextBlockControl => HistoryViewRootControl.FindControl<TextBlock>("SelectedCollectionCreatedAtTextBlock")!;
+    private TextBlock VehicleViewTitleTextBlockControl => HistoryViewRootControl.FindControl<TextBlock>("VehicleViewTitleTextBlock")!;
+    private TextBlock VehicleViewSubtitleTextBlockControl => HistoryViewRootControl.FindControl<TextBlock>("VehicleViewSubtitleTextBlock")!;
+    private Button BackToCollectionsButtonControl => HistoryViewRootControl.FindControl<Button>("BackToCollectionsButton")!;
+    private TextBlock VehicleStatusTextBlockControl => HistoryViewRootControl.FindControl<TextBlock>("VehicleStatusTextBlock")!;
+    private DataGrid CollectionVehiclesDataGridControl => HistoryViewRootControl.FindControl<DataGrid>("CollectionVehiclesDataGrid")!;
+    private Button BackToCollectionsButtonBottomControl => HistoryViewRootControl.FindControl<Button>("BackToCollectionsButtonBottom")!;
+    private Button CreatePaymentButtonControl => HistoryViewRootControl.FindControl<Button>("CreatePaymentButton")!;
+    private Button ExportPngButtonVehiclesControl => HistoryViewRootControl.FindControl<Button>("ExportPngButtonVehicles")!;
 
     private void ConfigureHistoryViewEvents()
     {
-        CollectionsDataGrid.SelectionChanged += CollectionsDataGrid_SelectionChanged;
-        CollectionsDataGrid.DoubleTapped += CollectionsDataGrid_DoubleTapped;
-        ViewVehiclesButton.Click += ViewVehiclesButton_Click;
-        DeleteCollectionButton.Click += DeleteCollectionButton_Click;
-        ExportPngButton.Click += ExportPngButton_Click;
-        BackToCollectionsButton.Click += BackToCollectionsButton_Click;
-        BackToCollectionsButtonBottom.Click += BackToCollectionsButton_Click;
-        CollectionVehiclesDataGrid.SelectionChanged += CollectionVehiclesDataGrid_SelectionChanged;
-        CreatePaymentButton.Click += CreatePaymentButton_Click;
-        ExportPngButtonVehicles.Click += ExportPngButton_Click;
+        CollectionsDataGridControl.SelectionChanged += CollectionsDataGrid_SelectionChanged;
+        CollectionsDataGridControl.DoubleTapped += CollectionsDataGrid_DoubleTapped;
+        ViewVehiclesButtonControl.Click += ViewVehiclesButton_Click;
+        DeleteCollectionButtonControl.Click += DeleteCollectionButton_Click;
+        ExportPngButtonControl.Click += ExportPngButton_Click;
+        BackToCollectionsButtonControl.Click += BackToCollectionsButton_Click;
+        BackToCollectionsButtonBottomControl.Click += BackToCollectionsButton_Click;
+        CollectionVehiclesDataGridControl.SelectionChanged += CollectionVehiclesDataGrid_SelectionChanged;
+        CreatePaymentButtonControl.Click += CreatePaymentButton_Click;
+        ExportPngButtonVehiclesControl.Click += ExportPngButton_Click;
     }
 
     private async void HistoryTabButton_Click(object? sender, RoutedEventArgs e)
@@ -79,14 +79,14 @@ public partial class MainWindow
 
     private void BackToCollectionsButton_Click(object? sender, RoutedEventArgs e)
     {
-        VehiclesViewPanel.IsVisible = false;
-        CollectionsViewPanel.IsVisible = true;
+        VehiclesViewPanelControl.IsVisible = false;
+        CollectionsViewPanelControl.IsVisible = true;
         SetHistoryStatus("Koleksiyonlar listesine dönüldü.");
     }
 
     private void CollectionVehiclesDataGrid_SelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
-        if (CollectionVehiclesDataGrid.SelectedItem is Models.SearchResultItem vehicle)
+        if (CollectionVehiclesDataGridControl.SelectedItem is Models.SearchResultItem vehicle)
         {
             _selectedVehicle = vehicle;
             SetVehicleStatus($"{_selectedCollection?.OzelAd} - {vehicle.Title} seçildi ({vehicle.Price}).");

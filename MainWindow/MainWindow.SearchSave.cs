@@ -37,26 +37,26 @@ public partial class MainWindow
             return;
         }
 
-        var ozelAd = CollectionNameTextBox.Text?.Trim() ?? string.Empty;
+        var ozelAd = CollectionNameTextBoxControl.Text?.Trim() ?? string.Empty;
         if (string.IsNullOrWhiteSpace(ozelAd))
         {
             SetSearchStatus("Özel kayıt adı girin.");
             return;
         }
 
-        SaveResultsButton.IsEnabled = false;
+        SaveResultsButtonControl.IsEnabled = false;
         try
         {
             var collectionId = await _databaseService.SaveCollectionAsync(_activeUser.Id, ozelAd, _latestSearchFilter, _latestResults);
-            CollectionNameTextBox.Text = string.Empty;
+            CollectionNameTextBoxControl.Text = string.Empty;
             SetSearchStatus($"{_latestResults.Count} sonuç \"{ozelAd}\" adıyla kaydedildi.");
             await LoadHistoryAsync();
             ShowHistorySection();
 
-            var collections = (CollectionsDataGrid.ItemsSource as IEnumerable<KoleksiyonListItem>)?.ToList() ?? new List<KoleksiyonListItem>();
+            var collections = (CollectionsDataGridControl.ItemsSource as IEnumerable<KoleksiyonListItem>)?.ToList() ?? new List<KoleksiyonListItem>();
             var savedCollection = collections.FirstOrDefault(item => item.Id == collectionId);
             if (savedCollection is not null)
-                CollectionsDataGrid.SelectedItem = savedCollection;
+                CollectionsDataGridControl.SelectedItem = savedCollection;
         }
         catch (Exception ex)
         {
@@ -64,7 +64,7 @@ public partial class MainWindow
         }
         finally
         {
-            SaveResultsButton.IsEnabled = true;
+            SaveResultsButtonControl.IsEnabled = true;
         }
     }
 }

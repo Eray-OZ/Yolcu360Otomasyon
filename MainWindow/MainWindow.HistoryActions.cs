@@ -12,7 +12,7 @@ public partial class MainWindow
             return;
         }
 
-        DeleteCollectionButton.IsEnabled = false;
+        DeleteCollectionButtonControl.IsEnabled = false;
         try
         {
             foreach (var collection in _selectedCollections)
@@ -28,7 +28,7 @@ public partial class MainWindow
         }
         finally
         {
-            DeleteCollectionButton.IsEnabled = true;
+            DeleteCollectionButtonControl.IsEnabled = true;
         }
     }
 
@@ -40,7 +40,7 @@ public partial class MainWindow
             return;
         }
 
-        ExportPngButton.IsEnabled = false;
+        ExportPngButtonControl.IsEnabled = false;
         try
         {
             var filePath = await ExportHistorySelectionAsPngAsync(_selectedCollections);
@@ -52,7 +52,7 @@ public partial class MainWindow
         }
         finally
         {
-            ExportPngButton.IsEnabled = true;
+            ExportPngButtonControl.IsEnabled = true;
         }
     }
 }

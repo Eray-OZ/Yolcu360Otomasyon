@@ -21,7 +21,7 @@ public partial class MainWindow
             return;
         }
 
-        CreatePaymentButton.IsEnabled = false;
+        CreatePaymentButtonControl.IsEnabled = false;
         try
         {
             var vehiclePrice = ParseVehiclePrice(vehicle.Price);
@@ -45,7 +45,7 @@ public partial class MainWindow
         }
         finally
         {
-            CreatePaymentButton.IsEnabled = true;
+            CreatePaymentButtonControl.IsEnabled = true;
         }
     }
 

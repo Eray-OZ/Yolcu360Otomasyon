@@ -13,7 +13,7 @@ public partial class MainWindow
             return;
         }
 
-        ConfirmPaymentButton.IsEnabled = false;
+        ConfirmPaymentButtonControl.IsEnabled = false;
         try
         {
             var paymentCard = BuildSandboxPaymentCardInput();
@@ -44,7 +44,7 @@ public partial class MainWindow
         }
         finally
         {
-            ConfirmPaymentButton.IsEnabled = true;
+            ConfirmPaymentButtonControl.IsEnabled = true;
         }
     }
 
@@ -76,30 +76,30 @@ public partial class MainWindow
     {
         var trCulture = new System.Globalization.CultureInfo("tr-TR");
         var total = _paymentPreviewItems.Sum(item => item.Tutar);
-        PaymentSummaryCollectionsTextBlock.Text = string.Join(Environment.NewLine, _paymentPreviewItems.Select(item =>
+        PaymentSummaryCollectionsTextBlockControl.Text = string.Join(Environment.NewLine, _paymentPreviewItems.Select(item =>
             $"{item.KoleksiyonAdi} - {item.Tutar.ToString("N2", trCulture)} TL"));
-        PaymentSummaryCountTextBlock.Text = $"{_paymentPreviewItems.Count} kayıt seçildi";
-        PaymentSummaryTotalTextBlock.Text = $"{total.ToString("N2", trCulture)} TL";
+        PaymentSummaryCountTextBlockControl.Text = $"{_paymentPreviewItems.Count} kayıt seçildi";
+        PaymentSummaryTotalTextBlockControl.Text = $"{total.ToString("N2", trCulture)} TL";
         SetCheckoutStatus("Ödeme iyzico sandbox sayfasında tamamlanacak.");
     }
 
     private void ClearCheckoutForm()
     {
-        PaymentCardHolderTextBox.Text = string.Empty;
-        PaymentCardNumberTextBox.Text = string.Empty;
-        PaymentExpiryMonthTextBox.Text = string.Empty;
-        PaymentExpiryYearTextBox.Text = string.Empty;
-        PaymentCvvTextBox.Text = string.Empty;
+        PaymentCardHolderTextBoxControl.Text = string.Empty;
+        PaymentCardNumberTextBoxControl.Text = string.Empty;
+        PaymentExpiryMonthTextBoxControl.Text = string.Empty;
+        PaymentExpiryYearTextBoxControl.Text = string.Empty;
+        PaymentCvvTextBoxControl.Text = string.Empty;
         _paymentPreviewItems = new List<OdemeHazirlikItem>();
     }
 
     private SandboxPaymentCardInput BuildSandboxPaymentCardInput()
     {
-        var cardHolderName = PaymentCardHolderTextBox.Text?.Trim() ?? string.Empty;
-        var cardNumber = PaymentCardNumberTextBox.Text?.Trim() ?? string.Empty;
-        var expiryMonth = PaymentExpiryMonthTextBox.Text?.Trim() ?? string.Empty;
-        var expiryYear = PaymentExpiryYearTextBox.Text?.Trim() ?? string.Empty;
-        var cvc = PaymentCvvTextBox.Text?.Trim() ?? string.Empty;
+        var cardHolderName = PaymentCardHolderTextBoxControl.Text?.Trim() ?? string.Empty;
+        var cardNumber = PaymentCardNumberTextBoxControl.Text?.Trim() ?? string.Empty;
+        var expiryMonth = PaymentExpiryMonthTextBoxControl.Text?.Trim() ?? string.Empty;
+        var expiryYear = PaymentExpiryYearTextBoxControl.Text?.Trim() ?? string.Empty;
+        var cvc = PaymentCvvTextBoxControl.Text?.Trim() ?? string.Empty;
 
         if (string.IsNullOrWhiteSpace(cardHolderName) ||
             string.IsNullOrWhiteSpace(cardNumber) ||
