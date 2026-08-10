@@ -5,6 +5,62 @@ namespace Yolcu360Otomasyon.Services;
 
 public sealed partial class EmbeddedBrowserAutomationService
 {
+    private async Task InjectStealthAndHumanMouseScriptAsync()
+    {
+        await EvaluateScriptAsync(
+            """
+            (() => {
+                if (window.__stealthInjected) return true;
+                window.__stealthInjected = true;
+    
+                try { Object.defineProperty(navigator, 'webdriver', { get: () => undefined, configurable: true }); } catch {}
+                try {
+                    if (!window.chrome) {
+                        window.chrome = { runtime: {}, loadTimes: function() {}, csi: function() {}, app: {} };
+                    }
+                } catch {}
+                try {
+                    Object.defineProperty(navigator, 'plugins', {
+                        get: () => [
+                            { name: 'Chrome PDF Viewer', filename: 'internal-pdf-viewer' },
+                            { name: 'Chromium PDF Viewer', filename: 'internal-pdf-viewer' }
+                        ],
+                        configurable: true
+                    });
+                } catch {}
+                try {
+                    Object.defineProperty(navigator, 'languages', {
+                        get: () => ['tr-TR', 'tr', 'en-US', 'en'],
+                        configurable: true
+                    });
+                } catch {}
+
+                window.__dispatchHumanMousePath = (targetX, targetY) => {
+                    const el = document.elementFromPoint(targetX, targetY) || document.body;
+                    const opts = { bubbles: true, cancelable: true, view: window, clientX: targetX, clientY: targetY, screenX: targetX + 50, screenY: targetY + 50 };
+                    if (typeof PointerEvent === 'function') {
+                        el.dispatchEvent(new PointerEvent('pointermove', { ...opts, pointerId: 1, pointerType: 'mouse', isPrimary: true }));
+                    }
+                    el.dispatchEvent(new MouseEvent('mousemove', opts));
+                };
+
+                window.__hasRecaptchaScoreError = () => {
+                    const bodyText = (document.body.innerText || '').toLowerCase();
+                    if (bodyText.includes('recaptcha_score_too_low') || bodyText.includes('recaptcha') || bodyText.includes('skor')) {
+                        return true;
+                    }
+                    const toasts = Array.from(document.querySelectorAll('.toast, .notification, .alert, [role="alert"], div'));
+                    return toasts.some(el => {
+                        const txt = (el.textContent || '').toLowerCase();
+                        return txt.includes('recaptcha') || txt.includes('score_too_low') || txt.includes('düşük');
+                    });
+                };
+
+                return true;
+            })();
+            """);
+    }
+
     public async Task LoginWithPhoneAsync(string phoneNumber)
     {
         if (string.IsNullOrWhiteSpace(phoneNumber))
@@ -13,7 +69,8 @@ public sealed partial class EmbeddedBrowserAutomationService
         Report("Gömülü tarayıcıda Yolcu360 login sayfası açılıyor...");
         await NavigateAsync("https://www.yolcu360.com/login?redirect=%2F");
         await WaitForDocumentReadyAsync();
-        await Task.Delay(Random.Shared.Next(2000, 3000));
+        await InjectStealthAndHumanMouseScriptAsync();
+        await Task.Delay(Random.Shared.Next(1500, 2500));
         await CloseInitialPopupAsync();
 
         Report("Telefon numarası inputu bekleniyor...");
@@ -23,10 +80,12 @@ public sealed partial class EmbeddedBrowserAutomationService
             """,
             TimeSpan.FromSeconds(20));
 
+        await InjectStealthAndHumanMouseScriptAsync();
+
         var normalizedPhone = NormalizePhoneNumber(phoneNumber);
         Report($"Telefon numarası insansı davranışla yazılıyor: {normalizedPhone}");
 
-        await Task.Delay(550);
+        await Task.Delay(350);
 
         // Focus and clear input
         await EvaluateScriptAsync(
@@ -36,6 +95,7 @@ public sealed partial class EmbeddedBrowserAutomationService
                 if (!input) return false;
                 input.scrollIntoView({ block: 'center', inline: 'nearest' });
                 input.focus();
+                input.click();
                 input.value = '';
                 input.dispatchEvent(new Event('input', { bubbles: true }));
                 return true;
@@ -44,7 +104,7 @@ public sealed partial class EmbeddedBrowserAutomationService
 
         await Task.Delay(220);
 
-        // Type phone number character by character with human pauses
+        // Type phone number chunk by chunk (e.g. 538, 523, 28, 69) with human pauses
         var phoneChunks = SplitPhoneNumber(normalizedPhone);
         foreach (var chunk in phoneChunks)
         {
@@ -58,18 +118,19 @@ public sealed partial class EmbeddedBrowserAutomationService
                         if (!input) return false;
                         const char = {{charJson}};
                         input.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: char }));
-                        input.value += char;
+                        input.value = (input.value || '') + char;
                         input.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: char }));
+                        input.dispatchEvent(new Event('input', { bubbles: true }));
                         input.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true, key: char }));
                         return true;
                     })();
                     """);
-                await Task.Delay(Random.Shared.Next(135, 190));
+                await Task.Delay(Random.Shared.Next(110, 170));
             }
-            await Task.Delay(Random.Shared.Next(200, 350));
+            await Task.Delay(Random.Shared.Next(180, 320));
         }
 
-        // Trigger change & blur
+        // Trigger change & blur and ensure button is enabled
         await EvaluateScriptAsync(
             """
             (() => {
@@ -77,26 +138,47 @@ public sealed partial class EmbeddedBrowserAutomationService
                 if (!input) return;
                 input.dispatchEvent(new Event('change', { bubbles: true }));
                 input.dispatchEvent(new Event('blur', { bubbles: true }));
+
+                const btn = Array.from(document.querySelectorAll('button, input[type="submit"]'))
+                    .find(b => (b.textContent || b.value || '').trim().toLowerCase().includes('devam'));
+                if (btn) {
+                    btn.disabled = false;
+                    btn.removeAttribute('disabled');
+                    btn.classList.remove('disabled');
+                }
             })();
             """);
 
-        // Wait 2.8 seconds
-        Report("Telefon numarası girildi, 2.8 saniye bekleniyor (reCAPTCHA / insansı duraklama)...");
-        await Task.Delay(Random.Shared.Next(2600, 3000));
+        // Warmup delay for reCAPTCHA v3 telemetry
+        Report("Telefon numarası girildi, reCAPTCHA v3 güven puanı oluşturuluyor...");
+        for (int i = 0; i < 4; i++)
+        {
+            var rx = Random.Shared.Next(100, 500);
+            var ry = Random.Shared.Next(100, 400);
+            await EvaluateScriptAsync($"window.__dispatchHumanMousePath ? window.__dispatchHumanMousePath({rx}, {ry}) : null;");
+            await Task.Delay(500);
+        }
 
         Report("'Devam Et' butonuna insansı şekilde tıklanıyor...");
         var continueClicked = await EvaluateScriptAsync(
             """
             (() => {
-                const btn = Array.from(document.querySelectorAll('button, input[type="submit"]'))
-                    .find(b => (b.textContent || b.value || '').trim().toLowerCase().includes('devam'));
+                const btn = Array.from(document.querySelectorAll('button, input[type="submit"], [role="button"]'))
+                    .find(b => {
+                        const txt = (b.textContent || b.value || b.getAttribute('aria-label') || '').trim().toLowerCase();
+                        return txt.includes('devam');
+                    });
                 if (!btn) return false;
 
                 btn.scrollIntoView({ block: 'center', inline: 'nearest' });
+                btn.disabled = false;
+                btn.removeAttribute('disabled');
+                btn.classList.remove('disabled');
+
                 const rect = btn.getBoundingClientRect();
                 const x = rect.left + rect.width / 2;
                 const y = rect.top + rect.height / 2;
-                const opts = { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y };
+                const opts = { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y, screenX: x + 50, screenY: y + 50 };
 
                 if (typeof PointerEvent === 'function') {
                     btn.dispatchEvent(new PointerEvent('pointerdown', { ...opts, pointerId: 1, pointerType: 'mouse', isPrimary: true, buttons: 1 }));
@@ -105,6 +187,11 @@ public sealed partial class EmbeddedBrowserAutomationService
                 btn.dispatchEvent(new MouseEvent('mousedown', { ...opts, buttons: 1 }));
                 btn.dispatchEvent(new MouseEvent('mouseup', opts));
                 btn.click();
+
+                const form = btn.closest('form');
+                if (form) {
+                    try { form.requestSubmit(); } catch { try { form.submit(); } catch {} }
+                }
                 return true;
             })();
             """);
@@ -112,16 +199,60 @@ public sealed partial class EmbeddedBrowserAutomationService
         if (!IsScriptTrue(continueClicked))
             throw new InvalidOperationException("Gömülü tarayıcıda 'Devam Et' butonu tıklanamadı.");
 
+        await Task.Delay(2500);
+
+        // Check if recaptcha error occurred
+        var hasRecaptchaError = await EvaluateScriptAsync("window.__hasRecaptchaScoreError ? window.__hasRecaptchaScoreError() : false");
+        if (IsScriptTrue(hasRecaptchaError))
+        {
+            Report("reCAPTCHA puan uyarısı algılandı (recaptcha_score_too_low). Insansı sayfa hareketleri artırılarak tekrar deneniyor...");
+            for (int i = 0; i < 5; i++)
+            {
+                var rx = Random.Shared.Next(100, 500);
+                var ry = Random.Shared.Next(100, 400);
+                await EvaluateScriptAsync($"window.__dispatchHumanMousePath ? window.__dispatchHumanMousePath({rx}, {ry}) : null;");
+                await Task.Delay(500);
+            }
+
+            Report("'Devam Et' butonuna 2. deneme tıklaması yapılıyor...");
+            await EvaluateScriptAsync(
+                """
+                (() => {
+                    const btn = Array.from(document.querySelectorAll('button, input[type="submit"]'))
+                        .find(b => (b.textContent || b.value || '').trim().toLowerCase().includes('devam'));
+                    if (!btn) return false;
+                    btn.disabled = false;
+                    btn.click();
+                    return true;
+                })();
+                """);
+            await Task.Delay(2000);
+        }
+
         Report("SMS doğrulama ekranı bekleniyor...");
         await WaitForScriptTrueAsync(
             """
             (() => {
                 const text = (document.body.innerText || '').toLocaleLowerCase('tr-TR');
-                const inputs = document.querySelectorAll('input');
-                return text.includes('doğrulama') || text.includes('sms') || inputs.length > 0;
+                const hasSmsText = text.includes('doğrulama') || text.includes('sms') || text.includes('gönderilen') || text.includes('şifre') || text.includes('tek kullanımlık') || text.includes('verification code');
+
+                const visible = el => {
+                    const rect = el.getBoundingClientRect();
+                    const style = window.getComputedStyle(el);
+                    return rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden';
+                };
+
+                const allInputs = Array.from(document.querySelectorAll('input, [contenteditable="true"]')).filter(visible);
+                const otpLikeInputs = allInputs.filter(input => {
+                    if (input.id === 'languageSearch' || input.id === 'inputPickUpLocation' || input.id === 'is_different_dropoff') return false;
+                    const attrs = `${input.id} ${input.name} ${input.placeholder} ${input.autocomplete} ${input.inputMode} ${input.type} ${input.className}`.toLocaleLowerCase('tr-TR');
+                    return attrs.includes('otp') || attrs.includes('code') || attrs.includes('kod') || attrs.includes('pin') || attrs.includes('verify') || attrs.includes('dogrulama') || attrs.includes('sms') || input.maxLength === 1;
+                });
+
+                return hasSmsText || otpLikeInputs.length > 0;
             })();
             """,
-            TimeSpan.FromSeconds(25));
+            TimeSpan.FromSeconds(30));
     }
 
     public async Task FillSmsVerificationCodeAsync(string code)
@@ -129,188 +260,146 @@ public sealed partial class EmbeddedBrowserAutomationService
         if (string.IsNullOrWhiteSpace(code))
             throw new InvalidOperationException("SMS doğrulama kodu boş olamaz.");
 
-        Report($"Gömülü tarayıcıda insansı davranışla SMS kodu yazılıyor: {code}");
-        await Task.Delay(Random.Shared.Next(1000, 1800));
+        Report($"Gömülü tarayıcıda SMS kodu yazılıyor: {code.Trim()}");
+        await Task.Delay(Random.Shared.Next(800, 1400));
 
-        var codeJson = JsonSerializer.Serialize(code.Trim());
+        var cleanCode = code.Trim();
+        var codeJson = JsonSerializer.Serialize(cleanCode);
 
-        // First, attempt digit-by-digit entry with React native setter
-        for (int i = 0; i < code.Length; i++)
-        {
-            var digit = code[i];
-            var index = i;
-            var digitJson = JsonSerializer.Serialize(digit.ToString());
-
-            var digitSet = await EvaluateScriptAsync(
-                $$"""
-                (() => {
-                    const digit = {{digitJson}};
-                    const idx = {{index}};
-
-                    const normalize = value => (value || '').toLocaleLowerCase('tr-TR');
-                    const visible = el => {
-                        const rect = el.getBoundingClientRect();
-                        const style = window.getComputedStyle(el);
-                        return rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden';
-                    };
-
-                    const setValue = (el, val) => {
-                        const proto = el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement ? Object.getPrototypeOf(el) : null;
-                        const desc = proto ? Object.getOwnPropertyDescriptor(proto, 'value') : null;
-                        if (desc && desc.set) {
-                            desc.set.call(el, val);
-                        } else if ('value' in el) {
-                            el.value = val;
-                        } else {
-                            el.textContent = val;
-                        }
-                    };
-
-                    const dispatchEvents = el => {
-                        el.focus();
-                        el.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: digit }));
-                        el.dispatchEvent(new KeyboardEvent('keypress', { bubbles: true, key: digit }));
-                        el.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: digit }));
-                        el.dispatchEvent(new Event('input', { bubbles: true }));
-                        el.dispatchEvent(new Event('change', { bubbles: true }));
-                        el.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true, key: digit }));
-                    };
-
-                    const allInputs = Array.from(document.querySelectorAll('input, [contenteditable="true"]')).filter(visible);
-                    const otpInputs = allInputs.filter(input => {
-                        const attrs = normalize(`${input.id} ${input.name} ${input.placeholder} ${input.autocomplete} ${input.inputMode} ${input.type} ${input.className} ${input.getAttribute?.('aria-label') || ''}`);
-                        return attrs.includes('otp') || attrs.includes('code') || attrs.includes('kod') || attrs.includes('pin') || attrs.includes('verify') || attrs.includes('dogrulama') || attrs.includes('sms') || input.maxLength === 1;
-                    });
-
-                    const singleCharInputs = otpInputs.filter(input => input.maxLength === 1);
-                    if (singleCharInputs.length > idx) {
-                        const input = singleCharInputs[idx];
-                        setValue(input, digit);
-                        dispatchEvents(input);
-                        return true;
-                    }
-
-                    if (otpInputs.length > 0) {
-                        const input = otpInputs[0];
-                        if (idx === 0) setValue(input, '');
-                        setValue(input, input.value + digit);
-                        dispatchEvents(input);
-                        return true;
-                    }
-
-                    if (allInputs.length > 0) {
-                        const input = allInputs[0];
-                        if (idx === 0) setValue(input, '');
-                        setValue(input, input.value + digit);
-                        dispatchEvents(input);
-                        return true;
-                    }
-
-                    return false;
-                })();
-                """);
-
-            if (!IsScriptTrue(digitSet))
-            {
-                Report($"Gömülü tarayıcıda {index + 1}. hane ({digit}) için kutu bulunamadı, fallback deneniyor...");
-            }
-
-            await Task.Delay(Random.Shared.Next(280, 420));
-        }
-
-        // Entire code fallback injection via React setter
-        var fullFilled = await EvaluateScriptAsync(
+        var fillResultJson = await EvaluateScriptAsync(
             $$"""
             (() => {
                 const code = {{codeJson}};
                 const normalize = value => (value || '').toLocaleLowerCase('tr-TR');
+                const visible = el => {
+                    if (!el) return false;
+                    const rect = el.getBoundingClientRect();
+                    const style = window.getComputedStyle(el);
+                    return rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0';
+                };
+
+                const isExcluded = el => {
+                    const id = (el.id || '').toLowerCase();
+                    const name = (el.name || '').toLowerCase();
+                    const placeholder = (el.placeholder || '').toLowerCase();
+                    const className = (el.className || '').toLowerCase();
+                    const type = (el.type || '').toLowerCase();
+                    if (type === 'checkbox' || type === 'radio' || type === 'hidden' || type === 'submit' || type === 'button') return true;
+                    return id.includes('languagesearch') || id.includes('pickuplocation') || id.includes('dropoff') ||
+                           id.includes('search') || name.includes('search') || placeholder.includes('ara') ||
+                           placeholder.includes('teslim') || placeholder.includes('alış') || className.includes('search');
+                };
+
+                const setValue = (el, value) => {
+                    const prototype = el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement ? Object.getPrototypeOf(el) : null;
+                    const descriptor = prototype ? Object.getOwnPropertyDescriptor(prototype, 'value') : null;
+                    if (descriptor?.set) {
+                        descriptor.set.call(el, value);
+                    } else if ('value' in el) {
+                        el.value = value;
+                    } else {
+                        el.textContent = value;
+                    }
+                };
+
+                const dispatchInput = (el, char) => {
+                    el.focus();
+                    el.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: char }));
+                    el.dispatchEvent(new Event('input', { bubbles: true }));
+                    el.dispatchEvent(new Event('change', { bubbles: true }));
+                    el.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true, key: char }));
+                    el.dispatchEvent(new KeyboardEvent('keypress', { bubbles: true, key: char }));
+                    el.dispatchEvent(new Event('blur', { bubbles: true }));
+                };
+
+                const allInputs = Array.from(document.querySelectorAll('input, [contenteditable="true"]')).filter(el => visible(el) && !isExcluded(el));
+
+                const otpLikeInputs = allInputs.filter(input => {
+                    const attrs = normalize(`${input.id} ${input.name} ${input.placeholder} ${input.autocomplete} ${input.inputMode} ${input.type} ${input.className} ${input.getAttribute?.('aria-label') || ''}`);
+                    return attrs.includes('otp')
+                        || attrs.includes('code')
+                        || attrs.includes('kod')
+                        || attrs.includes('pin')
+                        || attrs.includes('verify')
+                        || attrs.includes('dogrulama')
+                        || attrs.includes('sms')
+                        || input.maxLength === 1;
+                });
+
+                // 1. Single char digit inputs (e.g. 4 or 6 boxes)
+                const singleCharInputs = (otpLikeInputs.length > 0 ? otpLikeInputs : allInputs).filter(input => input.maxLength === 1);
+                if (singleCharInputs.length >= code.length) {
+                    singleCharInputs.slice(0, code.length).forEach((input, index) => {
+                        input.focus();
+                        input.click?.();
+                        setValue(input, code[index]);
+                        dispatchInput(input, code[index]);
+                    });
+                    return JSON.stringify({ success: true, type: "single_char_boxes", count: singleCharInputs.length });
+                }
+
+                // 2. Single text input field
+                const singleInput = otpLikeInputs.find(input => input.maxLength !== 1)
+                    || allInputs.find(input => {
+                        const attrs = normalize(`${input.id} ${input.name} ${input.placeholder} ${input.autocomplete} ${input.inputMode} ${input.type} ${input.className}`);
+                        return attrs.includes('otp') || attrs.includes('code') || attrs.includes('kod') || attrs.includes('pin') || attrs.includes('verify') || attrs.includes('dogrulama') || attrs.includes('sms');
+                    })
+                    || allInputs.find(input => {
+                        const type = normalize(input.type);
+                        return type === 'tel' || type === 'text' || type === 'number';
+                    });
+
+                if (singleInput) {
+                    singleInput.focus();
+                    singleInput.click?.();
+                    setValue(singleInput, code);
+                    dispatchInput(singleInput, code[code.length - 1]);
+                    return JSON.stringify({ success: true, type: "single_input", id: singleInput.id || singleInput.className || 'input' });
+                }
+
+                return JSON.stringify({ success: false, reason: "SMS kutusu bulunamadı", totalInputs: allInputs.length });
+            })();
+            """);
+
+        Report($"SMS kutu dolum sonucu: {fillResultJson}");
+
+        Report("SMS kodu yazıldı, doğrulama butonuna basmadan önce 3.5 saniye bekleniyor...");
+        await Task.Delay(Random.Shared.Next(3200, 4200));
+
+        Report("SMS doğrulama butonu tıklanıyor...");
+        var clickResult = await EvaluateScriptAsync(
+            """
+            (() => {
+                const applyBtn = document.querySelector('button[data-cms-key="button_apply"]');
+                if (applyBtn) {
+                    applyBtn.disabled = false;
+                    applyBtn.click();
+                    return true;
+                }
+
                 const visible = el => {
                     const rect = el.getBoundingClientRect();
                     const style = window.getComputedStyle(el);
                     return rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden';
                 };
 
-                const setValue = (el, val) => {
-                    const proto = el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement ? Object.getPrototypeOf(el) : null;
-                    const desc = proto ? Object.getOwnPropertyDescriptor(proto, 'value') : null;
-                    if (desc && desc.set) {
-                        desc.set.call(el, val);
-                    } else if ('value' in el) {
-                        el.value = val;
-                    } else {
-                        el.textContent = val;
-                    }
-                };
+                const buttons = Array.from(document.querySelectorAll('button, input[type="submit"]')).filter(b => {
+                    if (!visible(b)) return false;
+                    const txt = (b.textContent || b.value || '').trim().toLowerCase();
+                    return txt.includes('doğrula') || txt.includes('onayla') || txt.includes('devam') || txt.includes('giriş') || txt.includes('gönder');
+                });
 
-                const dispatchEvents = el => {
-                    el.dispatchEvent(new Event('input', { bubbles: true }));
-                    el.dispatchEvent(new Event('change', { bubbles: true }));
-                    el.dispatchEvent(new Event('blur', { bubbles: true }));
-                };
-
-                const allInputs = Array.from(document.querySelectorAll('input, [contenteditable="true"]')).filter(visible);
-                const singleCharInputs = allInputs.filter(input => input.maxLength === 1);
-                if (singleCharInputs.length >= code.length) {
-                    singleCharInputs.slice(0, code.length).forEach((input, idx) => {
-                        setValue(input, code[idx]);
-                        dispatchEvents(input);
-                    });
-                    return true;
-                }
-
-                if (allInputs.length > 0) {
-                    setValue(allInputs[0], code);
-                    dispatchEvents(allInputs[0]);
-                    return true;
-                }
-
-                return false;
-            })();
-            """);
-
-        Report(IsScriptTrue(fullFilled)
-            ? $"SMS kodu ({code}) gömülü tarayıcıdaki kutulara insansı şekilde yazıldı."
-            : $"UYARI: SMS kodu ({code}) için uygun HTML kutusu tespit edilemedi.");
-
-        Report("SMS kodu girildi, doğrulama butonuna basmadan önce 4.5 saniye bekleniyor (reCAPTCHA / sayfa onay süresi)...");
-        await Task.Delay(Random.Shared.Next(4200, 5500));
-
-        Report("SMS doğrulama butonu tıklanıyor...");
-        await EvaluateScriptAsync(
-            """
-            (() => {
-                const applyBtn = document.querySelector('button[data-cms-key="button_apply"]');
-                if (applyBtn) {
-                    applyBtn.scrollIntoView({ block: 'center', inline: 'nearest' });
-                    const rect = applyBtn.getBoundingClientRect();
-                    const x = rect.left + rect.width / 2;
-                    const y = rect.top + rect.height / 2;
-                    const opts = { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y };
-                    applyBtn.dispatchEvent(new MouseEvent('mousedown', { ...opts, buttons: 1 }));
-                    applyBtn.dispatchEvent(new MouseEvent('mouseup', opts));
-                    applyBtn.click();
-                    return true;
-                }
-
-                const btn = Array.from(document.querySelectorAll('button, input[type="submit"]'))
-                    .find(b => {
-                        const txt = (b.textContent || b.value || '').trim().toLowerCase();
-                        return (txt.includes('doğrula') || txt.includes('onayla') || txt.includes('devam') || txt.includes('giriş'));
-                    });
-                if (btn) {
-                    btn.scrollIntoView({ block: 'center', inline: 'nearest' });
-                    const rect = btn.getBoundingClientRect();
-                    const x = rect.left + rect.width / 2;
-                    const y = rect.top + rect.height / 2;
-                    const opts = { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y };
-                    btn.dispatchEvent(new MouseEvent('mousedown', { ...opts, buttons: 1 }));
-                    btn.dispatchEvent(new MouseEvent('mouseup', opts));
+                if (buttons.length > 0) {
+                    const btn = buttons[0];
+                    btn.disabled = false;
                     btn.click();
                     return true;
                 }
                 return false;
             })();
             """);
+
+        Report(IsScriptTrue(clickResult) ? "SMS doğrulama butonu tıklandı." : "SMS doğrulama butonu bulunamadı, gömülü tarayıcıdan manuel tıklayabilirsiniz.");
     }
 
     public async Task WaitForLoginCompletedAsync(TimeSpan? timeout = null)
