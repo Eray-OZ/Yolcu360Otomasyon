@@ -2,62 +2,6 @@ namespace Yolcu360Otomasyon.Services;
 
 public sealed partial class BAService
 {
-    private async Task InjectStealthAndHumanMouseScriptAsync()
-    {
-        await EvaluateScriptAsync(
-            """
-            (() => {
-                if (window.__stealthInjected) return true;
-                window.__stealthInjected = true;
-    
-                try { Object.defineProperty(navigator, 'webdriver', { get: () => undefined, configurable: true }); } catch {}
-                try {
-                    if (!window.chrome) {
-                        window.chrome = { runtime: {}, loadTimes: function() {}, csi: function() {}, app: {} };
-                    }
-                } catch {}
-                try {
-                    Object.defineProperty(navigator, 'plugins', {
-                        get: () => [
-                            { name: 'Chrome PDF Viewer', filename: 'internal-pdf-viewer' },
-                            { name: 'Chromium PDF Viewer', filename: 'internal-pdf-viewer' }
-                        ],
-                        configurable: true
-                    });
-                } catch {}
-                try {
-                    Object.defineProperty(navigator, 'languages', {
-                        get: () => ['tr-TR', 'tr', 'en-US', 'en'],
-                        configurable: true
-                    });
-                } catch {}
-
-                window.__dispatchHumanMousePath = (targetX, targetY) => {
-                    const el = document.elementFromPoint(targetX, targetY) || document.body;
-                    const opts = { bubbles: true, cancelable: true, view: window, clientX: targetX, clientY: targetY, screenX: targetX + 50, screenY: targetY + 50 };
-                    if (typeof PointerEvent === 'function') {
-                        el.dispatchEvent(new PointerEvent('pointermove', { ...opts, pointerId: 1, pointerType: 'mouse', isPrimary: true }));
-                    }
-                    el.dispatchEvent(new MouseEvent('mousemove', opts));
-                };
-
-                window.__hasRecaptchaScoreError = () => {
-                    const bodyText = (document.body.innerText || '').toLowerCase();
-                    if (bodyText.includes('recaptcha_score_too_low') || bodyText.includes('recaptcha') || bodyText.includes('skor')) {
-                        return true;
-                    }
-                    const toasts = Array.from(document.querySelectorAll('.toast, .notification, .alert, [role="alert"], div'));
-                    return toasts.some(el => {
-                        const txt = (el.textContent || '').toLowerCase();
-                        return txt.includes('recaptcha') || txt.includes('score_too_low') || txt.includes('düşük');
-                    });
-                };
-
-                return true;
-            })();
-            """);
-    }
-
     public async Task LoginWithPhoneAsync(string phoneNumber)
     {
         if (string.IsNullOrWhiteSpace(phoneNumber))
@@ -275,29 +219,4 @@ public sealed partial class BAService
         Report("Giriş tamamlanma kontrolü zaman aşımına uğradı, ancak devam ediliyor.");
     }
 
-    private static string NormalizePhoneNumber(string raw)
-    {
-        var digits = new string(raw.Where(char.IsDigit).ToArray());
-        if (digits.StartsWith("90") && digits.Length == 12)
-            digits = digits[2..];
-        if (digits.StartsWith("0") && digits.Length == 11)
-            digits = digits[1..];
-        return digits;
-    }
-
-    private static List<string> SplitPhoneNumber(string number)
-    {
-        if (number.Length == 10)
-        {
-            return new List<string>
-            {
-                number.Substring(0, 3),
-                number.Substring(3, 3),
-                number.Substring(6, 2),
-                number.Substring(8, 2)
-            };
-        }
-
-        return new List<string> { number };
-    }
 }

@@ -39,7 +39,14 @@ Bu dokuman mevcut Avalonia uygulamasinda gereksiz tekrar eden, buyuyen veya iler
 - Tamamlandi: Search kodu kontrol baglayicilari, arama calistirma ve sonuc kaydetme dosyalarina ayrildi.
 - Tamamlandi: History kodu kontrol baglayicilari, veri gosterimi ve koleksiyon aksiyonlari dosyalarina ayrildi.
 - Tamamlandi: Payments kodu kontrol baglayicilari, odeme olusturma, checkout ve odeme listesi dosyalarina ayrildi.
-- Siradaki adim: Browser automation JS bloklarinda ortak click/input helper kullanimi artirilabilir ve `BAService.cs` cekirdek dosyasi daha kucuk altyapi dosyalarina ayrilabilir.
+- Tamamlandi: `BAService.cs` cekirdek dosyasi config, navigasyon ve DOM helper dosyalarina ayrildi.
+- Tamamlandi: PNG export servisi ana servis ve visual builder dosyalarina ayrildi.
+- Tamamlandi: Tarih secici akisi `BAService.DatePicker.cs`, takvim navigasyonu `BAService.Calendar.cs` olarak ayrildi.
+- Tamamlandi: Telefon login akisi icindeki stealth script ve telefon formatlama helper'lari ayri dosyalara ayrildi.
+- Tamamlandi: Alis yeri autocomplete akisi input yazma ve oneri secme dosyalarina ayrildi.
+- Tamamlandi: Sonuc akisi filtre uygulama, sonuc bekleme ve sonuc okuma dosyalarina ayrildi.
+- Tamamlandi: PNG export visual builder kodu rapor header, koleksiyon kartlari ve tablo builder dosyalarina ayrildi.
+- Siradaki adim: Browser automation JS bloklarinda ortak click/input helper kullanimi artirilabilir; `BAService.Session.cs`, `BAService.SmsVerification.cs` ve `MainWindow.Ui.cs` tarafinda kucuk sadeleştirmeler yapilabilir.
 
 ## Mevcut Durum Ozeti
 
