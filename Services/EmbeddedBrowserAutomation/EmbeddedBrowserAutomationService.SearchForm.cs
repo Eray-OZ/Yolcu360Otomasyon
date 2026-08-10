@@ -1,5 +1,3 @@
-using System.Text.Json;
-
 namespace Yolcu360Otomasyon.Services;
 
 public sealed partial class EmbeddedBrowserAutomationService
@@ -9,9 +7,9 @@ public sealed partial class EmbeddedBrowserAutomationService
         if (string.IsNullOrWhiteSpace(location))
             throw new InvalidOperationException("Alış yeri boş bırakılamaz.");
 
-        var locationJson = JsonSerializer.Serialize(location.Trim());
-        var pickupLocationInputSelectorJson = JsonSerializer.Serialize(PickupLocationInputSelector);
-        var locationSuggestionSelectorJson = JsonSerializer.Serialize(LocationSuggestionSelector);
+        var locationJson = ToJson(location.Trim());
+        var pickupLocationInputSelectorJson = ToJson(PickupLocationInputSelector);
+        var locationSuggestionSelectorJson = ToJson(LocationSuggestionSelector);
         var diagnostic = await GetSearchDomDiagnosticAsync();
         Report($"Gömülü DOM: {diagnostic}");
 
@@ -147,10 +145,10 @@ public sealed partial class EmbeddedBrowserAutomationService
                         remainingSuggestions: document.querySelectorAll({{locationSuggestionSelectorJson}}).length
                     });
                 })();
-                """);
+            """);
 
             Report($"Alış yeri seçim sonucu: {selected}");
-            await Task.Delay(700);
+            await Task.Delay(LocationSelectionApplyDelay);
             selectionApplied = await IsPickupLocationSelectionAppliedAsync();
         }
 
@@ -174,7 +172,7 @@ public sealed partial class EmbeddedBrowserAutomationService
 
         Report($"Alış tarihi için ay kontrol ediliyor: {pickupDate:MMMM yyyy}");
         await NavigateToMonthAsync(pickupDate);
-        await Task.Delay(300);
+        await Task.Delay(DatePickerActionDelay);
 
         Report($"Alış tarihi seçiliyor: {pickupDate:dd.MM.yyyy}");
         var pickupSelected = await ClickCalendarDayAsync(pickupDate);
@@ -182,13 +180,13 @@ public sealed partial class EmbeddedBrowserAutomationService
             throw new InvalidOperationException($"Alış tarihi ({pickupDate:dd.MM.yyyy}) takvimde seçilemedi.");
 
         Report($"Alış tarihi seçildi: {pickupDate:dd.MM.yyyy}");
-        await Task.Delay(400);
+        await Task.Delay(DatePickerSelectionDelay);
 
         if (returnDate.Year != pickupDate.Year || returnDate.Month != pickupDate.Month)
         {
             Report($"Bırakış tarihi için ay geziliyor: {returnDate:MMMM yyyy}");
             await NavigateToMonthAsync(returnDate);
-            await Task.Delay(300);
+            await Task.Delay(DatePickerActionDelay);
         }
 
         Report($"Bırakış tarihi seçiliyor: {returnDate:dd.MM.yyyy}");
@@ -197,16 +195,16 @@ public sealed partial class EmbeddedBrowserAutomationService
             throw new InvalidOperationException($"Bırakış tarihi ({returnDate:dd.MM.yyyy}) takvimde seçilemedi.");
 
         Report($"Bırakış tarihi seçildi: {returnDate:dd.MM.yyyy}");
-        await Task.Delay(400);
+        await Task.Delay(DatePickerSelectionDelay);
 
         await ConfirmDatePickerAsync();
-        await Task.Delay(300);
+        await Task.Delay(DatePickerActionDelay);
     }
 
     private async Task<bool> OpenDatePickerAsync()
     {
-        var datePickerSelectorJson = JsonSerializer.Serialize(DatePickerSelector);
-        var dateTimeGroupSelectorJson = JsonSerializer.Serialize(DateTimeGroupSelector);
+        var datePickerSelectorJson = ToJson(DatePickerSelector);
+        var dateTimeGroupSelectorJson = ToJson(DateTimeGroupSelector);
 
         var result = await EvaluateScriptAsync(
             $$"""
@@ -273,7 +271,7 @@ public sealed partial class EmbeddedBrowserAutomationService
             if (IsScriptTrue(menuVisible))
                 return;
 
-            await Task.Delay(250);
+            await Task.Delay(DatePickerMenuPollingDelay);
         }
 
         throw new TimeoutException("Tarih seçici takvim menüsü (dp__menu) görünmedi.");
@@ -312,13 +310,13 @@ public sealed partial class EmbeddedBrowserAutomationService
                 break;
             }
 
-            await Task.Delay(300);
+            await Task.Delay(CalendarNavigationDelay);
         }
     }
 
     private async Task<bool> ClickCalendarNavAsync(bool forward)
     {
-        var forwardJson = JsonSerializer.Serialize(forward);
+        var forwardJson = ToJson(forward);
         var result = await EvaluateScriptAsync(
             $$"""
             (() => {
@@ -343,14 +341,14 @@ public sealed partial class EmbeddedBrowserAutomationService
 
     private async Task<bool> ClickCalendarDayAsync(DateTime date)
     {
-        var dayJson = JsonSerializer.Serialize(date.Day);
+        var dayJson = ToJson(date.Day);
         var turkishMonths = new[]
         {
             "Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran",
             "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"
         };
-        var monthJson = JsonSerializer.Serialize(turkishMonths[date.Month - 1]);
-        var yearJson = JsonSerializer.Serialize(date.Year.ToString());
+        var monthJson = ToJson(turkishMonths[date.Month - 1]);
+        var yearJson = ToJson(date.Year.ToString());
 
         var result = await EvaluateScriptAsync(
             $$"""
@@ -446,8 +444,8 @@ public sealed partial class EmbeddedBrowserAutomationService
         if (string.IsNullOrWhiteSpace(time)) return;
 
         Report($"Saat seçimi yapılıyor (index {timePickerIndex}): {time}");
-        var timeJson = JsonSerializer.Serialize(time.Trim());
-        var indexJson = JsonSerializer.Serialize(timePickerIndex);
+        var timeJson = ToJson(time.Trim());
+        var indexJson = ToJson(timePickerIndex);
 
         var opened = await EvaluateScriptAsync(
             $$"""
@@ -487,7 +485,7 @@ public sealed partial class EmbeddedBrowserAutomationService
             return;
         }
 
-        await Task.Delay(400);
+        await Task.Delay(TimePickerOpenDelay);
 
         var selected = await EvaluateScriptAsync(
             $$"""
@@ -547,7 +545,7 @@ public sealed partial class EmbeddedBrowserAutomationService
             Report($"Saat '{time}' seçeneklerde bulunamadı.");
         }
 
-        await Task.Delay(300);
+        await Task.Delay(TimePickerSelectionDelay);
     }
 
     public async Task ClickSearchButtonAsync()
@@ -567,7 +565,7 @@ public sealed partial class EmbeddedBrowserAutomationService
             })();
             """);
 
-        await Task.Delay(300);
+        await Task.Delay(SearchButtonPreparationDelay);
 
         var result = await EvaluateScriptAsync(
             """
@@ -610,7 +608,7 @@ public sealed partial class EmbeddedBrowserAutomationService
             """);
 
         Report($"Araç Ara buton tıklama sonucu: {result}");
-        await Task.Delay(1000);
+        await Task.Delay(SearchButtonAfterClickDelay);
     }
 
     private static bool IsTargetMonthVisible(string headerText, DateTime target)
@@ -663,8 +661,8 @@ public sealed partial class EmbeddedBrowserAutomationService
 
     private async Task<bool> IsPickupLocationSelectionAppliedAsync()
     {
-        var pickupLocationInputSelectorJson = JsonSerializer.Serialize(PickupLocationInputSelector);
-        var locationSuggestionSelectorJson = JsonSerializer.Serialize(LocationSuggestionSelector);
+        var pickupLocationInputSelectorJson = ToJson(PickupLocationInputSelector);
+        var locationSuggestionSelectorJson = ToJson(LocationSuggestionSelector);
         var result = await EvaluateScriptAsync(
             $$"""
             (() => {
@@ -689,7 +687,7 @@ public sealed partial class EmbeddedBrowserAutomationService
     {
         var deadline = DateTimeOffset.UtcNow + timeout;
         string? lastResult = null;
-        var selectorJson = JsonSerializer.Serialize(selector);
+        var selectorJson = ToJson(selector);
 
         while (DateTimeOffset.UtcNow < deadline)
         {

@@ -11,6 +11,25 @@ public sealed partial class EmbeddedBrowserAutomationService
     private const string LocationSuggestionSelector = ".search-autocomplete__item, .search-autocomplete-mobile__item, .search-autocomplete .location-item, .location-item";
     private const string DateTimeGroupSelector = "[modaltitle='Alış ve Bırakış Tarihi']";
     private const string DatePickerSelector = ".dp__main.dp__theme_light";
+    private static readonly TimeSpan InitialPopupDelay = TimeSpan.FromMilliseconds(2500);
+    private static readonly TimeSpan ScriptPollingDelay = TimeSpan.FromMilliseconds(250);
+    private static readonly TimeSpan FilterPanelReadyDelay = TimeSpan.FromMilliseconds(1200);
+    private static readonly TimeSpan FilterRefreshDelay = TimeSpan.FromMilliseconds(1000);
+    private static readonly TimeSpan ResultsRefreshDelay = TimeSpan.FromMilliseconds(1500);
+    private static readonly TimeSpan ResultsPollingDelay = TimeSpan.FromMilliseconds(500);
+    private static readonly TimeSpan LocationSelectionApplyDelay = TimeSpan.FromMilliseconds(700);
+    private static readonly TimeSpan DatePickerActionDelay = TimeSpan.FromMilliseconds(300);
+    private static readonly TimeSpan DatePickerSelectionDelay = TimeSpan.FromMilliseconds(400);
+    private static readonly TimeSpan DatePickerMenuPollingDelay = TimeSpan.FromMilliseconds(250);
+    private static readonly TimeSpan CalendarNavigationDelay = TimeSpan.FromMilliseconds(300);
+    private static readonly TimeSpan TimePickerOpenDelay = TimeSpan.FromMilliseconds(400);
+    private static readonly TimeSpan TimePickerSelectionDelay = TimeSpan.FromMilliseconds(300);
+    private static readonly TimeSpan SearchButtonPreparationDelay = TimeSpan.FromMilliseconds(300);
+    private static readonly TimeSpan SearchButtonAfterClickDelay = TimeSpan.FromMilliseconds(1000);
+    private static readonly TimeSpan LogoutNavigationDelay = TimeSpan.FromMilliseconds(1200);
+    private static readonly TimeSpan PaymentPageHydrationDelay = TimeSpan.FromMilliseconds(2000);
+    private static readonly TimeSpan PaymentTabSelectionDelay = TimeSpan.FromMilliseconds(600);
+    private static readonly TimeSpan PaymentFormSubmitPreparationDelay = TimeSpan.FromMilliseconds(1250);
     private readonly NativeWebView _browser;
 
     public event Action<string>? ProgressChanged;
@@ -96,7 +115,7 @@ public sealed partial class EmbeddedBrowserAutomationService
         Report("Sayfanın hazır olması bekleniyor...");
         await WaitForDocumentReadyAsync();
         Report("Başlangıç popup'ı bekleniyor...");
-        await Task.Delay(2_500);
+        await Task.Delay(InitialPopupDelay);
         var popupClosed = await CloseInitialPopupAsync();
         Report(popupClosed ? "Başlangıç popup'ı kapatıldı." : "Başlangıç popup'ı görünmedi.");
     }
@@ -111,7 +130,7 @@ public sealed partial class EmbeddedBrowserAutomationService
             if (string.Equals(readyState?.Trim('"'), "complete", StringComparison.OrdinalIgnoreCase))
                 return;
 
-            await Task.Delay(250);
+            await Task.Delay(ScriptPollingDelay);
         }
 
         throw new TimeoutException("Gömülü tarayıcı sayfa hazır durumuna geçmedi.");
@@ -201,7 +220,7 @@ public sealed partial class EmbeddedBrowserAutomationService
             if (IsScriptTrue(result))
                 return;
 
-            await Task.Delay(250);
+            await Task.Delay(ScriptPollingDelay);
         }
 
         throw new TimeoutException($"Gömülü tarayıcı beklenen sayfa durumuna ulaşmadı. Son kontrol sonucu: {await EvaluateScriptAsync(script)}");
@@ -216,5 +235,127 @@ public sealed partial class EmbeddedBrowserAutomationService
     {
         var normalized = (value ?? string.Empty).Trim().Trim('"');
         return string.Equals(normalized, "true", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string ToJson<T>(T value)
+    {
+        return System.Text.Json.JsonSerializer.Serialize(value);
+    }
+
+    private static string ToJson<T>(T value, System.Text.Json.JsonSerializerOptions options)
+    {
+        return System.Text.Json.JsonSerializer.Serialize(value, options);
+    }
+
+    private async Task<bool> SetInputValueAsync(string selector, string value, bool blurAfterChange = true)
+    {
+        var selectorJson = ToJson(selector);
+        var valueJson = ToJson(value);
+        var blurAfterChangeJson = ToJson(blurAfterChange);
+
+        return await EvaluateBooleanScriptAsync(
+            $$"""
+            (() => {
+                const input = document.querySelector({{selectorJson}});
+                if (!input) return false;
+                input.focus();
+
+                const proto = input instanceof HTMLInputElement ? Object.getPrototypeOf(input) : null;
+                const desc = proto ? Object.getOwnPropertyDescriptor(proto, 'value') : null;
+                if (desc && desc.set) {
+                    desc.set.call(input, {{valueJson}});
+                } else {
+                    input.value = {{valueJson}};
+                }
+
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+                input.dispatchEvent(new Event('change', { bubbles: true }));
+                if ({{blurAfterChangeJson}}) {
+                    input.dispatchEvent(new Event('blur', { bubbles: true }));
+                }
+                return true;
+            })();
+            """);
+    }
+
+    private async Task<bool> ClickElementAsync(string selector)
+    {
+        var selectorJson = ToJson(selector);
+
+        return await EvaluateBooleanScriptAsync(
+            $$"""
+            (() => {
+                const element = document.querySelector({{selectorJson}});
+                if (!element) return false;
+                return window.__embeddedClickElement
+                    ? window.__embeddedClickElement(element)
+                    : false;
+            })();
+            """);
+    }
+
+    private async Task<bool> ClickButtonByTextAsync(string text, string? preferredSelector = null)
+    {
+        var textJson = ToJson(text);
+        var preferredSelectorJson = ToJson(preferredSelector);
+
+        return await EvaluateBooleanScriptAsync(
+            $$"""
+            (() => {
+                const preferredSelector = {{preferredSelectorJson}};
+                const targetText = ({{textJson}} || '').trim().toLocaleLowerCase('tr-TR');
+                const preferred = preferredSelector ? document.querySelector(preferredSelector) : null;
+                const button = preferred ||
+                    Array.from(document.querySelectorAll('button, input[type="submit"]'))
+                        .find(b => (b.textContent || b.value || '').trim().toLocaleLowerCase('tr-TR').includes(targetText));
+
+                if (!button) return false;
+                return window.__embeddedClickElement
+                    ? window.__embeddedClickElement(button)
+                    : false;
+            })();
+            """);
+    }
+
+    private Task EnsureEmbeddedClickHelperAsync()
+    {
+        return EvaluateScriptAsync(
+            """
+            (() => {
+                if (window.__embeddedClickElement) return true;
+
+                window.__embeddedClickElement = element => {
+                    if (!element) return false;
+                    element.scrollIntoView({ block: 'center', inline: 'nearest' });
+
+                    const rect = element.getBoundingClientRect();
+                    const style = window.getComputedStyle(element);
+                    const enabled = !element.disabled &&
+                        element.getAttribute('aria-disabled') !== 'true' &&
+                        style.pointerEvents !== 'none' &&
+                        rect.width > 0 &&
+                        rect.height > 0;
+
+                    if (!enabled) return false;
+
+                    const x = rect.left + rect.width / 2;
+                    const y = rect.top + rect.height / 2;
+                    const opts = { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y };
+
+                    if (typeof PointerEvent === 'function') {
+                        element.dispatchEvent(new PointerEvent('pointerdown', { ...opts, pointerId: 1, pointerType: 'mouse', isPrimary: true, buttons: 1 }));
+                        element.dispatchEvent(new PointerEvent('pointerup', { ...opts, pointerId: 1, pointerType: 'mouse', isPrimary: true }));
+                    }
+
+                    element.dispatchEvent(new MouseEvent('mousedown', { ...opts, buttons: 1 }));
+                    element.dispatchEvent(new MouseEvent('mouseup', opts));
+                    element.dispatchEvent(new MouseEvent('click', opts));
+                    if (typeof element.click === 'function') element.click();
+                    return true;
+                };
+
+                return true;
+            })();
+            """);
     }
 }

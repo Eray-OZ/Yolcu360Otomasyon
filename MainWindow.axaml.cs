@@ -34,6 +34,7 @@ public partial class MainWindow : Window
         ConfigureResultsGrid();
         ConfigureCollectionsGrid();
         ConfigurePaymentsGrid();
+        ConfigureAuthViewEvents();
         _smsReceiverService.SmsReceived += SmsReceiverService_SmsReceived;
         _ = _databaseService.EnsureDatabaseAsync();
         InitializeSmsReceiver();

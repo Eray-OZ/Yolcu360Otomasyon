@@ -1,0 +1,118 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Yolcu360Otomasyon.Views.AuthView">
+    <Grid>
+        <Border x:Name="LoginView"
+                Margin="28"
+                Background="White"
+                BorderBrush="#D9E2EC"
+                BorderThickness="1"
+                CornerRadius="10"
+                Padding="28"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Width="460">
+            <StackPanel Spacing="18">
+                <StackPanel Spacing="6">
+                    <TextBlock Text="Giriş Yap"
+                               FontSize="30"
+                               FontWeight="Bold"
+                               Foreground="#122033" />
+                    <TextBlock Text="Email ve şifrenizle giriş yapın. Kayıtlı telefon numarası ile Yolcu360 oturumu açılır."
+                               Foreground="#5F7187"
+                               TextWrapping="Wrap" />
+                </StackPanel>
+
+                <StackPanel Spacing="6">
+                    <TextBlock Text="Email"
+                               Foreground="#243446"
+                               FontWeight="SemiBold" />
+                    <TextBox x:Name="LoginEmailTextBox"
+                             PlaceholderText="mail@example.com" />
+                </StackPanel>
+
+                <StackPanel Spacing="6">
+                    <TextBlock Text="Şifre"
+                               Foreground="#243446"
+                               FontWeight="SemiBold" />
+                    <TextBox x:Name="LoginPasswordTextBox"
+                             PlaceholderText="Uygulama şifresi" />
+                </StackPanel>
+
+                <Button x:Name="LoginButton"
+                        Classes="primary"
+                        Content="Giriş Yap" />
+
+                <Button x:Name="GoToRegisterButton"
+                        Content="Kayıt Ol" />
+
+                <TextBlock x:Name="StatusTextBlock"
+                           Text="Hazır"
+                           TextWrapping="Wrap"
+                           Foreground="#132235"
+                           FontWeight="SemiBold" />
+            </StackPanel>
+        </Border>
+
+        <Border x:Name="RegisterView"
+                IsVisible="False"
+                Margin="28"
+                Background="White"
+                BorderBrush="#D9E2EC"
+                BorderThickness="1"
+                CornerRadius="10"
+                Padding="28"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Width="460">
+            <StackPanel Spacing="18">
+                <StackPanel Spacing="6">
+                    <TextBlock Text="Kayıt Ol"
+                               FontSize="30"
+                               FontWeight="Bold"
+                               Foreground="#122033" />
+                    <TextBlock Text="Email, şifre ve telefon numarasıyla hesabınızı oluşturun."
+                               Foreground="#5F7187"
+                               TextWrapping="Wrap" />
+                </StackPanel>
+
+                <StackPanel Spacing="6">
+                    <TextBlock Text="Email"
+                               Foreground="#243446"
+                               FontWeight="SemiBold" />
+                    <TextBox x:Name="RegisterEmailTextBox"
+                             PlaceholderText="mail@example.com" />
+                </StackPanel>
+
+                <StackPanel Spacing="6">
+                    <TextBlock Text="Şifre"
+                               Foreground="#243446"
+                               FontWeight="SemiBold" />
+                    <TextBox x:Name="RegisterPasswordTextBox"
+                             PlaceholderText="Uygulama şifresi" />
+                </StackPanel>
+
+                <StackPanel Spacing="6">
+                    <TextBlock Text="Telefon numarası"
+                               Foreground="#243446"
+                               FontWeight="SemiBold" />
+                    <TextBox x:Name="RegisterPhoneNumberTextBox"
+                             PlaceholderText="5xxxxxxxxx" />
+                </StackPanel>
+
+                <Button x:Name="RegisterButton"
+                        Classes="primary"
+                        Content="Kaydol ve Giriş Yap" />
+
+                <Button x:Name="BackToLoginButton"
+                        Content="Giriş Sayfasına Dön" />
+
+                <TextBlock x:Name="RegisterStatusTextBlock"
+                           Text=""
+                           TextWrapping="Wrap"
+                           Foreground="#132235"
+                           FontWeight="SemiBold" />
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>

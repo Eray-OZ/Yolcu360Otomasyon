@@ -16,7 +16,17 @@ Bu dokuman mevcut Avalonia uygulamasinda gereksiz tekrar eden, buyuyen veya iler
 - Tamamlandi: Gecmis ekraninda secili koleksiyon, arac listesi ve state temizleme bloklari helper metotlara ayrildi.
 - Tamamlandi: PNG export akisi dosya yolu olusturma, koleksiyon/arac verilerini yukleme ve render/kaydetme metotlarina ayrildi.
 - Tamamlandi: Ekran gecislerindeki tekrar eden panel/buton gorunurluk kodlari `ShowContentSection` helper'i ile sadeleştirildi.
-- Siradaki adim: XAML'i kucuk view dosyalarina bolmeye baslamak veya `EmbeddedBrowserAutomationService` icindeki JavaScript tekrarlarini azaltmak.
+- Tamamlandi: `EmbeddedBrowserAutomationService` icinde tekrar eden JSON serialize kullanimi `ToJson` helper'i ile merkezi hale getirildi.
+- Tamamlandi: Gömülü tarayici sayfa hazirlik/polling beklemeleri isimli sabitlere alindi.
+- Tamamlandi: Sonuc filtreleme, takvim, saat ve arama butonu akişlarindaki ham sabit beklemeler isimli sabitlere alindi.
+- Tamamlandi: Veritabani servislerinde tekrar eden schema/context olusturma kodlari `CreateContextAsync` helper'i ile merkezi hale getirildi.
+- Tamamlandi: Koleksiyon kaydederken kullanici kontrolu `EnsureUserExistsAsync` helper'ina ayrildi.
+- Tamamlandi: Arac entity/model donusumleri `ToAracEntity` ve `ToSearchResultItem` mapper metotlarina ayrildi.
+- Tamamlandi: `MainWindow.axaml` icindeki ortak stiller `Styles/Controls.axaml` dosyasina tasindi.
+- Tamamlandi: Login ve kayit ekranlari `Views/AuthView.axaml` UserControl dosyasina ayrildi.
+- Tamamlandi: Odeme formu input doldurma JS'i `SetInputValueAsync` helper'i ile merkezi hale getirildi.
+- Tamamlandi: iyzico sekme/buton click islemleri icin ortak `ClickElementAsync`, `ClickButtonByTextAsync` ve `EnsureEmbeddedClickHelperAsync` helper'lari eklendi.
+- Siradaki adim: Search/History/Payment XAML bloklarini ayri view dosyalarina bolmek veya arama formu icindeki hassas click JS tekrarlarini kademeli olarak helper'lara almak.
 
 ## Mevcut Durum Ozeti
 

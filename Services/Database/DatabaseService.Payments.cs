@@ -8,8 +8,7 @@ public sealed partial class DatabaseService
 {
     public async Task<List<OdemeHazirlikItem>> GetPaymentPreviewAsync(int kullaniciId, IReadOnlyCollection<int> koleksiyonIds)
     {
-        await EnsureSchemaAsync();
-        await using var context = new AppDbContext(_options);
+        await using var context = await CreateContextAsync();
 
         var collections = await context.Koleksiyonlar
             .Include(item => item.Araclar)
@@ -29,8 +28,7 @@ public sealed partial class DatabaseService
         IReadOnlyList<OdemeHazirlikItem> previewItems,
         IyzicoPaymentResult paymentResult)
     {
-        await EnsureSchemaAsync();
-        await using var context = new AppDbContext(_options);
+        await using var context = await CreateContextAsync();
 
         foreach (var item in previewItems)
         {
@@ -55,8 +53,7 @@ public sealed partial class DatabaseService
 
     public async Task<List<OdemeListItem>> GetPaymentsAsync(int kullaniciId)
     {
-        await EnsureSchemaAsync();
-        await using var context = new AppDbContext(_options);
+        await using var context = await CreateContextAsync();
 
         return await context.Odemeler
             .AsNoTracking()

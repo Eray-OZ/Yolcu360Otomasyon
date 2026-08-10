@@ -8,6 +8,28 @@ namespace Yolcu360Otomasyon;
 
 public partial class MainWindow : Window
 {
+    private Border LoginView => AuthViewControl.FindControl<Border>("LoginView")!;
+    private Border RegisterView => AuthViewControl.FindControl<Border>("RegisterView")!;
+    private TextBox LoginEmailTextBox => AuthViewControl.FindControl<TextBox>("LoginEmailTextBox")!;
+    private TextBox LoginPasswordTextBox => AuthViewControl.FindControl<TextBox>("LoginPasswordTextBox")!;
+    private TextBox RegisterEmailTextBox => AuthViewControl.FindControl<TextBox>("RegisterEmailTextBox")!;
+    private TextBox RegisterPasswordTextBox => AuthViewControl.FindControl<TextBox>("RegisterPasswordTextBox")!;
+    private TextBox RegisterPhoneNumberTextBox => AuthViewControl.FindControl<TextBox>("RegisterPhoneNumberTextBox")!;
+    private Button LoginButton => AuthViewControl.FindControl<Button>("LoginButton")!;
+    private Button RegisterButton => AuthViewControl.FindControl<Button>("RegisterButton")!;
+    private Button GoToRegisterButton => AuthViewControl.FindControl<Button>("GoToRegisterButton")!;
+    private Button BackToLoginButton => AuthViewControl.FindControl<Button>("BackToLoginButton")!;
+    private TextBlock StatusTextBlock => AuthViewControl.FindControl<TextBlock>("StatusTextBlock")!;
+    private TextBlock RegisterStatusTextBlock => AuthViewControl.FindControl<TextBlock>("RegisterStatusTextBlock")!;
+
+    private void ConfigureAuthViewEvents()
+    {
+        LoginButton.Click += LoginButton_Click;
+        RegisterButton.Click += RegisterButton_Click;
+        GoToRegisterButton.Click += GoToRegisterButton_Click;
+        BackToLoginButton.Click += BackToLoginButton_Click;
+    }
+
     private async void InitializeSmsReceiver()
     {
         try

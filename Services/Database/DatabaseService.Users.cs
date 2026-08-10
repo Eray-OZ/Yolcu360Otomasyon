@@ -8,8 +8,7 @@ public sealed partial class DatabaseService
 {
     public async Task<AppUser?> GetUserByCredentialsAsync(string email, string password)
     {
-        await EnsureSchemaAsync();
-        await using var context = new AppDbContext(_options);
+        await using var context = await CreateContextAsync();
 
         return await context.Kullanicilar
             .AsNoTracking()
@@ -18,8 +17,7 @@ public sealed partial class DatabaseService
 
     public async Task<AppUser?> GetUserByEmailAsync(string email)
     {
-        await EnsureSchemaAsync();
-        await using var context = new AppDbContext(_options);
+        await using var context = await CreateContextAsync();
 
         return await context.Kullanicilar
             .AsNoTracking()
@@ -28,8 +26,7 @@ public sealed partial class DatabaseService
 
     public async Task SaveOrUpdateUserAsync(string email, string password, string phoneNumber, string sessionStatePath)
     {
-        await EnsureSchemaAsync();
-        await using var context = new AppDbContext(_options);
+        await using var context = await CreateContextAsync();
         var existingUser = await context.Kullanicilar.FirstOrDefaultAsync(user => user.Email == email);
         var now = DateTime.UtcNow;
 
@@ -58,8 +55,7 @@ public sealed partial class DatabaseService
 
     public async Task<bool> UserExistsAsync(string email)
     {
-        await EnsureSchemaAsync();
-        await using var context = new AppDbContext(_options);
+        await using var context = await CreateContextAsync();
         return await context.Kullanicilar.AsNoTracking().AnyAsync(user => user.Email == email);
     }
 }

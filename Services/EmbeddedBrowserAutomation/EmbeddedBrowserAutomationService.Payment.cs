@@ -1,4 +1,3 @@
-using System.Text.Json;
 using Yolcu360Otomasyon.Models;
 
 namespace Yolcu360Otomasyon.Services;
@@ -15,7 +14,7 @@ public sealed partial class EmbeddedBrowserAutomationService
         Report("Gömülü tarayıcıda iyzico ödeme sayfası açılıyor...");
         await NavigateAsync(paymentPageUrl);
         await WaitForDocumentReadyAsync();
-        await Task.Delay(2000);
+        await Task.Delay(PaymentPageHydrationDelay);
 
         Report("iyzico ödeme formu bekleniyor...");
         await WaitForScriptTrueAsync(
@@ -24,17 +23,10 @@ public sealed partial class EmbeddedBrowserAutomationService
             """,
             TimeSpan.FromSeconds(30));
 
-        // Ensure credit card tab is selected
-        await EvaluateScriptAsync(
-            """
-            (() => {
-                const tab = document.querySelector('#iyz-tab-credit-card');
-                if (tab) tab.click();
-                return true;
-            })();
-            """);
+        await EnsureEmbeddedClickHelperAsync();
+        await ClickElementAsync("#iyz-tab-credit-card");
 
-        await Task.Delay(600);
+        await Task.Delay(PaymentTabSelectionDelay);
 
         Report("Gömülü tarayıcıda Kart Sahibi yazılıyor...");
         await TypeIntoPaymentFieldAsync("#ccname", cardInput.CardHolderName);
@@ -48,23 +40,10 @@ public sealed partial class EmbeddedBrowserAutomationService
         Report("Gömülü tarayıcıda CVC yazılıyor...");
         await TypeIntoPaymentFieldAsync("#cccvc", NormalizeDigits(cardInput.Cvc));
 
-        await Task.Delay(1250);
+        await Task.Delay(PaymentFormSubmitPreparationDelay);
 
         Report("iyzico ödeme onay butonuna tıklanıyor...");
-        var paymentClicked = await EvaluateBooleanScriptAsync(
-            """
-            (() => {
-                const btn = document.querySelector('#iyz-payment-button') ||
-                    Array.from(document.querySelectorAll('button, input[type="submit"]'))
-                        .find(b => (b.textContent || b.value || '').trim().toLowerCase().includes('ödeme'));
-                if (btn) {
-                    btn.scrollIntoView({ block: 'center', inline: 'nearest' });
-                    btn.click();
-                    return true;
-                }
-                return false;
-            })();
-            """);
+        var paymentClicked = await ClickButtonByTextAsync("ödeme", "#iyz-payment-button");
 
         if (!paymentClicked)
             throw new InvalidOperationException("Gömülü tarayıcıda iyzico ödeme butonu tıklanamadı.");
@@ -74,31 +53,7 @@ public sealed partial class EmbeddedBrowserAutomationService
 
     private async Task TypeIntoPaymentFieldAsync(string selector, string value)
     {
-        var selectorJson = JsonSerializer.Serialize(selector);
-        var valueJson = JsonSerializer.Serialize(value);
-
-        await EvaluateScriptAsync(
-            $$"""
-            (() => {
-                const input = document.querySelector({{selectorJson}});
-                if (!input) return false;
-                input.focus();
-
-                const proto = input instanceof HTMLInputElement ? Object.getPrototypeOf(input) : null;
-                const desc = proto ? Object.getOwnPropertyDescriptor(proto, 'value') : null;
-                if (desc && desc.set) {
-                    desc.set.call(input, {{valueJson}});
-                } else {
-                    input.value = {{valueJson}};
-                }
-
-                input.dispatchEvent(new Event('input', { bubbles: true }));
-                input.dispatchEvent(new Event('change', { bubbles: true }));
-                input.dispatchEvent(new Event('blur', { bubbles: true }));
-                return true;
-            })();
-            """);
-
+        await SetInputValueAsync(selector, value);
         await Task.Delay(Random.Shared.Next(300, 500));
     }
 

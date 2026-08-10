@@ -72,4 +72,10 @@ public sealed partial class DatabaseService
     }
 
     private Task EnsureSchemaAsync() => EnsureDatabaseAsync();
+
+    private async Task<AppDbContext> CreateContextAsync()
+    {
+        await EnsureSchemaAsync();
+        return new AppDbContext(_options);
+    }
 }

@@ -110,7 +110,7 @@ public sealed partial class EmbeddedBrowserAutomationService
         {
             foreach (var ch in chunk)
             {
-                var charJson = JsonSerializer.Serialize(ch.ToString());
+                var charJson = ToJson(ch.ToString());
                 await EvaluateScriptAsync(
                     $$"""
                     (() => {
@@ -264,7 +264,7 @@ public sealed partial class EmbeddedBrowserAutomationService
         await Task.Delay(Random.Shared.Next(800, 1400));
 
         var cleanCode = code.Trim();
-        var codeJson = JsonSerializer.Serialize(cleanCode);
+        var codeJson = ToJson(cleanCode);
 
         var fillResultJson = await EvaluateScriptAsync(
             $$"""
@@ -436,7 +436,7 @@ public sealed partial class EmbeddedBrowserAutomationService
         try
         {
             await NavigateAsync("https://www.yolcu360.com/logout");
-            await Task.Delay(1200);
+            await Task.Delay(LogoutNavigationDelay);
 
             await EvaluateScriptAsync(
                 """
@@ -536,7 +536,7 @@ public sealed partial class EmbeddedBrowserAutomationService
                 SessionStorage = sessionStorage
             };
 
-            var json = JsonSerializer.Serialize(state, new JsonSerializerOptions { WriteIndented = true });
+            var json = ToJson(state, new JsonSerializerOptions { WriteIndented = true });
             await File.WriteAllTextAsync(filePath, json);
             Report($"Oturum gömülü tarayıcıdan dosyaya kaydedildi: {filePath}");
         }
@@ -564,14 +564,14 @@ public sealed partial class EmbeddedBrowserAutomationService
                 var cookieParts = state.Cookies.Split(';', StringSplitOptions.RemoveEmptyEntries);
                 foreach (var part in cookieParts)
                 {
-                    var partJson = JsonSerializer.Serialize(part.Trim() + "; path=/; domain=.yolcu360.com");
+                    var partJson = ToJson(part.Trim() + "; path=/; domain=.yolcu360.com");
                     await EvaluateScriptAsync($"document.cookie = {partJson};");
                 }
             }
 
             if (state.LocalStorage.Count > 0)
             {
-                var localJson = JsonSerializer.Serialize(state.LocalStorage);
+                var localJson = ToJson(state.LocalStorage);
                 await EvaluateScriptAsync(
                     $$"""
                     (() => {
@@ -587,7 +587,7 @@ public sealed partial class EmbeddedBrowserAutomationService
 
             if (state.SessionStorage.Count > 0)
             {
-                var sessionJson = JsonSerializer.Serialize(state.SessionStorage);
+                var sessionJson = ToJson(state.SessionStorage);
                 await EvaluateScriptAsync(
                     $$"""
                     (() => {

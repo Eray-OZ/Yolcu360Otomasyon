@@ -1,4 +1,3 @@
-using System.Text.Json;
 using Yolcu360Otomasyon.Models;
 
 namespace Yolcu360Otomasyon.Services;
@@ -15,7 +14,7 @@ public sealed partial class EmbeddedBrowserAutomationService
         if (!hasTransmission && !hasFuel) return;
 
         Report($"Gömülü tarayıcıda filtreler uygulanıyor (Vites: {filter.TransmissionType}, Yakıt: {filter.FuelType})...");
-        await Task.Delay(1200);
+        await Task.Delay(FilterPanelReadyDelay);
 
         if (hasTransmission)
         {
@@ -30,7 +29,7 @@ public sealed partial class EmbeddedBrowserAutomationService
             if (targetTexts.Length > 0)
             {
                 await ClickFilterOptionAsync("Vites filtresi", "filter-transmission", targetTexts);
-                await Task.Delay(1000);
+                await Task.Delay(FilterRefreshDelay);
             }
         }
 
@@ -47,19 +46,19 @@ public sealed partial class EmbeddedBrowserAutomationService
             if (targetTexts.Length > 0)
             {
                 await ClickFilterOptionAsync("Yakıt filtresi", "filter-fuel", targetTexts);
-                await Task.Delay(1000);
+                await Task.Delay(FilterRefreshDelay);
             }
         }
 
         Report("Filtreler uygulandı, sonuçların yenilenmesi bekleniyor...");
-        await Task.Delay(1500);
+        await Task.Delay(ResultsRefreshDelay);
         await WaitForSearchResultsAsync();
     }
 
     private async Task<bool> ClickFilterOptionAsync(string filterName, string filterPrefix, string[] targetTexts)
     {
-        var targetTextsJson = JsonSerializer.Serialize(targetTexts);
-        var filterPrefixJson = JsonSerializer.Serialize(filterPrefix);
+        var targetTextsJson = ToJson(targetTexts);
+        var filterPrefixJson = ToJson(filterPrefix);
 
         Report($"{filterName} aranıyor ({string.Join(", ", targetTexts)})...");
 
@@ -156,7 +155,7 @@ public sealed partial class EmbeddedBrowserAutomationService
                 return;
             }
 
-            await Task.Delay(500);
+            await Task.Delay(ResultsPollingDelay);
         }
 
         Report("Uyarı: Arama sonuç kartları zaman aşımı süresinde görünmedi.");
