@@ -96,8 +96,7 @@ public sealed partial class EmbeddedBrowserAutomationService
         Report("Sayfanın hazır olması bekleniyor...");
         await WaitForDocumentReadyAsync();
         Report("Başlangıç popup'ı bekleniyor...");
-        await Task.Delay(2_500);
-        var popupClosed = await CloseInitialPopupAsync();
+        var popupClosed = await WaitForInitialPopupAndCloseAsync(TimeSpan.FromSeconds(5));
         Report(popupClosed ? "Başlangıç popup'ı kapatıldı." : "Başlangıç popup'ı görünmedi.");
     }
 
@@ -140,6 +139,21 @@ public sealed partial class EmbeddedBrowserAutomationService
             """);
 
         return IsScriptTrue(result);
+    }
+
+    private async Task<bool> WaitForInitialPopupAndCloseAsync(TimeSpan timeout)
+    {
+        var deadline = DateTimeOffset.UtcNow + timeout;
+
+        while (DateTimeOffset.UtcNow < deadline)
+        {
+            if (await CloseInitialPopupAsync())
+                return true;
+
+            await Task.Delay(250);
+        }
+
+        return false;
     }
 
     public Task<string?> GetSearchDomDiagnosticAsync()
@@ -205,6 +219,22 @@ public sealed partial class EmbeddedBrowserAutomationService
         }
 
         throw new TimeoutException($"Gömülü tarayıcı beklenen sayfa durumuna ulaşmadı. Son kontrol sonucu: {await EvaluateScriptAsync(script)}");
+    }
+
+    private async Task<bool> WaitForScriptTrueOrTimeoutAsync(string script, TimeSpan timeout, TimeSpan? pollInterval = null)
+    {
+        var deadline = DateTimeOffset.UtcNow + timeout;
+        var interval = pollInterval ?? TimeSpan.FromMilliseconds(250);
+
+        while (DateTimeOffset.UtcNow < deadline)
+        {
+            if (await EvaluateBooleanScriptAsync(script))
+                return true;
+
+            await Task.Delay(interval);
+        }
+
+        return false;
     }
 
     private void Report(string message)

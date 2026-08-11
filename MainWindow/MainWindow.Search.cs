@@ -94,8 +94,6 @@ public partial class MainWindow : Window
             SearchStatusTextBlock.Text = _latestResults.Count == 0
                 ? "Arama tamamlandı, sonuç bulunamadı."
                 : $"{_latestResults.Count} sonuç listelendi. İlk sonuç: {_latestResults[0].Title} | {_latestResults[0].Price}";
-
-            await Task.Delay(800);
         }
         catch (Exception ex)
         {

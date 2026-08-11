@@ -150,8 +150,7 @@ public sealed partial class EmbeddedBrowserAutomationService
                 """);
 
             Report($"Alış yeri seçim sonucu: {selected}");
-            await Task.Delay(700);
-            selectionApplied = await IsPickupLocationSelectionAppliedAsync();
+            selectionApplied = await WaitForPickupLocationSelectionAppliedAsync(TimeSpan.FromSeconds(3));
         }
 
         if (!selectionApplied)
@@ -174,7 +173,6 @@ public sealed partial class EmbeddedBrowserAutomationService
 
         Report($"Alış tarihi için ay kontrol ediliyor: {pickupDate:MMMM yyyy}");
         await NavigateToMonthAsync(pickupDate);
-        await Task.Delay(300);
 
         Report($"Alış tarihi seçiliyor: {pickupDate:dd.MM.yyyy}");
         var pickupSelected = await ClickCalendarDayAsync(pickupDate);
@@ -182,13 +180,12 @@ public sealed partial class EmbeddedBrowserAutomationService
             throw new InvalidOperationException($"Alış tarihi ({pickupDate:dd.MM.yyyy}) takvimde seçilemedi.");
 
         Report($"Alış tarihi seçildi: {pickupDate:dd.MM.yyyy}");
-        await Task.Delay(400);
+        await WaitForCalendarSelectionStateAsync(pickupDate, TimeSpan.FromSeconds(2));
 
         if (returnDate.Year != pickupDate.Year || returnDate.Month != pickupDate.Month)
         {
             Report($"Bırakış tarihi için ay geziliyor: {returnDate:MMMM yyyy}");
             await NavigateToMonthAsync(returnDate);
-            await Task.Delay(300);
         }
 
         Report($"Bırakış tarihi seçiliyor: {returnDate:dd.MM.yyyy}");
@@ -197,10 +194,10 @@ public sealed partial class EmbeddedBrowserAutomationService
             throw new InvalidOperationException($"Bırakış tarihi ({returnDate:dd.MM.yyyy}) takvimde seçilemedi.");
 
         Report($"Bırakış tarihi seçildi: {returnDate:dd.MM.yyyy}");
-        await Task.Delay(400);
+        await WaitForCalendarSelectionStateAsync(returnDate, TimeSpan.FromSeconds(2));
 
         await ConfirmDatePickerAsync();
-        await Task.Delay(300);
+        await WaitForDatePickerClosedAsync(TimeSpan.FromSeconds(4));
     }
 
     private async Task<bool> OpenDatePickerAsync()
@@ -487,7 +484,7 @@ public sealed partial class EmbeddedBrowserAutomationService
             return;
         }
 
-        await Task.Delay(400);
+        await WaitForTimeOptionVisibleAsync(time.Trim(), TimeSpan.FromSeconds(5));
 
         var selected = await EvaluateScriptAsync(
             $$"""
@@ -547,7 +544,7 @@ public sealed partial class EmbeddedBrowserAutomationService
             Report($"Saat '{time}' seçeneklerde bulunamadı.");
         }
 
-        await Task.Delay(300);
+        await WaitForTimeSelectionAppliedAsync(timePickerIndex, time.Trim(), TimeSpan.FromSeconds(3));
     }
 
     public async Task ClickSearchButtonAsync()
@@ -567,7 +564,7 @@ public sealed partial class EmbeddedBrowserAutomationService
             })();
             """);
 
-        await Task.Delay(300);
+        await WaitForFloatingMenusClosedAsync(TimeSpan.FromSeconds(3));
 
         var result = await EvaluateScriptAsync(
             """
@@ -610,7 +607,6 @@ public sealed partial class EmbeddedBrowserAutomationService
             """);
 
         Report($"Araç Ara buton tıklama sonucu: {result}");
-        await Task.Delay(1000);
     }
 
     private static bool IsTargetMonthVisible(string headerText, DateTime target)
@@ -683,6 +679,135 @@ public sealed partial class EmbeddedBrowserAutomationService
             """);
 
         return IsScriptTrue(result);
+    }
+
+    private async Task<bool> WaitForPickupLocationSelectionAppliedAsync(TimeSpan timeout)
+    {
+        var deadline = DateTimeOffset.UtcNow + timeout;
+
+        while (DateTimeOffset.UtcNow < deadline)
+        {
+            if (await IsPickupLocationSelectionAppliedAsync())
+                return true;
+
+            await Task.Delay(250);
+        }
+
+        return await IsPickupLocationSelectionAppliedAsync();
+    }
+
+    private Task<bool> WaitForCalendarSelectionStateAsync(DateTime date, TimeSpan timeout)
+    {
+        var dayJson = JsonSerializer.Serialize(date.Day);
+
+        return WaitForScriptTrueOrTimeoutAsync(
+            $$"""
+            (() => {
+                const day = {{dayJson}};
+                const selectedClassNames = ['selected', 'active', 'range_start', 'range_end', 'dp__active_date', 'dp__range_start', 'dp__range_end'];
+                const menus = Array.from(document.querySelectorAll('.dp__menu, .dp__outer_menu_wrap, .dp__calendar'));
+                const visible = el => {
+                    const rect = el.getBoundingClientRect();
+                    const style = window.getComputedStyle(el);
+                    return rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden';
+                };
+
+                return menus.filter(visible).some(menu => {
+                    return Array.from(menu.querySelectorAll('.dp__cell_inner, .dp__calendar_item button, .dp__calendar_item > div, .dp__calendar_item'))
+                        .some(cell => {
+                            const text = (cell.textContent || '').trim();
+                            if (parseInt(text, 10) !== day) return false;
+                            const classText = `${cell.className || ''} ${cell.closest?.('.dp__calendar_item')?.className || ''}`.toLowerCase();
+                            return cell.getAttribute('aria-selected') === 'true' ||
+                                selectedClassNames.some(name => classText.includes(name));
+                        });
+                });
+            })();
+            """,
+            timeout);
+    }
+
+    private Task<bool> WaitForDatePickerClosedAsync(TimeSpan timeout)
+    {
+        return WaitForScriptTrueOrTimeoutAsync(
+            """
+            (() => {
+                const visibleMenus = Array.from(document.querySelectorAll('.dp__menu, .dp__outer_menu_wrap'))
+                    .filter(menu => {
+                        const rect = menu.getBoundingClientRect();
+                        const style = window.getComputedStyle(menu);
+                        return rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden';
+                    });
+                return visibleMenus.length === 0;
+            })();
+            """,
+            timeout);
+    }
+
+    private Task<bool> WaitForTimeOptionVisibleAsync(string time, TimeSpan timeout)
+    {
+        var timeJson = JsonSerializer.Serialize(time);
+
+        return WaitForScriptTrueOrTimeoutAsync(
+            $$"""
+            (() => {
+                const target = {{timeJson}};
+                const visible = el => {
+                    const rect = el.getBoundingClientRect();
+                    const style = window.getComputedStyle(el);
+                    return rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden';
+                };
+
+                return Array.from(document.querySelectorAll('.dropdown-item, [role="option"], li, .time-option, div[class*="option"], div[class*="item"], div, span, button'))
+                    .filter(visible)
+                    .some(el => {
+                        const text = (el.textContent || el.value || '').trim();
+                        return text === target || text.startsWith(target);
+                    });
+            })();
+            """,
+            timeout);
+    }
+
+    private Task<bool> WaitForTimeSelectionAppliedAsync(int timePickerIndex, string time, TimeSpan timeout)
+    {
+        var timeJson = JsonSerializer.Serialize(time);
+        var indexJson = JsonSerializer.Serialize(timePickerIndex);
+
+        return WaitForScriptTrueOrTimeoutAsync(
+            $$"""
+            (() => {
+                const target = {{timeJson}};
+                const index = {{indexJson}};
+                const groups = document.querySelectorAll('[modaltitle="Alış ve Bırakış Tarihi"], [modaltitlecmskey="pickup_and_dropoff_date"]');
+                const group = groups.length > index ? groups[index] : null;
+                const text = (group?.textContent || '').trim();
+                if (text.includes(target)) return true;
+
+                const inputs = Array.from(document.querySelectorAll('input, select'));
+                return inputs.some(input => ((input.value || '').trim() === target));
+            })();
+            """,
+            timeout);
+    }
+
+    private Task<bool> WaitForFloatingMenusClosedAsync(TimeSpan timeout)
+    {
+        return WaitForScriptTrueOrTimeoutAsync(
+            """
+            (() => {
+                const visible = el => {
+                    const rect = el.getBoundingClientRect();
+                    const style = window.getComputedStyle(el);
+                    return rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden';
+                };
+
+                return Array.from(document.querySelectorAll('.dp__menu, .dp__outer_menu_wrap, .search-autocomplete'))
+                    .filter(visible)
+                    .length === 0;
+            })();
+            """,
+            timeout);
     }
 
     private async Task WaitForLocationSuggestionsAsync(string selector, TimeSpan timeout)

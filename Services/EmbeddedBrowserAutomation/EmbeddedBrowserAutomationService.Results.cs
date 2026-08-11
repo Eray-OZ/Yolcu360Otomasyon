@@ -15,7 +15,7 @@ public sealed partial class EmbeddedBrowserAutomationService
         if (!hasTransmission && !hasFuel) return;
 
         Report($"Gömülü tarayıcıda filtreler uygulanıyor (Vites: {filter.TransmissionType}, Yakıt: {filter.FuelType})...");
-        await Task.Delay(1200);
+        await WaitForResultFiltersReadyAsync(TimeSpan.FromSeconds(8));
 
         if (hasTransmission)
         {
@@ -30,7 +30,7 @@ public sealed partial class EmbeddedBrowserAutomationService
             if (targetTexts.Length > 0)
             {
                 await ClickFilterOptionAsync("Vites filtresi", "filter-transmission", targetTexts);
-                await Task.Delay(1000);
+                await WaitForResultFiltersReadyAsync(TimeSpan.FromSeconds(5));
             }
         }
 
@@ -47,13 +47,36 @@ public sealed partial class EmbeddedBrowserAutomationService
             if (targetTexts.Length > 0)
             {
                 await ClickFilterOptionAsync("Yakıt filtresi", "filter-fuel", targetTexts);
-                await Task.Delay(1000);
+                await WaitForResultFiltersReadyAsync(TimeSpan.FromSeconds(5));
             }
         }
 
         Report("Filtreler uygulandı, sonuçların yenilenmesi bekleniyor...");
-        await Task.Delay(1500);
         await WaitForSearchResultsAsync();
+    }
+
+    private Task<bool> WaitForResultFiltersReadyAsync(TimeSpan timeout)
+    {
+        return WaitForScriptTrueOrTimeoutAsync(
+            """
+            (() => {
+                const visible = el => {
+                    const rect = el.getBoundingClientRect();
+                    const style = window.getComputedStyle(el);
+                    return rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden';
+                };
+
+                const filterInputs = Array.from(document.querySelectorAll('label[name^="filter-"], input[name^="filter-"], input[type="checkbox"], input[type="radio"]'))
+                    .filter(visible);
+
+                const bodyText = (document.body.innerText || '').toLocaleLowerCase('tr-TR');
+                return filterInputs.length > 0 ||
+                    bodyText.includes('vites') ||
+                    bodyText.includes('yakıt') ||
+                    bodyText.includes('filtre');
+            })();
+            """,
+            timeout);
     }
 
     private async Task<bool> ClickFilterOptionAsync(string filterName, string filterPrefix, string[] targetTexts)

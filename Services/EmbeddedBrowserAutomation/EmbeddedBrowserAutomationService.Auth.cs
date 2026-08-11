@@ -70,8 +70,7 @@ public sealed partial class EmbeddedBrowserAutomationService
         await NavigateAsync("https://www.yolcu360.com/login?redirect=%2F");
         await WaitForDocumentReadyAsync();
         await InjectStealthAndHumanMouseScriptAsync();
-        await Task.Delay(Random.Shared.Next(1500, 2500));
-        await CloseInitialPopupAsync();
+        await WaitForInitialPopupAndCloseAsync(TimeSpan.FromSeconds(5));
 
         Report("Telefon numarası inputu bekleniyor...");
         await WaitForScriptTrueAsync(
@@ -85,7 +84,7 @@ public sealed partial class EmbeddedBrowserAutomationService
         var normalizedPhone = NormalizePhoneNumber(phoneNumber);
         Report($"Telefon numarası insansı davranışla yazılıyor: {normalizedPhone}");
 
-        await Task.Delay(350);
+        await WaitForPhoneInputReadyAsync();
 
         // Focus and clear input
         await EvaluateScriptAsync(
@@ -102,7 +101,7 @@ public sealed partial class EmbeddedBrowserAutomationService
             })();
             """);
 
-        await Task.Delay(220);
+        await WaitForPhoneInputEmptyAsync();
 
         // Type phone number chunk by chunk (e.g. 538, 523, 28, 69) with human pauses
         var phoneChunks = SplitPhoneNumber(normalizedPhone);
@@ -199,11 +198,8 @@ public sealed partial class EmbeddedBrowserAutomationService
         if (!IsScriptTrue(continueClicked))
             throw new InvalidOperationException("Gömülü tarayıcıda 'Devam Et' butonu tıklanamadı.");
 
-        await Task.Delay(2500);
-
-        // Check if recaptcha error occurred
-        var hasRecaptchaError = await EvaluateScriptAsync("window.__hasRecaptchaScoreError ? window.__hasRecaptchaScoreError() : false");
-        if (IsScriptTrue(hasRecaptchaError))
+        var hasRecaptchaError = await WaitForSmsScreenOrRecaptchaErrorAsync(TimeSpan.FromSeconds(8));
+        if (hasRecaptchaError)
         {
             Report("reCAPTCHA puan uyarısı algılandı (recaptcha_score_too_low). Insansı sayfa hareketleri artırılarak tekrar deneniyor...");
             for (int i = 0; i < 5; i++)
@@ -226,7 +222,7 @@ public sealed partial class EmbeddedBrowserAutomationService
                     return true;
                 })();
                 """);
-            await Task.Delay(2000);
+            await WaitForSmsScreenOrRecaptchaErrorAsync(TimeSpan.FromSeconds(8));
         }
 
         Report("SMS doğrulama ekranı bekleniyor...");
@@ -255,13 +251,165 @@ public sealed partial class EmbeddedBrowserAutomationService
             TimeSpan.FromSeconds(30));
     }
 
+    private Task WaitForPhoneInputReadyAsync()
+    {
+        return WaitForScriptTrueAsync(
+            """
+            (() => {
+                const input = document.querySelector('#phn-input') || document.querySelector('input[type="tel"]');
+                if (!input) return false;
+                const rect = input.getBoundingClientRect();
+                const style = window.getComputedStyle(input);
+                return rect.width > 0 &&
+                    rect.height > 0 &&
+                    style.display !== 'none' &&
+                    style.visibility !== 'hidden' &&
+                    !input.disabled &&
+                    input.getAttribute('readonly') === null;
+            })();
+            """,
+            TimeSpan.FromSeconds(10));
+    }
+
+    private Task WaitForPhoneInputEmptyAsync()
+    {
+        return WaitForScriptTrueAsync(
+            """
+            (() => {
+                const input = document.querySelector('#phn-input') || document.querySelector('input[type="tel"]');
+                return !!input && (input.value || '').trim().length === 0;
+            })();
+            """,
+            TimeSpan.FromSeconds(5));
+    }
+
+    private async Task<bool> WaitForSmsScreenOrRecaptchaErrorAsync(TimeSpan timeout)
+    {
+        var deadline = DateTimeOffset.UtcNow + timeout;
+
+        while (DateTimeOffset.UtcNow < deadline)
+        {
+            var state = await EvaluateScriptAsync(
+                """
+                (() => {
+                    if (window.__hasRecaptchaScoreError && window.__hasRecaptchaScoreError()) {
+                        return 'recaptcha';
+                    }
+
+                    const text = (document.body.innerText || '').toLocaleLowerCase('tr-TR');
+                    const hasSmsText = text.includes('doğrulama') ||
+                        text.includes('sms') ||
+                        text.includes('gönderilen') ||
+                        text.includes('şifre') ||
+                        text.includes('tek kullanımlık') ||
+                        text.includes('verification code');
+
+                    const visible = el => {
+                        const rect = el.getBoundingClientRect();
+                        const style = window.getComputedStyle(el);
+                        return rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden';
+                    };
+
+                    const otpInput = Array.from(document.querySelectorAll('input, [contenteditable="true"]'))
+                        .filter(visible)
+                        .find(input => {
+                            if (input.id === 'languageSearch' || input.id === 'inputPickUpLocation' || input.id === 'is_different_dropoff') return false;
+                            const attrs = `${input.id} ${input.name} ${input.placeholder} ${input.autocomplete} ${input.inputMode} ${input.type} ${input.className}`.toLocaleLowerCase('tr-TR');
+                            return attrs.includes('otp') ||
+                                attrs.includes('code') ||
+                                attrs.includes('kod') ||
+                                attrs.includes('pin') ||
+                                attrs.includes('verify') ||
+                                attrs.includes('dogrulama') ||
+                                attrs.includes('sms') ||
+                                input.maxLength === 1;
+                        });
+
+                    if (hasSmsText || otpInput) return 'sms';
+                    return 'waiting';
+                })();
+                """);
+
+            var normalized = (state ?? string.Empty).Trim().Trim('"');
+            if (string.Equals(normalized, "recaptcha", StringComparison.OrdinalIgnoreCase))
+                return true;
+            if (string.Equals(normalized, "sms", StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            await Task.Delay(250);
+        }
+
+        var hasRecaptchaError = await EvaluateScriptAsync("window.__hasRecaptchaScoreError ? window.__hasRecaptchaScoreError() : false");
+        return IsScriptTrue(hasRecaptchaError);
+    }
+
+    private Task WaitForSmsCodeInputReadyAsync()
+    {
+        return WaitForScriptTrueAsync(
+            """
+            (() => {
+                const visible = el => {
+                    const rect = el.getBoundingClientRect();
+                    const style = window.getComputedStyle(el);
+                    return rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden';
+                };
+
+                return Array.from(document.querySelectorAll('input, [contenteditable="true"]'))
+                    .filter(visible)
+                    .some(input => {
+                        if (input.id === 'languageSearch' || input.id === 'inputPickUpLocation' || input.id === 'is_different_dropoff') return false;
+                        const attrs = `${input.id} ${input.name} ${input.placeholder} ${input.autocomplete} ${input.inputMode} ${input.type} ${input.className} ${input.getAttribute?.('aria-label') || ''}`.toLocaleLowerCase('tr-TR');
+                        return attrs.includes('otp') ||
+                            attrs.includes('code') ||
+                            attrs.includes('kod') ||
+                            attrs.includes('pin') ||
+                            attrs.includes('verify') ||
+                            attrs.includes('dogrulama') ||
+                            attrs.includes('sms') ||
+                            input.maxLength === 1;
+                    });
+            })();
+            """,
+            TimeSpan.FromSeconds(10));
+    }
+
+    private Task WaitForSmsVerificationButtonReadyAsync(TimeSpan timeout)
+    {
+        return WaitForScriptTrueAsync(
+            """
+            (() => {
+                const visible = el => {
+                    const rect = el.getBoundingClientRect();
+                    const style = window.getComputedStyle(el);
+                    return rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden';
+                };
+
+                const applyBtn = document.querySelector('button[data-cms-key="button_apply"]');
+                if (applyBtn && visible(applyBtn) && !applyBtn.disabled && applyBtn.getAttribute('aria-disabled') !== 'true') {
+                    return true;
+                }
+
+                return Array.from(document.querySelectorAll('button, input[type="submit"]')).some(button => {
+                    if (!visible(button) || button.disabled || button.getAttribute('aria-disabled') === 'true') return false;
+                    const txt = (button.textContent || button.value || '').trim().toLocaleLowerCase('tr-TR');
+                    return txt.includes('doğrula') ||
+                        txt.includes('onayla') ||
+                        txt.includes('devam') ||
+                        txt.includes('giriş') ||
+                        txt.includes('gönder');
+                });
+            })();
+            """,
+            timeout);
+    }
+
     public async Task FillSmsVerificationCodeAsync(string code)
     {
         if (string.IsNullOrWhiteSpace(code))
             throw new InvalidOperationException("SMS doğrulama kodu boş olamaz.");
 
         Report($"Gömülü tarayıcıda SMS kodu yazılıyor: {code.Trim()}");
-        await Task.Delay(Random.Shared.Next(800, 1400));
+        await WaitForSmsCodeInputReadyAsync();
 
         var cleanCode = code.Trim();
         var codeJson = JsonSerializer.Serialize(cleanCode);
@@ -363,8 +511,8 @@ public sealed partial class EmbeddedBrowserAutomationService
 
         Report($"SMS kutu dolum sonucu: {fillResultJson}");
 
-        Report("SMS kodu yazıldı, doğrulama butonuna basmadan önce 3.5 saniye bekleniyor...");
-        await Task.Delay(Random.Shared.Next(3200, 4200));
+        Report("SMS kodu yazıldı, doğrulama butonunun hazır olması bekleniyor...");
+        await WaitForSmsVerificationButtonReadyAsync(TimeSpan.FromSeconds(8));
 
         Report("SMS doğrulama butonu tıklanıyor...");
         var clickResult = await EvaluateScriptAsync(
@@ -436,7 +584,7 @@ public sealed partial class EmbeddedBrowserAutomationService
         try
         {
             await NavigateAsync("https://www.yolcu360.com/logout");
-            await Task.Delay(1200);
+            await WaitForDocumentReadyAsync(TimeSpan.FromSeconds(10));
 
             await EvaluateScriptAsync(
                 """
@@ -470,7 +618,17 @@ public sealed partial class EmbeddedBrowserAutomationService
                     return true;
                 })();
                 """);
-            await Task.Delay(800);
+            await WaitForScriptTrueOrTimeoutAsync(
+                """
+                (() => {
+                    try {
+                        return localStorage.length === 0 && sessionStorage.length === 0;
+                    } catch {
+                        return true;
+                    }
+                })();
+                """,
+                TimeSpan.FromSeconds(3));
             Report("Gömülü tarayıcı çerezleri ve yerel depolama başarıyla temizlendi.");
         }
         catch (Exception ex)

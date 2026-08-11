@@ -15,7 +15,6 @@ public sealed partial class EmbeddedBrowserAutomationService
         Report("Gömülü tarayıcıda iyzico ödeme sayfası açılıyor...");
         await NavigateAsync(paymentPageUrl);
         await WaitForDocumentReadyAsync();
-        await Task.Delay(2000);
 
         Report("iyzico ödeme formu bekleniyor...");
         await WaitForScriptTrueAsync(
@@ -34,7 +33,7 @@ public sealed partial class EmbeddedBrowserAutomationService
             })();
             """);
 
-        await Task.Delay(600);
+        await WaitForPaymentCardInputsReadyAsync(TimeSpan.FromSeconds(10));
 
         Report("Gömülü tarayıcıda Kart Sahibi yazılıyor...");
         await TypeIntoPaymentFieldAsync("#ccname", cardInput.CardHolderName);
@@ -48,7 +47,7 @@ public sealed partial class EmbeddedBrowserAutomationService
         Report("Gömülü tarayıcıda CVC yazılıyor...");
         await TypeIntoPaymentFieldAsync("#cccvc", NormalizeDigits(cardInput.Cvc));
 
-        await Task.Delay(1250);
+        await WaitForPaymentButtonReadyAsync(TimeSpan.FromSeconds(10));
 
         Report("iyzico ödeme onay butonuna tıklanıyor...");
         var paymentClicked = await EvaluateBooleanScriptAsync(
@@ -99,7 +98,77 @@ public sealed partial class EmbeddedBrowserAutomationService
             })();
             """);
 
-        await Task.Delay(Random.Shared.Next(300, 500));
+        await WaitForPaymentFieldValueAsync(selector, value, TimeSpan.FromSeconds(3));
+    }
+
+    private Task WaitForPaymentCardInputsReadyAsync(TimeSpan timeout)
+    {
+        return WaitForScriptTrueAsync(
+            """
+            (() => {
+                const selectors = ['#ccname', '#ccnumber', '#ccexp', '#cccvc'];
+                return selectors.every(selector => {
+                    const input = document.querySelector(selector);
+                    if (!input) return false;
+                    const rect = input.getBoundingClientRect();
+                    const style = window.getComputedStyle(input);
+                    return rect.width > 0 &&
+                        rect.height > 0 &&
+                        style.display !== 'none' &&
+                        style.visibility !== 'hidden' &&
+                        !input.disabled;
+                });
+            })();
+            """,
+            timeout);
+    }
+
+    private Task WaitForPaymentButtonReadyAsync(TimeSpan timeout)
+    {
+        return WaitForScriptTrueAsync(
+            """
+            (() => {
+                const btn = document.querySelector('#iyz-payment-button') ||
+                    Array.from(document.querySelectorAll('button, input[type="submit"]'))
+                        .find(b => (b.textContent || b.value || '').trim().toLocaleLowerCase('tr-TR').includes('ödeme'));
+                if (!btn) return false;
+
+                const rect = btn.getBoundingClientRect();
+                const style = window.getComputedStyle(btn);
+                return rect.width > 0 &&
+                    rect.height > 0 &&
+                    style.display !== 'none' &&
+                    style.visibility !== 'hidden' &&
+                    !btn.disabled &&
+                    btn.getAttribute('aria-disabled') !== 'true';
+            })();
+            """,
+            timeout);
+    }
+
+    private Task<bool> WaitForPaymentFieldValueAsync(string selector, string expectedValue, TimeSpan timeout)
+    {
+        var selectorJson = JsonSerializer.Serialize(selector);
+        var expectedJson = JsonSerializer.Serialize(NormalizeDigits(expectedValue));
+
+        return WaitForScriptTrueOrTimeoutAsync(
+            $$"""
+            (() => {
+                const input = document.querySelector({{selectorJson}});
+                if (!input) return false;
+
+                const actual = (input.value || '').trim();
+                const actualDigits = actual.replace(/\D/g, '');
+                const expectedDigits = {{expectedJson}};
+
+                if (expectedDigits.length > 0) {
+                    return actualDigits.endsWith(expectedDigits) || actualDigits === expectedDigits;
+                }
+
+                return actual.length > 0;
+            })();
+            """,
+            timeout);
     }
 
     private static void ValidateSandboxCardInput(SandboxPaymentCardInput cardInput)
