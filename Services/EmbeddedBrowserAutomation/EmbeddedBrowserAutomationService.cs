@@ -102,18 +102,16 @@ public sealed partial class EmbeddedBrowserAutomationService
 
     public async Task WaitForDocumentReadyAsync(TimeSpan? timeout = null)
     {
-        var deadline = DateTimeOffset.UtcNow + (timeout ?? TimeSpan.FromSeconds(20));
-
-        while (DateTimeOffset.UtcNow < deadline)
-        {
+        var ready = await WaitUntilAsync(
+            async () =>
+            {
             var readyState = await EvaluateScriptAsync("document.readyState");
-            if (string.Equals(readyState?.Trim('"'), "complete", StringComparison.OrdinalIgnoreCase))
-                return;
+                return string.Equals(readyState?.Trim('"'), "complete", StringComparison.OrdinalIgnoreCase);
+            },
+            timeout ?? TimeSpan.FromSeconds(20));
 
-            await Task.Delay(250);
-        }
-
-        throw new TimeoutException("Gömülü tarayıcı sayfa hazır durumuna geçmedi.");
+        if (!ready)
+            throw new TimeoutException("Gömülü tarayıcı sayfa hazır durumuna geçmedi.");
     }
 
     public async Task<bool> CloseInitialPopupAsync()
@@ -143,17 +141,7 @@ public sealed partial class EmbeddedBrowserAutomationService
 
     private async Task<bool> WaitForInitialPopupAndCloseAsync(TimeSpan timeout)
     {
-        var deadline = DateTimeOffset.UtcNow + timeout;
-
-        while (DateTimeOffset.UtcNow < deadline)
-        {
-            if (await CloseInitialPopupAsync())
-                return true;
-
-            await Task.Delay(250);
-        }
-
-        return false;
+        return await WaitUntilAsync(CloseInitialPopupAsync, timeout);
     }
 
     public Task<string?> GetSearchDomDiagnosticAsync()
@@ -207,31 +195,48 @@ public sealed partial class EmbeddedBrowserAutomationService
 
     private async Task WaitForScriptTrueAsync(string script, TimeSpan timeout)
     {
-        var deadline = DateTimeOffset.UtcNow + timeout;
+        var completed = await WaitUntilAsync(
+            async () =>
+            {
+                var result = await EvaluateScriptAsync(script);
+                return IsScriptTrue(result);
+            },
+            timeout);
 
-        while (DateTimeOffset.UtcNow < deadline)
-        {
-            var result = await EvaluateScriptAsync(script);
-            if (IsScriptTrue(result))
-                return;
-
-            await Task.Delay(250);
-        }
-
-        throw new TimeoutException($"Gömülü tarayıcı beklenen sayfa durumuna ulaşmadı. Son kontrol sonucu: {await EvaluateScriptAsync(script)}");
+        if (!completed)
+            throw new TimeoutException($"Gömülü tarayıcı beklenen sayfa durumuna ulaşmadı. Son kontrol sonucu: {await EvaluateScriptAsync(script)}");
     }
 
     private async Task<bool> WaitForScriptTrueOrTimeoutAsync(string script, TimeSpan timeout, TimeSpan? pollInterval = null)
     {
-        var deadline = DateTimeOffset.UtcNow + timeout;
-        var interval = pollInterval ?? TimeSpan.FromMilliseconds(250);
+        return await WaitUntilAsync(
+            () => EvaluateBooleanScriptAsync(script),
+            timeout,
+            pollInterval ?? TimeSpan.FromMilliseconds(250));
+    }
 
-        while (DateTimeOffset.UtcNow < deadline)
+    private static async Task<bool> WaitUntilAsync(
+        Func<Task<bool>> condition,
+        TimeSpan timeout,
+        TimeSpan? pollInterval = null)
+    {
+        using var timeoutCts = new CancellationTokenSource(timeout);
+        using var timer = new PeriodicTimer(pollInterval ?? TimeSpan.FromMilliseconds(250));
+
+        if (await condition())
+            return true;
+
+        try
         {
-            if (await EvaluateBooleanScriptAsync(script))
-                return true;
-
-            await Task.Delay(interval);
+            while (await timer.WaitForNextTickAsync(timeoutCts.Token))
+            {
+                if (await condition())
+                    return true;
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            return false;
         }
 
         return false;

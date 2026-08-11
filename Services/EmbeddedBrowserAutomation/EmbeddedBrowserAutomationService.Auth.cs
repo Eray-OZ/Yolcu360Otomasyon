@@ -285,11 +285,12 @@ public sealed partial class EmbeddedBrowserAutomationService
 
     private async Task<bool> WaitForSmsScreenOrRecaptchaErrorAsync(TimeSpan timeout)
     {
-        var deadline = DateTimeOffset.UtcNow + timeout;
+        string lastState = "waiting";
 
-        while (DateTimeOffset.UtcNow < deadline)
-        {
-            var state = await EvaluateScriptAsync(
+        await WaitUntilAsync(
+            async () =>
+            {
+                var state = await EvaluateScriptAsync(
                 """
                 (() => {
                     if (window.__hasRecaptchaScoreError && window.__hasRecaptchaScoreError()) {
@@ -330,14 +331,15 @@ public sealed partial class EmbeddedBrowserAutomationService
                 })();
                 """);
 
-            var normalized = (state ?? string.Empty).Trim().Trim('"');
-            if (string.Equals(normalized, "recaptcha", StringComparison.OrdinalIgnoreCase))
-                return true;
-            if (string.Equals(normalized, "sms", StringComparison.OrdinalIgnoreCase))
-                return false;
+                lastState = (state ?? string.Empty).Trim().Trim('"');
+                return !string.Equals(lastState, "waiting", StringComparison.OrdinalIgnoreCase);
+            },
+            timeout);
 
-            await Task.Delay(250);
-        }
+        if (string.Equals(lastState, "recaptcha", StringComparison.OrdinalIgnoreCase))
+            return true;
+        if (string.Equals(lastState, "sms", StringComparison.OrdinalIgnoreCase))
+            return false;
 
         var hasRecaptchaError = await EvaluateScriptAsync("window.__hasRecaptchaScoreError ? window.__hasRecaptchaScoreError() : false");
         return IsScriptTrue(hasRecaptchaError);
@@ -552,30 +554,22 @@ public sealed partial class EmbeddedBrowserAutomationService
 
     public async Task WaitForLoginCompletedAsync(TimeSpan? timeout = null)
     {
-        var deadline = DateTimeOffset.UtcNow + (timeout ?? TimeSpan.FromSeconds(30));
         Report("Giriş işleminin tamamlanması bekleniyor...");
 
-        while (DateTimeOffset.UtcNow < deadline)
-        {
-            var isCompleted = await EvaluateScriptAsync(
-                """
-                (() => {
-                    const url = window.location.href;
-                    const text = (document.body.innerText || '').toLocaleLowerCase('tr-TR');
-                    return !url.includes('login') || text.includes('hesabım') || text.includes('profil') || text.includes('hoş geldin');
-                })();
-                """);
+        var completed = await WaitForScriptTrueOrTimeoutAsync(
+            """
+            (() => {
+                const url = window.location.href;
+                const text = (document.body.innerText || '').toLocaleLowerCase('tr-TR');
+                return !url.includes('login') || text.includes('hesabım') || text.includes('profil') || text.includes('hoş geldin');
+            })();
+            """,
+            timeout ?? TimeSpan.FromSeconds(30),
+            TimeSpan.FromMilliseconds(500));
 
-            if (IsScriptTrue(isCompleted))
-            {
-                Report("Giriş başarıyla tamamlandı.");
-                return;
-            }
-
-            await Task.Delay(500);
-        }
-
-        Report("Giriş tamamlanma kontrolü zaman aşımına uğradı, ancak devam ediliyor.");
+        Report(completed
+            ? "Giriş başarıyla tamamlandı."
+            : "Giriş tamamlanma kontrolü zaman aşımına uğradı, ancak devam ediliyor.");
     }
 
     public async Task ClearBrowserSessionAsync()

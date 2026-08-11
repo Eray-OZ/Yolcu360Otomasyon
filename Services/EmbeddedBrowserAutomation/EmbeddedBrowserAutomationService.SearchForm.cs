@@ -252,10 +252,8 @@ public sealed partial class EmbeddedBrowserAutomationService
 
     private async Task WaitForDatePickerMenuAsync(TimeSpan timeout)
     {
-        var deadline = DateTimeOffset.UtcNow + timeout;
-        while (DateTimeOffset.UtcNow < deadline)
-        {
-            var menuVisible = await EvaluateScriptAsync(
+        var menuVisible = await WaitUntilAsync(
+            async () => IsScriptTrue(await EvaluateScriptAsync(
                 """
                 (() => {
                     const menus = Array.from(document.querySelectorAll('.dp__menu, .dp__outer_menu_wrap, .dp__calendar'));
@@ -265,15 +263,11 @@ public sealed partial class EmbeddedBrowserAutomationService
                         return rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden';
                     });
                 })();
-                """);
+                """)),
+            timeout);
 
-            if (IsScriptTrue(menuVisible))
-                return;
-
-            await Task.Delay(250);
-        }
-
-        throw new TimeoutException("Tarih seçici takvim menüsü (dp__menu) görünmedi.");
+        if (!menuVisible)
+            throw new TimeoutException("Tarih seçici takvim menüsü (dp__menu) görünmedi.");
     }
 
     private async Task NavigateToMonthAsync(DateTime target)
@@ -309,7 +303,7 @@ public sealed partial class EmbeddedBrowserAutomationService
                 break;
             }
 
-            await Task.Delay(300);
+            await WaitForCalendarHeaderChangedOrTargetVisibleAsync(currentText, target, TimeSpan.FromSeconds(3));
         }
     }
 
@@ -683,17 +677,34 @@ public sealed partial class EmbeddedBrowserAutomationService
 
     private async Task<bool> WaitForPickupLocationSelectionAppliedAsync(TimeSpan timeout)
     {
-        var deadline = DateTimeOffset.UtcNow + timeout;
+        return await WaitUntilAsync(IsPickupLocationSelectionAppliedAsync, timeout);
+    }
 
-        while (DateTimeOffset.UtcNow < deadline)
-        {
-            if (await IsPickupLocationSelectionAppliedAsync())
-                return true;
+    private Task<bool> WaitForCalendarHeaderChangedOrTargetVisibleAsync(string previousHeader, DateTime target, TimeSpan timeout)
+    {
+        return WaitUntilAsync(
+            async () =>
+            {
+                var headerText = await EvaluateScriptAsync(
+                    """
+                    (() => {
+                        const menu = Array.from(document.querySelectorAll('.dp__menu, .dp__outer_menu_wrap'))
+                            .find(m => {
+                                const s = window.getComputedStyle(m);
+                                const r = m.getBoundingClientRect();
+                                return s.display !== 'none' && s.visibility !== 'hidden' && r.width > 0;
+                            });
+                        if (!menu) return '';
+                        const headers = Array.from(menu.querySelectorAll('.dp__month_year_select, .dp__calendar_header_item, .dp__month_year_wrap, .dp__calendar_header'));
+                        return headers.map(h => (h.textContent || '').trim()).join(' ');
+                    })();
+                    """);
 
-            await Task.Delay(250);
-        }
-
-        return await IsPickupLocationSelectionAppliedAsync();
+                var currentText = (headerText ?? string.Empty).Trim('"');
+                return !string.Equals(currentText, previousHeader, StringComparison.Ordinal) ||
+                    IsTargetMonthVisible(currentText, target);
+            },
+            timeout);
     }
 
     private Task<bool> WaitForCalendarSelectionStateAsync(DateTime date, TimeSpan timeout)
@@ -812,13 +823,13 @@ public sealed partial class EmbeddedBrowserAutomationService
 
     private async Task WaitForLocationSuggestionsAsync(string selector, TimeSpan timeout)
     {
-        var deadline = DateTimeOffset.UtcNow + timeout;
         string? lastResult = null;
         var selectorJson = JsonSerializer.Serialize(selector);
 
-        while (DateTimeOffset.UtcNow < deadline)
-        {
-            lastResult = await EvaluateScriptAsync(
+        var found = await WaitUntilAsync(
+            async () =>
+            {
+                lastResult = await EvaluateScriptAsync(
                 $$"""
                 (() => {
                     const items = Array.from(document.querySelectorAll({{selectorJson}}));
@@ -834,16 +845,16 @@ public sealed partial class EmbeddedBrowserAutomationService
                 })();
                 """);
 
-            var summary = (lastResult ?? string.Empty).Trim('"');
-            Report($"Alış yeri önerileri: {summary}");
+                var summary = (lastResult ?? string.Empty).Trim('"');
+                Report($"Alış yeri önerileri: {summary}");
 
-            if (summary.Contains("\"visible\":", StringComparison.OrdinalIgnoreCase) &&
-                !summary.Contains("\"visible\":0", StringComparison.OrdinalIgnoreCase))
-                return;
+                return summary.Contains("\"visible\":", StringComparison.OrdinalIgnoreCase) &&
+                    !summary.Contains("\"visible\":0", StringComparison.OrdinalIgnoreCase);
+            },
+            timeout,
+            TimeSpan.FromMilliseconds(350));
 
-            await Task.Delay(350);
-        }
-
-        throw new TimeoutException($"Alış yeri önerileri gelmedi. Son durum: {lastResult}");
+        if (!found)
+            throw new TimeoutException($"Alış yeri önerileri gelmedi. Son durum: {lastResult}");
     }
 }

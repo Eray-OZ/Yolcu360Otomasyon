@@ -156,33 +156,25 @@ public sealed partial class EmbeddedBrowserAutomationService
 
     public async Task WaitForSearchResultsAsync(TimeSpan? timeout = null)
     {
-        var deadline = DateTimeOffset.UtcNow + (timeout ?? TimeSpan.FromSeconds(30));
         Report("Arama sonuçlarının yüklenmesi bekleniyor...");
 
-        while (DateTimeOffset.UtcNow < deadline)
-        {
-            var isReady = await EvaluateBooleanScriptAsync(
-                """
-                (() => {
-                    const cards = document.querySelectorAll('#car_card_list .car-card, .car-card, .py-2.car-card');
-                    const bodyText = (document.body.innerText || '').toLocaleLowerCase('tr-TR');
-                    return cards.length > 0
-                        || bodyText.includes('araç bulundu')
-                        || bodyText.includes('hemen kirala')
-                        || bodyText.includes('günlük fiyat');
-                })();
-                """);
+        var isReady = await WaitForScriptTrueOrTimeoutAsync(
+            """
+            (() => {
+                const cards = document.querySelectorAll('#car_card_list .car-card, .car-card, .py-2.car-card');
+                const bodyText = (document.body.innerText || '').toLocaleLowerCase('tr-TR');
+                return cards.length > 0
+                    || bodyText.includes('araç bulundu')
+                    || bodyText.includes('hemen kirala')
+                    || bodyText.includes('günlük fiyat');
+            })();
+            """,
+            timeout ?? TimeSpan.FromSeconds(30),
+            TimeSpan.FromMilliseconds(500));
 
-            if (isReady)
-            {
-                Report("Arama sonuçları sayfada göründü.");
-                return;
-            }
-
-            await Task.Delay(500);
-        }
-
-        Report("Uyarı: Arama sonuç kartları zaman aşımı süresinde görünmedi.");
+        Report(isReady
+            ? "Arama sonuçları sayfada göründü."
+            : "Uyarı: Arama sonuç kartları zaman aşımı süresinde görünmedi.");
     }
 
     public async Task<List<SearchResultItem>> ReadSearchResultsAsync()
