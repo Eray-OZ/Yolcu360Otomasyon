@@ -9,6 +9,10 @@ namespace Yolcu360Otomasyon;
 public partial class MainWindow : Window
 {
     private readonly DatabaseService _databaseService = new(AppSettings.GetConnectionString());
+    // Extra - Dynamic Collections START
+    private readonly DynamicCollectionService _dynamicCollectionService;
+    // Extra - Dynamic Collections END
+    private readonly LocationSuggestionService _locationSuggestionService = new();
     private readonly SmsReceiverService _smsReceiverService = new(5001);
     private readonly IyzicoCallbackService _iyzicoCallbackService = new();
     private readonly IyzicoPaymentService _iyzicoPaymentService;
@@ -20,11 +24,17 @@ public partial class MainWindow : Window
     private List<KoleksiyonListItem> _selectedCollections = new();
     private List<OdemeHazirlikItem> _paymentPreviewItems = new();
     private SearchFilter? _latestSearchFilter;
+    private CancellationTokenSource? _pickupLocationSuggestionCts;
+    private int _pickupLocationSuggestionRequestVersion;
+    private bool _suppressPickupLocationSuggestionLookup;
     private bool _isAuthenticating;
 
     public MainWindow()
     {
         InitializeComponent();
+        // Extra - Dynamic Collections START
+        _dynamicCollectionService = new DynamicCollectionService(_databaseService);
+        // Extra - Dynamic Collections END
         _iyzicoPaymentService = new IyzicoPaymentService(AppSettings.GetIyzicoSettings(), _iyzicoCallbackService);
         PickupDateTextBox.Text = DateTime.Today.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
         ReturnDateTextBox.Text = DateTime.Today.AddDays(2).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
@@ -61,6 +71,8 @@ public partial class MainWindow : Window
 
     protected override async void OnClosed(EventArgs e)
     {
+        _pickupLocationSuggestionCts?.Cancel();
+        _pickupLocationSuggestionCts?.Dispose();
         await _smsReceiverService.DisposeAsync();
         await _iyzicoCallbackService.DisposeAsync();
 

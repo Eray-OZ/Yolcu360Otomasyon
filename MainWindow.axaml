@@ -442,7 +442,35 @@
                                                Foreground="#243446"
                                                FontWeight="SemiBold" />
                                     <TextBox x:Name="PickupLocationTextBox"
-                                             PlaceholderText="Düzce" />
+                                             PlaceholderText="Düzce"
+                                             TextChanged="PickupLocationTextBox_TextChanged" />
+                                    <Border x:Name="PickupLocationSuggestionsPanel"
+                                            IsVisible="False"
+                                            Background="White"
+                                            BorderBrush="#D6DFEA"
+                                            BorderThickness="1"
+                                            CornerRadius="10"
+                                            Margin="0,-2,0,0"
+                                            MaxHeight="220">
+                                        <ListBox x:Name="PickupLocationSuggestionsListBox"
+                                                 Background="White"
+                                                 SelectionChanged="PickupLocationSuggestionsListBox_SelectionChanged">
+                                            <ListBox.ItemTemplate>
+                                                <DataTemplate x:DataType="models:LocationSuggestionItem">
+                                                    <Border Padding="10,8">
+                                                        <StackPanel Spacing="2">
+                                                            <TextBlock Text="{Binding MainText}"
+                                                                       Foreground="#132235"
+                                                                       FontWeight="SemiBold" />
+                                                            <TextBlock Text="{Binding SecondaryText}"
+                                                                       Foreground="#5F7187"
+                                                                       FontSize="12" />
+                                                        </StackPanel>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ListBox.ItemTemplate>
+                                        </ListBox>
+                                    </Border>
                                 </StackPanel>
 
                                 <Grid ColumnDefinitions="*,*"
@@ -664,6 +692,12 @@
                                             Content="Araçları Göster"
                                             Width="160"
                                             Click="ViewVehiclesButton_Click" />
+                                    <!-- Extra - Dynamic Collections START -->
+                                    <Button x:Name="RefreshCollectionButton"
+                                            Content="Güncelle"
+                                            Width="130"
+                                            Click="RefreshSelectedCollectionButton_Click" />
+                                    <!-- Extra - Dynamic Collections END -->
                                     <Button x:Name="DeleteCollectionButton"
                                             Content="Sil"
                                             Width="120"
@@ -826,6 +860,12 @@
                                             Content="Seçilen Araç İçin Ödeme"
                                             Width="220"
                                             Click="CreatePaymentButton_Click" />
+                                    <!-- Extra - Dynamic Collections START -->
+                                    <Button x:Name="RefreshCollectionButtonVehicles"
+                                            Content="Güncelle"
+                                            Width="130"
+                                            Click="RefreshSelectedCollectionButton_Click" />
+                                    <!-- Extra - Dynamic Collections END -->
                                     <Button x:Name="ExportPngButtonVehicles"
                                             Classes="primary"
                                             Content="PNG Olarak İndir"

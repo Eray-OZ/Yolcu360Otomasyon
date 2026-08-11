@@ -41,6 +41,86 @@ public partial class MainWindow : Window
         await OpenSelectedCollectionVehiclesAsync();
     }
 
+    // Extra - Dynamic Collections START
+    private async void RefreshSelectedCollectionButton_Click(object? sender, RoutedEventArgs e)
+    {
+        if (_activeUser is null)
+        {
+            HistoryStatusTextBlock.Text = "Güncelleme için önce giriş yapılmalı.";
+            return;
+        }
+
+        if (_selectedCollection is null || _selectedCollections.Count != 1)
+        {
+            HistoryStatusTextBlock.Text = "Güncellemek için tek bir koleksiyon seçin.";
+            return;
+        }
+
+        SetCollectionRefreshButtonsEnabled(false);
+        var collection = _selectedCollection;
+        var wasVehiclesViewVisible = VehiclesViewPanel.IsVisible;
+
+        try
+        {
+            HistoryStatusTextBlock.Text = $"{collection.OzelAd} güncelleniyor...";
+            VehicleStatusTextBlock.Text = $"{collection.OzelAd} için güncel araçlar getiriliyor...";
+            ShowBrowserSection();
+
+            var baService = CreateBAService();
+            baService.ProgressChanged += message =>
+            {
+                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                {
+                    HistoryStatusTextBlock.Text = message;
+                    VehicleStatusTextBlock.Text = message;
+                });
+            };
+
+            var refreshedVehicles = await _dynamicCollectionService.RefreshSnapshotAsync(
+                _activeUser.Id,
+                collection.Id,
+                baService,
+                _activeUser.SessionStatePath);
+
+            _selectedCollectionVehicles = refreshedVehicles;
+            _selectedVehicle = refreshedVehicles.FirstOrDefault();
+            CollectionVehiclesDataGrid.ItemsSource = null;
+            CollectionVehiclesDataGrid.ItemsSource = _selectedCollectionVehicles;
+            CollectionVehiclesDataGrid.SelectedItem = _selectedVehicle;
+
+            await LoadHistoryAsync();
+
+            var collections = (CollectionsDataGrid.ItemsSource as IEnumerable<KoleksiyonListItem>)?.ToList()
+                ?? new List<KoleksiyonListItem>();
+            var refreshedCollection = collections.FirstOrDefault(item => item.Id == collection.Id);
+            if (refreshedCollection is not null)
+            {
+                CollectionsDataGrid.SelectedItem = refreshedCollection;
+                _selectedCollection = refreshedCollection;
+                UpdateSelectedCollectionSummary([refreshedCollection]);
+            }
+
+            VehicleViewTitleTextBlock.Text = $"{collection.OzelAd} (Araç Listesi)";
+            VehicleViewSubtitleTextBlock.Text = $"Alış Yeri: {collection.AlisYeri} | Toplam {refreshedVehicles.Count} Araç Kayıtlı";
+            HistoryStatusTextBlock.Text = $"{collection.OzelAd} güncellendi. {refreshedVehicles.Count} araç kaydedildi.";
+            VehicleStatusTextBlock.Text = $"{collection.OzelAd} güncellendi. {refreshedVehicles.Count} araç listelendi.";
+            ShowHistorySection();
+            CollectionsViewPanel.IsVisible = !wasVehiclesViewVisible;
+            VehiclesViewPanel.IsVisible = wasVehiclesViewVisible;
+        }
+        catch (Exception ex)
+        {
+            HistoryStatusTextBlock.Text = $"Güncelleme hatası: {ex.Message}";
+            VehicleStatusTextBlock.Text = $"Güncelleme hatası: {ex.Message}";
+            ShowHistorySection();
+        }
+        finally
+        {
+            SetCollectionRefreshButtonsEnabled(true);
+        }
+    }
+    // Extra - Dynamic Collections END
+
     private async void CollectionsDataGrid_DoubleTapped(object? sender, Avalonia.Input.TappedEventArgs e)
     {
         await OpenSelectedCollectionVehiclesAsync();
@@ -91,6 +171,18 @@ public partial class MainWindow : Window
             VehicleStatusTextBlock.Text = $"{_selectedCollection?.OzelAd} - {vehicle.Title} seçildi ({vehicle.Price}).";
         }
     }
+
+    // Extra - Dynamic Collections START
+    private void SetCollectionRefreshButtonsEnabled(bool enabled)
+    {
+        RefreshCollectionButton.IsEnabled = enabled;
+        RefreshCollectionButtonVehicles.IsEnabled = enabled;
+        ViewVehiclesButton.IsEnabled = enabled;
+        DeleteCollectionButton.IsEnabled = enabled;
+        ExportPngButton.IsEnabled = enabled;
+        ExportPngButtonVehicles.IsEnabled = enabled;
+    }
+    // Extra - Dynamic Collections END
 
     private async void DeleteCollectionButton_Click(object? sender, RoutedEventArgs e)
     {

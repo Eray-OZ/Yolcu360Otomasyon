@@ -9,6 +9,96 @@ namespace Yolcu360Otomasyon;
 
 public partial class MainWindow : Window
 {
+    private async void PickupLocationTextBox_TextChanged(object? sender, TextChangedEventArgs e)
+    {
+        if (_suppressPickupLocationSuggestionLookup)
+            return;
+
+        var input = PickupLocationTextBox.Text?.Trim() ?? string.Empty;
+        var requestVersion = ++_pickupLocationSuggestionRequestVersion;
+        var previousCts = _pickupLocationSuggestionCts;
+        CancelPickupLocationSuggestionRequest(previousCts);
+
+        if (input.Length < 2)
+        {
+            HidePickupLocationSuggestions();
+            return;
+        }
+
+        var cts = new CancellationTokenSource();
+        _pickupLocationSuggestionCts = cts;
+
+        try
+        {
+            var suggestions = await _locationSuggestionService.GetSuggestionsAsync(input, cts.Token);
+            if (cts.IsCancellationRequested || requestVersion != _pickupLocationSuggestionRequestVersion)
+                return;
+
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                if (cts.IsCancellationRequested || requestVersion != _pickupLocationSuggestionRequestVersion)
+                    return;
+
+                PickupLocationSuggestionsListBox.ItemsSource = suggestions;
+                PickupLocationSuggestionsPanel.IsVisible = suggestions.Count > 0;
+            });
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception ex)
+        {
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                if (requestVersion != _pickupLocationSuggestionRequestVersion)
+                    return;
+
+                PickupLocationSuggestionsListBox.ItemsSource = null;
+                PickupLocationSuggestionsPanel.IsVisible = false;
+                SearchStatusTextBlock.Text = $"Alış yeri önerileri alınamadı: {ex.Message}";
+            });
+        }
+    }
+
+    private void PickupLocationSuggestionsListBox_SelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (PickupLocationSuggestionsListBox.SelectedItem is not LocationSuggestionItem suggestion)
+            return;
+
+        _suppressPickupLocationSuggestionLookup = true;
+        PickupLocationTextBox.Text = suggestion.MainText;
+        _suppressPickupLocationSuggestionLookup = false;
+
+        HidePickupLocationSuggestions();
+    }
+
+    private void HidePickupLocationSuggestions()
+    {
+        if (!Dispatcher.UIThread.CheckAccess())
+        {
+            Dispatcher.UIThread.Post(HidePickupLocationSuggestions);
+            return;
+        }
+
+        PickupLocationSuggestionsListBox.SelectedItem = null;
+        PickupLocationSuggestionsListBox.ItemsSource = null;
+        PickupLocationSuggestionsPanel.IsVisible = false;
+    }
+
+    private static void CancelPickupLocationSuggestionRequest(CancellationTokenSource? cts)
+    {
+        if (cts is null)
+            return;
+
+        try
+        {
+            cts.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+        }
+    }
+
     private async void SearchButton_Click(object? sender, RoutedEventArgs e)
     {
         SearchButton.IsEnabled = false;
@@ -148,7 +238,9 @@ public partial class MainWindow : Window
         SaveResultsButton.IsEnabled = false;
         try
         {
-            var collectionId = await _databaseService.SaveCollectionAsync(_activeUser.Id, ozelAd, _latestSearchFilter, _latestResults);
+            // Extra - Dynamic Collections START
+            var collectionId = await _dynamicCollectionService.SaveSnapshotAsync(_activeUser.Id, ozelAd, _latestSearchFilter, _latestResults);
+            // Extra - Dynamic Collections END
             CollectionNameTextBox.Text = string.Empty;
             SearchStatusTextBlock.Text = $"{_latestResults.Count} sonuç \"{ozelAd}\" adıyla kaydedildi.";
             await LoadHistoryAsync();
