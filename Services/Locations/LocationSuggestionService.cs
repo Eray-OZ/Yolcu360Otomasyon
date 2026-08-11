@@ -3,6 +3,7 @@ using Yolcu360Otomasyon.Models;
 
 namespace Yolcu360Otomasyon.Services;
 
+// Extra - Location Suggestion START
 public sealed class LocationSuggestionService
 {
     private static readonly HttpClient HttpClient = new()
@@ -67,3 +68,4 @@ public sealed class LocationSuggestionService
             : string.Empty;
     }
 }
+// Extra - Location Suggestion END

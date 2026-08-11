@@ -441,6 +441,7 @@
                                     <TextBlock Text="Alış yeri"
                                                Foreground="#243446"
                                                FontWeight="SemiBold" />
+                                    <!-- Extra - Location Suggestion START -->
                                     <TextBox x:Name="PickupLocationTextBox"
                                              PlaceholderText="Düzce"
                                              TextChanged="PickupLocationTextBox_TextChanged" />
@@ -471,6 +472,7 @@
                                             </ListBox.ItemTemplate>
                                         </ListBox>
                                     </Border>
+                                    <!-- Extra - Location Suggestion END -->
                                 </StackPanel>
 
                                 <Grid ColumnDefinitions="*,*"

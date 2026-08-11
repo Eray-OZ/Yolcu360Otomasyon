@@ -12,7 +12,9 @@ public partial class MainWindow : Window
     // Extra - Dynamic Collections START
     private readonly DynamicCollectionService _dynamicCollectionService;
     // Extra - Dynamic Collections END
+    // Extra - Location Suggestion START
     private readonly LocationSuggestionService _locationSuggestionService = new();
+    // Extra - Location Suggestion END
     private readonly SmsReceiverService _smsReceiverService = new(5001);
     private readonly IyzicoCallbackService _iyzicoCallbackService = new();
     private readonly IyzicoPaymentService _iyzicoPaymentService;
@@ -24,9 +26,11 @@ public partial class MainWindow : Window
     private List<KoleksiyonListItem> _selectedCollections = new();
     private List<OdemeHazirlikItem> _paymentPreviewItems = new();
     private SearchFilter? _latestSearchFilter;
+    // Extra - Location Suggestion START
     private CancellationTokenSource? _pickupLocationSuggestionCts;
     private int _pickupLocationSuggestionRequestVersion;
     private bool _suppressPickupLocationSuggestionLookup;
+    // Extra - Location Suggestion END
     private bool _isAuthenticating;
 
     public MainWindow()
@@ -71,8 +75,10 @@ public partial class MainWindow : Window
 
     protected override async void OnClosed(EventArgs e)
     {
+        // Extra - Location Suggestion START
         _pickupLocationSuggestionCts?.Cancel();
         _pickupLocationSuggestionCts?.Dispose();
+        // Extra - Location Suggestion END
         await _smsReceiverService.DisposeAsync();
         await _iyzicoCallbackService.DisposeAsync();
 

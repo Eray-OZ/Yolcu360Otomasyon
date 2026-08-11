@@ -9,6 +9,7 @@ namespace Yolcu360Otomasyon;
 
 public partial class MainWindow : Window
 {
+    // Extra - Location Suggestion START
     private async void PickupLocationTextBox_TextChanged(object? sender, TextChangedEventArgs e)
     {
         if (_suppressPickupLocationSuggestionLookup)
@@ -98,6 +99,7 @@ public partial class MainWindow : Window
         {
         }
     }
+    // Extra - Location Suggestion END
 
     private async void SearchButton_Click(object? sender, RoutedEventArgs e)
     {
