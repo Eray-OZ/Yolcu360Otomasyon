@@ -88,8 +88,8 @@ public partial class MainWindow : Window
             ShowBrowserSection();
             CheckoutStatusTextBlock.Text = "Ödeme formu dolduruluyor...";
 
-            var embeddedBrowser = CreateEmbeddedBrowserAutomationService();
-            await embeddedBrowser.CompleteIyzicoSandboxPaymentAsync(session.PaymentPageUrl, paymentCard);
+            var baService = CreateBAService();
+            await baService.CompleteIyzicoSandboxPaymentAsync(session.PaymentPageUrl, paymentCard);
 
             CheckoutStatusTextBlock.Text = "Ödeme onayı bekleniyor...";
 

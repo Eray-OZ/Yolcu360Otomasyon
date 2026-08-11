@@ -63,25 +63,25 @@ public partial class MainWindow : Window
             ShowBrowserSection();
             SearchStatusTextBlock.Text = "Gömülü tarayıcı arama formu hazırlanıyor...";
 
-            var embeddedBrowser = CreateEmbeddedBrowserAutomationService();
+            var baService = CreateBAService();
             if (_activeUser is not null && !string.IsNullOrWhiteSpace(_activeUser.SessionStatePath))
             {
-                await embeddedBrowser.RestoreSessionAsync(_activeUser.SessionStatePath);
+                await baService.RestoreSessionAsync(_activeUser.SessionStatePath);
             }
 
             SearchStatusTextBlock.Text = "Araçlar aranıyor...";
 
-            await embeddedBrowser.OpenYolcu360HomeAsync();
-            await embeddedBrowser.FillPickupLocationAsync(filter.PickupLocation);
-            await embeddedBrowser.SelectDateRangeAsync(filter.PickupDate, filter.ReturnDate);
-            await embeddedBrowser.SelectTimeAsync(0, filter.PickupTime);
-            await embeddedBrowser.SelectTimeAsync(1, filter.ReturnTime);
-            await embeddedBrowser.ClickSearchButtonAsync();
-            await embeddedBrowser.WaitForSearchResultsAsync();
-            await embeddedBrowser.ApplyResultFiltersAsync(filter);
+            await baService.OpenYolcu360HomeAsync();
+            await baService.FillPickupLocationAsync(filter.PickupLocation);
+            await baService.SelectDateRangeAsync(filter.PickupDate, filter.ReturnDate);
+            await baService.SelectTimeAsync(0, filter.PickupTime);
+            await baService.SelectTimeAsync(1, filter.ReturnTime);
+            await baService.ClickSearchButtonAsync();
+            await baService.WaitForSearchResultsAsync();
+            await baService.ApplyResultFiltersAsync(filter);
 
             SearchStatusTextBlock.Text = "Arama sonuçları okunuyor...";
-            var results = await embeddedBrowser.ReadSearchResultsAsync();
+            var results = await baService.ReadSearchResultsAsync();
             _latestResults = results;
 
             await Dispatcher.UIThread.InvokeAsync(() =>
@@ -188,10 +188,10 @@ public partial class MainWindow : Window
             ShowBrowserSection();
             SearchStatusTextBlock.Text = "Gömülü tarayıcı açılıyor...";
 
-            var embeddedBrowser = CreateEmbeddedBrowserAutomationService();
-            await embeddedBrowser.OpenYolcu360HomeAsync();
+            var baService = CreateBAService();
+            await baService.OpenYolcu360HomeAsync();
 
-            var title = await embeddedBrowser.GetTitleAsync();
+            var title = await baService.GetTitleAsync();
             SearchStatusTextBlock.Text = $"Gömülü tarayıcı hazır. Title: {title}";
         }
         catch (Exception ex)
@@ -200,10 +200,10 @@ public partial class MainWindow : Window
         }
     }
 
-    private EmbeddedBrowserAutomationService CreateEmbeddedBrowserAutomationService()
+    private BAService CreateBAService()
     {
-        var embeddedBrowser = new EmbeddedBrowserAutomationService(EmbeddedBrowser);
-        embeddedBrowser.ProgressChanged += message =>
+        var baService = new BAService(EmbeddedBrowser);
+        baService.ProgressChanged += message =>
         {
             Dispatcher.UIThread.Post(() =>
             {
@@ -211,6 +211,6 @@ public partial class MainWindow : Window
             });
         };
 
-        return embeddedBrowser;
+        return baService;
     }
 }

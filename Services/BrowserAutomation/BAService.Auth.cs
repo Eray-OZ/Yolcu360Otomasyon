@@ -3,7 +3,7 @@ using Yolcu360Otomasyon.Models;
 
 namespace Yolcu360Otomasyon.Services;
 
-public sealed partial class EmbeddedBrowserAutomationService
+public sealed partial class BAService
 {
     private async Task InjectStealthAndHumanMouseScriptAsync()
     {

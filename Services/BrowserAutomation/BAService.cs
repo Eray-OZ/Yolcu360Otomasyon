@@ -4,7 +4,7 @@ using Yolcu360Otomasyon.Models;
 
 namespace Yolcu360Otomasyon.Services;
 
-public sealed partial class EmbeddedBrowserAutomationService
+public sealed partial class BAService
 {
     private const string Yolcu360HomeUrl = "https://www.yolcu360.com/";
     private const string PickupLocationInputSelector = "#inputPickUpLocation";
@@ -15,7 +15,7 @@ public sealed partial class EmbeddedBrowserAutomationService
 
     public event Action<string>? ProgressChanged;
 
-    public EmbeddedBrowserAutomationService(NativeWebView browser)
+    public BAService(NativeWebView browser)
     {
         _browser = browser;
     }

@@ -133,12 +133,12 @@ public partial class MainWindow : Window
 
             StatusTextBlock.Text = "Gömülü tarayıcı hazırlanıyor...";
 
-            var embeddedBrowser = CreateEmbeddedBrowserAutomationService();
-            await embeddedBrowser.ClearBrowserSessionAsync();
+            var baService = CreateBAService();
+            await baService.ClearBrowserSessionAsync();
 
             StatusTextBlock.Text = "Yolcu360 giriş ekranı dolduruluyor...";
             _smsReceiverService.ClearLatestCode();
-            await embeddedBrowser.LoginWithPhoneAsync(user.PhoneNumber);
+            await baService.LoginWithPhoneAsync(user.PhoneNumber);
 
             StatusTextBlock.Text = "SMS doğrulama kodu bekleniyor...";
             string code;
@@ -153,12 +153,12 @@ public partial class MainWindow : Window
             }
 
             StatusTextBlock.Text = $"SMS kodu alındı: {code}";
-            await embeddedBrowser.FillSmsVerificationCodeAsync(code);
+            await baService.FillSmsVerificationCodeAsync(code);
             StatusTextBlock.Text = "Girişin tamamlanması bekleniyor...";
-            await embeddedBrowser.WaitForLoginCompletedAsync();
+            await baService.WaitForLoginCompletedAsync();
 
             StatusTextBlock.Text = "Oturum kaydediliyor...";
-            await embeddedBrowser.SaveSessionAsync(sessionStatePath);
+            await baService.SaveSessionAsync(sessionStatePath);
             await _databaseService.SaveOrUpdateUserAsync(email, password, user.PhoneNumber, sessionStatePath);
 
             _activeUser = new AppUser
