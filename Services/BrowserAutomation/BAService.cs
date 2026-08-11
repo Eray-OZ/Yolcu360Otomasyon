@@ -214,7 +214,7 @@ public sealed partial class BAService
             timeout,
             pollInterval ?? TimeSpan.FromMilliseconds(250));
     }
-
+    
     private static async Task<bool> WaitUntilAsync(
         Func<Task<bool>> condition,
         TimeSpan timeout,

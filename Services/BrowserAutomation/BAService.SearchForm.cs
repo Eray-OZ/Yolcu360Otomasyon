@@ -357,19 +357,71 @@ public sealed partial class BAService
                 const dayTarget = {{dayJson}};
                 const monthTarget = {{monthJson}};
                 const yearTarget = {{yearJson}};
+                const normalize = value => (value || '').toLocaleLowerCase('tr-TR').replace(/\s+/g, ' ').trim();
+                const compact = value => normalize(value).replace(/\s/g, '');
+                const targetMonth = normalize(monthTarget);
+                const targetYear = normalize(yearTarget);
+                const targetHeaderText = normalize(`${monthTarget} ${yearTarget}`);
+                const targetHeaderCompact = compact(`${monthTarget} ${yearTarget}`);
+                const isVisible = el => {
+                    const rect = el.getBoundingClientRect();
+                    const style = getComputedStyle(el);
+                    return rect.width > 0 &&
+                        rect.height > 0 &&
+                        style.display !== 'none' &&
+                        style.visibility !== 'hidden';
+                };
+                const hasTargetHeader = el => {
+                    const text = normalize(el?.textContent || '');
+                    const compactText = compact(el?.textContent || '');
+                    return text.includes(targetHeaderText) ||
+                        compactText.includes(targetHeaderCompact) ||
+                        (text.includes(targetMonth) && text.includes(targetYear));
+                };
 
-                const allCalendars = Array.from(menu.querySelectorAll('.dp__calendar'));
+                const allCalendars = Array.from(menu.querySelectorAll('.dp__calendar')).filter(isVisible);
                 let searchRoot = null;
 
                 for (const cal of allCalendars) {
-                    const hdr = cal.querySelector('.dp__month_year_select, .dp__calendar_header_item, .dp__month_year_wrap, .dp__calendar_header');
-                    const hdrText = (hdr?.textContent || '').trim();
-                    if (hdrText.includes(monthTarget) && hdrText.includes(yearTarget)) {
+                    const owner = cal.closest('.dp__instance_calendar, .dp__calendar_wrap') || cal.parentElement || cal;
+                    const hdr = owner.querySelector('.dp__month_year_select, .dp__month_year_wrap, .dp__month_year_row, .dp__calendar_header');
+                    if (hasTargetHeader(hdr) || hasTargetHeader(owner)) {
                         searchRoot = cal;
                         break;
                     }
                 }
-                if (!searchRoot) searchRoot = menu;
+
+                if (!searchRoot) {
+                    const section = Array.from(menu.querySelectorAll('.dp__instance_calendar, .dp__calendar_wrap, .dp__month_year_row, .dp__calendar_next, .dp__calendar'))
+                        .filter(el => isVisible(el) && hasTargetHeader(el) && el.querySelector('.dp__calendar, .dp__calendar_item, .dp__cell_inner'))
+                        .sort((a, b) => a.getBoundingClientRect().width - b.getBoundingClientRect().width)[0];
+                    searchRoot = section?.querySelector('.dp__calendar') || section || null;
+                }
+
+                if (!searchRoot) {
+                    const targetHeader = Array.from(menu.querySelectorAll('.dp__month_year_select, .dp__month_year_wrap, .dp__month_year_row, .dp__calendar_header_item, .dp__calendar_header'))
+                        .filter(el => isVisible(el) && hasTargetHeader(el))[0];
+
+                    if (targetHeader && allCalendars.length > 0) {
+                        const headerRect = targetHeader.getBoundingClientRect();
+                        const headerCenterX = headerRect.left + headerRect.width / 2;
+                        searchRoot = allCalendars
+                            .map(cal => {
+                                const rect = cal.getBoundingClientRect();
+                                const centerX = rect.left + rect.width / 2;
+                                return { cal, distance: Math.abs(centerX - headerCenterX) };
+                            })
+                            .sort((a, b) => a.distance - b.distance)[0]?.cal || null;
+                    }
+                }
+
+                if (!searchRoot && allCalendars.length === 1 && hasTargetHeader(menu)) {
+                    searchRoot = allCalendars[0];
+                }
+
+                if (!searchRoot) {
+                    return false;
+                }
 
                 const selectors = [
                     '.dp__cell_inner',
@@ -710,21 +762,77 @@ public sealed partial class BAService
     private Task<bool> WaitForCalendarSelectionStateAsync(DateTime date, TimeSpan timeout)
     {
         var dayJson = JsonSerializer.Serialize(date.Day);
+        var turkishMonths = new[]
+        {
+            "Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran",
+            "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"
+        };
+        var monthJson = JsonSerializer.Serialize(turkishMonths[date.Month - 1]);
+        var yearJson = JsonSerializer.Serialize(date.Year.ToString());
 
         return WaitForScriptTrueOrTimeoutAsync(
             $$"""
             (() => {
                 const day = {{dayJson}};
+                const monthTarget = {{monthJson}};
+                const yearTarget = {{yearJson}};
+                const normalize = value => (value || '').toLocaleLowerCase('tr-TR').replace(/\s+/g, ' ').trim();
+                const compact = value => normalize(value).replace(/\s/g, '');
+                const targetMonth = normalize(monthTarget);
+                const targetYear = normalize(yearTarget);
+                const targetHeaderText = normalize(`${monthTarget} ${yearTarget}`);
+                const targetHeaderCompact = compact(`${monthTarget} ${yearTarget}`);
                 const selectedClassNames = ['selected', 'active', 'range_start', 'range_end', 'dp__active_date', 'dp__range_start', 'dp__range_end'];
-                const menus = Array.from(document.querySelectorAll('.dp__menu, .dp__outer_menu_wrap, .dp__calendar'));
                 const visible = el => {
                     const rect = el.getBoundingClientRect();
                     const style = window.getComputedStyle(el);
                     return rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden';
                 };
+                const hasTargetHeader = el => {
+                    const text = normalize(el?.textContent || '');
+                    const compactText = compact(el?.textContent || '');
+                    return text.includes(targetHeaderText) ||
+                        compactText.includes(targetHeaderCompact) ||
+                        (text.includes(targetMonth) && text.includes(targetYear));
+                };
+                const menus = Array.from(document.querySelectorAll('.dp__menu, .dp__outer_menu_wrap')).filter(visible);
+
+                const findTargetRoot = menu => {
+                    const calendars = Array.from(menu.querySelectorAll('.dp__calendar')).filter(visible);
+
+                    for (const cal of calendars) {
+                        const owner = cal.closest('.dp__instance_calendar, .dp__calendar_wrap') || cal.parentElement || cal;
+                        const hdr = owner.querySelector('.dp__month_year_select, .dp__month_year_wrap, .dp__month_year_row, .dp__calendar_header');
+                        if (hasTargetHeader(hdr) || hasTargetHeader(owner)) return cal;
+                    }
+
+                    const section = Array.from(menu.querySelectorAll('.dp__instance_calendar, .dp__calendar_wrap, .dp__month_year_row, .dp__calendar_next, .dp__calendar'))
+                        .filter(el => visible(el) && hasTargetHeader(el) && el.querySelector('.dp__calendar, .dp__calendar_item, .dp__cell_inner'))
+                        .sort((a, b) => a.getBoundingClientRect().width - b.getBoundingClientRect().width)[0];
+                    if (section) return section.querySelector('.dp__calendar') || section;
+
+                    const targetHeader = Array.from(menu.querySelectorAll('.dp__month_year_select, .dp__month_year_wrap, .dp__month_year_row, .dp__calendar_header_item, .dp__calendar_header'))
+                        .filter(el => visible(el) && hasTargetHeader(el))[0];
+                    if (targetHeader && calendars.length > 0) {
+                        const headerRect = targetHeader.getBoundingClientRect();
+                        const headerCenterX = headerRect.left + headerRect.width / 2;
+                        return calendars
+                            .map(cal => {
+                                const rect = cal.getBoundingClientRect();
+                                const centerX = rect.left + rect.width / 2;
+                                return { cal, distance: Math.abs(centerX - headerCenterX) };
+                            })
+                            .sort((a, b) => a.distance - b.distance)[0]?.cal || null;
+                    }
+
+                    if (calendars.length === 1 && hasTargetHeader(menu)) return calendars[0];
+                    return null;
+                };
 
                 return menus.filter(visible).some(menu => {
-                    return Array.from(menu.querySelectorAll('.dp__cell_inner, .dp__calendar_item button, .dp__calendar_item > div, .dp__calendar_item'))
+                    const root = findTargetRoot(menu);
+                    if (!root) return false;
+                    return Array.from(root.querySelectorAll('.dp__cell_inner, .dp__calendar_item button, .dp__calendar_item > div, .dp__calendar_item'))
                         .some(cell => {
                             const text = (cell.textContent || '').trim();
                             if (parseInt(text, 10) !== day) return false;
