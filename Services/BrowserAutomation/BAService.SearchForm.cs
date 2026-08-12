@@ -272,14 +272,28 @@ public sealed partial class BAService
                 """
                 (() => {
                     const menu = Array.from(document.querySelectorAll('.dp__menu, .dp__outer_menu_wrap'))
-                        .find(m => {
-                            const s = window.getComputedStyle(m);
-                            const r = m.getBoundingClientRect();
-                            return s.display !== 'none' && s.visibility !== 'hidden' && r.width > 0;
+                        .find(menu => {
+                            const rect = menu.getBoundingClientRect();
+                            const style = getComputedStyle(menu);
+
+                            return rect.width > 0 &&
+                                rect.height > 0 &&
+                                style.display !== 'none' &&
+                                style.visibility !== 'hidden';
                         });
                     if (!menu) return '';
-                    const headers = Array.from(menu.querySelectorAll('.dp__month_year_select, .dp__calendar_header_item, .dp__month_year_wrap, .dp__calendar_header'));
-                    return headers.map(h => (h.textContent || '').trim()).join(' ');
+
+                    const headers = Array.from(menu.querySelectorAll(
+                        '.dp__month_year_select, ' +
+                        '.dp__calendar_header_item, ' +
+                        '.dp__month_year_wrap, ' +
+                        '.dp__calendar_header'
+                    ));
+
+                    return headers
+                        .map(header => (header.textContent || '').trim())
+                        .filter(Boolean)
+                        .join(' ');
                 })();
                 """);
 
@@ -308,17 +322,31 @@ public sealed partial class BAService
             $$"""
             (() => {
                 const forward = {{forwardJson}};
+                const isClickable = button => {
+                    if (!button) return false;
+
+                    const rect = button.getBoundingClientRect();
+                    const style = getComputedStyle(button);
+
+                    return rect.width > 0 &&
+                        rect.height > 0 &&
+                        style.display !== 'none' &&
+                        style.visibility !== 'hidden' &&
+                        !button.disabled &&
+                        button.getAttribute('aria-disabled') !== 'true';
+                };
+
                 const next = document.querySelector("[data-dp-element='action-next'], .dp__next_btn, button[aria-label*='Next']");
                 const prev = document.querySelector("[data-dp-element='action-prev'], .dp__prev_btn, button[aria-label*='Prev']");
-                const navBtns = Array.from(document.querySelectorAll('.dp__nav_btn'));
+                const navButtons = Array.from(document.querySelectorAll('.dp__nav_btn')).filter(isClickable);
 
-                const btn = forward
-                    ? (next || (navBtns.length > 1 ? navBtns[navBtns.length - 1] : navBtns[0]))
-                    : (prev || navBtns[0]);
+                const button = forward
+                    ? (isClickable(next) ? next : navButtons.at(-1))
+                    : (isClickable(prev) ? prev : navButtons[0]);
 
-                if (!btn) return false;
+                if (!isClickable(button)) return false;
 
-                btn.click();
+                button.click();
                 return true;
             })();
             """);
@@ -468,12 +496,23 @@ public sealed partial class BAService
         await EvaluateScriptAsync(
             """
             (() => {
-                const selectBtn = document.querySelector('.dp__action_select, button.dp__action_select, .dp__select');
-                if (selectBtn) {
-                    selectBtn.click();
-                    return true;
-                }
-                return false;
+                const button = document.querySelector('.dp__action_select, .dp__select');
+                if (!button) return false;
+
+                const rect = button.getBoundingClientRect();
+                const style = getComputedStyle(button);
+
+                const isClickable = rect.width > 0 &&
+                    rect.height > 0 &&
+                    style.display !== 'none' &&
+                    style.visibility !== 'hidden' &&
+                    !button.disabled &&
+                    button.getAttribute('aria-disabled') !== 'true';
+
+                if (!isClickable) return false;
+
+                button.click();
+                return true;
             })();
             """);
     }
@@ -594,13 +633,18 @@ public sealed partial class BAService
         await EvaluateScriptAsync(
             """
             (() => {
-                if (document.activeElement && typeof document.activeElement.blur === 'function') {
-                    document.activeElement.blur();
+                const active = document.activeElement;
+                if (active && typeof active.blur === 'function') {
+                    active.blur();
                 }
-                const menus = document.querySelectorAll('.dp__menu, .search-autocomplete');
-                menus.forEach(m => {
-                    if (m.style) m.style.display = 'none';
-                });
+
+                document
+                    .querySelectorAll('.dp__menu, .search-autocomplete')
+                    .forEach(menu => {
+                        menu.style.display = 'none';
+                    });
+
+                return true;
             })();
             """);
 
@@ -609,40 +653,54 @@ public sealed partial class BAService
         var result = await EvaluateScriptAsync(
             """
             (() => {
-                const btn = document.querySelector('#search') ||
-                            document.querySelector('button[type="submit"]') ||
-                            Array.from(document.querySelectorAll('button')).find(b => (b.textContent || '').includes('Ara'));
+                const btn = document.querySelector('#search');
 
-                if (!btn) return JSON.stringify({ success: false, reason: 'Search button not found' });
+                if (!btn) {
+                    return JSON.stringify({
+                        success: false,
+                        reason: 'Search button #search not found'
+                    });
+                }
 
                 btn.scrollIntoView({ block: 'center', inline: 'center' });
 
                 const rect = btn.getBoundingClientRect();
-                const style = window.getComputedStyle(btn);
-                const enabled = !btn.disabled &&
-                    btn.getAttribute('aria-disabled') !== 'true' &&
-                    style.pointerEvents !== 'none' &&
+                const style = getComputedStyle(btn);
+                const isClickable =
                     rect.width > 0 &&
-                    rect.height > 0;
+                    rect.height > 0 &&
+                    style.display !== 'none' &&
+                    style.visibility !== 'hidden' &&
+                    style.pointerEvents !== 'none' &&
+                    !btn.disabled &&
+                    btn.getAttribute('aria-disabled') !== 'true';
 
-                if (!enabled) {
-                    return JSON.stringify({ success: false, reason: 'Button disabled or hidden', text: (btn.textContent || '').trim() });
+                if (!isClickable) {
+                    return JSON.stringify({
+                        success: false,
+                        reason: 'Search button exists but is not clickable',
+                        text: (btn.textContent || '').trim()
+                    });
                 }
 
                 const x = rect.left + rect.width / 2;
                 const y = rect.top + rect.height / 2;
-                const opts = { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y };
+                const eventOptions = {
+                    bubbles: true,
+                    cancelable: true,
+                    view: window,
+                    clientX: x,
+                    clientY: y
+                };
 
-                if (typeof PointerEvent === 'function') {
-                    btn.dispatchEvent(new PointerEvent('pointerdown', { ...opts, pointerId: 1, pointerType: 'mouse', isPrimary: true, buttons: 1 }));
-                    btn.dispatchEvent(new PointerEvent('pointerup', { ...opts, pointerId: 1, pointerType: 'mouse', isPrimary: true }));
-                }
-                btn.dispatchEvent(new MouseEvent('mousedown', { ...opts, buttons: 1 }));
-                btn.dispatchEvent(new MouseEvent('mouseup', { ...opts }));
-                btn.dispatchEvent(new MouseEvent('click', opts));
-                if (typeof btn.click === 'function') btn.click();
+                btn.dispatchEvent(new MouseEvent('mousedown', { ...eventOptions, buttons: 1 }));
+                btn.dispatchEvent(new MouseEvent('mouseup', eventOptions));
+                btn.click();
 
-                return JSON.stringify({ success: true, text: (btn.textContent || '').trim() });
+                return JSON.stringify({
+                    success: true,
+                    text: (btn.textContent || '').trim()
+                });
             })();
             """);
 
@@ -704,17 +762,28 @@ public sealed partial class BAService
         var result = await EvaluateScriptAsync(
             $$"""
             (() => {
-                const input = document.querySelector({{pickupLocationInputSelectorJson}});
-                const visibleSuggestions = Array.from(document.querySelectorAll({{locationSuggestionSelectorJson}}))
-                    .filter(item => {
-                        const rect = item.getBoundingClientRect();
-                        const style = getComputedStyle(item);
-                        return rect.width > 0 &&
-                            rect.height > 0 &&
-                            style.display !== 'none' &&
-                            style.visibility !== 'hidden';
-                    });
-                return !!input && input.value.trim().length > 0 && visibleSuggestions.length === 0;
+                const pickupInput = document.querySelector({{pickupLocationInputSelectorJson}});
+
+                const isVisible = element => {
+                    if (!element) return false;
+
+                    const rect = element.getBoundingClientRect();
+                    const style = getComputedStyle(element);
+
+                    return rect.width > 0 &&
+                        rect.height > 0 &&
+                        style.display !== 'none' &&
+                        style.visibility !== 'hidden';
+                };
+
+                const openSuggestions = Array
+                    .from(document.querySelectorAll({{locationSuggestionSelectorJson}}))
+                    .filter(isVisible);
+
+                const hasPickupText = !!pickupInput &&
+                    pickupInput.value.trim().length > 0;
+
+                return hasPickupText && openSuggestions.length === 0;
             })();
             """);
 
@@ -734,15 +803,38 @@ public sealed partial class BAService
                 var headerText = await EvaluateScriptAsync(
                     """
                     (() => {
-                        const menu = Array.from(document.querySelectorAll('.dp__menu, .dp__outer_menu_wrap'))
-                            .find(m => {
-                                const s = window.getComputedStyle(m);
-                                const r = m.getBoundingClientRect();
-                                return s.display !== 'none' && s.visibility !== 'hidden' && r.width > 0;
-                            });
-                        if (!menu) return '';
-                        const headers = Array.from(menu.querySelectorAll('.dp__month_year_select, .dp__calendar_header_item, .dp__month_year_wrap, .dp__calendar_header'));
-                        return headers.map(h => (h.textContent || '').trim()).join(' ');
+                        const isVisible = element => {
+                            if (!element) return false;
+
+                            const rect = element.getBoundingClientRect();
+                            const style = getComputedStyle(element);
+
+                            return rect.width > 0 &&
+                                rect.height > 0 &&
+                                style.display !== 'none' &&
+                                style.visibility !== 'hidden';
+                        };
+
+                        const visibleMenu = Array
+                            .from(document.querySelectorAll('.dp__menu, .dp__outer_menu_wrap'))
+                            .find(isVisible);
+
+                        if (!visibleMenu) {
+                            return '';
+                        }
+
+                        const headerSelectors = [
+                            '.dp__month_year_select',
+                            '.dp__calendar_header_item',
+                            '.dp__month_year_wrap',
+                            '.dp__calendar_header'
+                        ].join(',');
+
+                        return Array
+                            .from(visibleMenu.querySelectorAll(headerSelectors))
+                            .map(header => (header.textContent || '').trim())
+                            .filter(Boolean)
+                            .join(' ');
                     })();
                     """);
 
@@ -845,13 +937,23 @@ public sealed partial class BAService
         return WaitForScriptTrueOrTimeoutAsync(
             """
             (() => {
-                const visibleMenus = Array.from(document.querySelectorAll('.dp__menu, .dp__outer_menu_wrap'))
-                    .filter(menu => {
-                        const rect = menu.getBoundingClientRect();
-                        const style = window.getComputedStyle(menu);
-                        return rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden';
-                    });
-                return visibleMenus.length === 0;
+                const isVisible = element => {
+                    if (!element) return false;
+
+                    const rect = element.getBoundingClientRect();
+                    const style = getComputedStyle(element);
+
+                    return rect.width > 0 &&
+                        rect.height > 0 &&
+                        style.display !== 'none' &&
+                        style.visibility !== 'hidden';
+                };
+
+                const visibleDatePickerMenus = Array
+                    .from(document.querySelectorAll('.dp__menu, .dp__outer_menu_wrap'))
+                    .filter(isVisible);
+
+                return visibleDatePickerMenus.length === 0;
             })();
             """,
             timeout);
