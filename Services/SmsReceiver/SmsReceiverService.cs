@@ -9,7 +9,6 @@ public sealed partial class SmsReceiverService : IAsyncDisposable
 
     private readonly object _sync = new();
     private readonly List<TaskCompletionSource<string>> _waiters = [];
-    private readonly int _preferredPort;
     private HttpListener? _listener;
     private CancellationTokenSource? _cts;
     private Task? _listenerTask;
@@ -21,7 +20,6 @@ public sealed partial class SmsReceiverService : IAsyncDisposable
 
     public SmsReceiverService(int port = 5000)
     {
-        _preferredPort = port;
         Port = port;
     }
 
@@ -31,26 +29,18 @@ public sealed partial class SmsReceiverService : IAsyncDisposable
             return Task.CompletedTask;
 
         var listener = new HttpListener();
+        listener.Prefixes.Add($"http://+:{Port}/");
+
         try
         {
-            listener.Prefixes.Add($"http://+:{Port}/");
             listener.Start();
         }
-        catch
+        catch (Exception ex)
         {
-            try
-            {
-                listener = new HttpListener();
-                listener.Prefixes.Add($"http://*:{Port}/");
-                listener.Start();
-            }
-            catch
-            {
-                listener = new HttpListener();
-                listener.Prefixes.Add($"http://localhost:{Port}/");
-                listener.Prefixes.Add($"http://127.0.0.1:{Port}/");
-                listener.Start();
-            }
+            listener.Close();
+            throw new InvalidOperationException(
+                $"SMS alıcısı {Port} portunda başlatılamadı. MacroDroid URL'i sabit olduğu için farklı porta geçilmedi. Portu kullanan başka uygulamayı kapatıp tekrar deneyin.",
+                ex);
         }
 
         _listener = listener;

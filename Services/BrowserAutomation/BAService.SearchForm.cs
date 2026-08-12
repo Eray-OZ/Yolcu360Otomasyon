@@ -91,40 +91,12 @@ public sealed partial class BAService
 
                     if (!selected) return JSON.stringify({ clicked: false, reason: 'öneri bulunamadı', itemCount: items.length });
 
-                    selected.scrollIntoView({ block: 'center', inline: 'nearest' });
-                    const rect = selected.getBoundingClientRect();
-                    const x = rect.left + rect.width / 2;
-                    const y = rect.top + rect.height / 2;
-                    const pointTarget = document.elementFromPoint(x, y);
-                    const eventTarget = pointTarget?.closest?.({{locationSuggestionSelectorJson}}) || pointTarget || selected;
-                    const eventOptions = { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y };
-
-                    const dispatchPointer = (target, type, buttons = 0) => {
-                        if (!target) return;
-                        if (typeof PointerEvent === 'function') {
-                            target.dispatchEvent(new PointerEvent(type, { ...eventOptions, pointerId: 1, pointerType: 'mouse', isPrimary: true, buttons }));
-                        }
-                    };
-                    const dispatchMouse = (target, type, buttons = 0) => {
-                        if (!target) return;
-                        target.dispatchEvent(new MouseEvent(type, { ...eventOptions, buttons }));
-                    };
-
-                    for (const target of [eventTarget, selected]) {
-                        dispatchPointer(target, 'pointerover');
-                        dispatchMouse(target, 'mouseover');
-                        dispatchMouse(target, 'mousemove');
-                        dispatchPointer(target, 'pointerdown', 1);
-                        dispatchMouse(target, 'mousedown', 1);
-                        dispatchPointer(target, 'pointerup');
-                        dispatchMouse(target, 'mouseup');
-                        dispatchMouse(target, 'click');
-                    }
+                    const clickResult = window.__ba.clickLikeUser(selected, {{locationSuggestionSelectorJson}});
 
                     return JSON.stringify({
-                        clicked: true,
+                        clicked: clickResult.clicked,
                         selectedText: (selected.textContent || '').replace(/\s+/g, ' ').trim(),
-                        pointTargetText: (pointTarget?.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 120),
+                        pointTargetText: clickResult.pointTargetText,
                         inputValue: input?.value || '',
                         remainingSuggestions: document.querySelectorAll({{locationSuggestionSelectorJson}}).length
                     });

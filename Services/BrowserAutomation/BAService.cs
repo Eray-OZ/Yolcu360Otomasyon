@@ -128,6 +128,55 @@ public sealed partial class BAService
                         style.display !== 'none' &&
                         style.visibility !== 'hidden';
                 };
+
+                window.__ba.clickLikeUser = (element, closestSelector) => {
+                    if (!element) return false;
+
+                    element.scrollIntoView({ block: 'center', inline: 'nearest' });
+
+                    const rect = element.getBoundingClientRect();
+                    const x = rect.left + rect.width / 2;
+                    const y = rect.top + rect.height / 2;
+                    const pointTarget = document.elementFromPoint(x, y);
+                    const eventTarget = closestSelector
+                        ? (pointTarget?.closest?.(closestSelector) || pointTarget || element)
+                        : (pointTarget || element);
+                    const eventOptions = { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y };
+
+                    const dispatchPointer = (target, type, buttons = 0) => {
+                        if (!target) return;
+                        if (typeof PointerEvent === 'function') {
+                            target.dispatchEvent(new PointerEvent(type, {
+                                ...eventOptions,
+                                pointerId: 1,
+                                pointerType: 'mouse',
+                                isPrimary: true,
+                                buttons
+                            }));
+                        }
+                    };
+
+                    const dispatchMouse = (target, type, buttons = 0) => {
+                        if (!target) return;
+                        target.dispatchEvent(new MouseEvent(type, { ...eventOptions, buttons }));
+                    };
+
+                    for (const target of [eventTarget, element]) {
+                        dispatchPointer(target, 'pointerover');
+                        dispatchMouse(target, 'mouseover');
+                        dispatchMouse(target, 'mousemove');
+                        dispatchPointer(target, 'pointerdown', 1);
+                        dispatchMouse(target, 'mousedown', 1);
+                        dispatchPointer(target, 'pointerup');
+                        dispatchMouse(target, 'mouseup');
+                        dispatchMouse(target, 'click');
+                    }
+
+                    return {
+                        clicked: true,
+                        pointTargetText: window.__ba.normalizeText(pointTarget?.textContent).slice(0, 120)
+                    };
+                };
                 return true;
             })();
             """);
