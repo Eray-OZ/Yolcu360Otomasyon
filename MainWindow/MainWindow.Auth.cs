@@ -124,7 +124,6 @@ public partial class MainWindow : Window
                 return;
             }
 
-            // Gömülü tarayıcıyı canlı göstermek için Ana Görünüme ve Tarayıcı Paneline geç
             LoginView.IsVisible = false;
             RegisterView.IsVisible = false;
             MainView.IsVisible = true;
