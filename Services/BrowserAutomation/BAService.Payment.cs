@@ -26,25 +26,6 @@ public sealed partial class BAService
             """,
             TimeSpan.FromSeconds(30));
 
-        await Task.Delay(TimeSpan.FromSeconds(10));
-
-        // Temporary diagnostic dump. Remove after payment selectors are confirmed.
-        try
-        {
-            var paymentHtmlJson = await EvaluateScriptAsync("JSON.stringify(document.documentElement.outerHTML)");
-            var paymentHtml = JsonSerializer.Deserialize<string>(paymentHtmlJson ?? "\"\"") ?? string.Empty;
-            var projectRoot = Directory.GetCurrentDirectory();
-            var paymentHtmlPath = Path.Combine(projectRoot, "iyzico-payment-page.html");
-            await File.WriteAllTextAsync(paymentHtmlPath, paymentHtml);
-            Report($"iyzico ödeme formu HTML'i kaydedildi: {paymentHtmlPath}");
-            Console.WriteLine($"[Iyzico] Payment form HTML saved to: {paymentHtmlPath}");
-        }
-        catch (Exception ex)
-        {
-            Report($"iyzico ödeme formu HTML'i kaydedilemedi: {ex.Message}");
-            Console.WriteLine($"[Iyzico] Payment form HTML dump failed: {ex}");
-        }
-
         // Ensure credit card tab is selected
         await EvaluateScriptAsync(
             """
