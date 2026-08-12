@@ -19,19 +19,27 @@ public sealed partial class BAService
         Report("iyzico ödeme formu bekleniyor...");
         await WaitForScriptTrueAsync(
             """
-            (() => !!document.querySelector('#ccname') || !!document.querySelector('#ccnumber') || !!document.querySelector('input[name*="card"]'))();
+            (() => {
+                const selectors = ['#ccname', '#ccnumber', '#ccexp', '#cccvc'];
+                return selectors.every(selector => !!document.querySelector(selector));
+            })();
             """,
             TimeSpan.FromSeconds(30));
 
         // Ensure credit card tab is selected
-        await EvaluateScriptAsync(
+        var creditCardTabClicked = await EvaluateBooleanScriptAsync(
             """
             (() => {
                 const tab = document.querySelector('#iyz-tab-credit-card');
-                if (tab) tab.click();
+                if (!tab) return false;
+
+                tab.click();
                 return true;
             })();
             """);
+
+        if (!creditCardTabClicked)
+            throw new InvalidOperationException("Gömülü tarayıcıda iyzico kredi kartı sekmesi bulunamadı.");
 
         await WaitForPaymentCardInputsReadyAsync(TimeSpan.FromSeconds(10));
 
@@ -53,15 +61,13 @@ public sealed partial class BAService
         var paymentClicked = await EvaluateBooleanScriptAsync(
             """
             (() => {
-                const btn = document.querySelector('#iyz-payment-button') ||
-                    Array.from(document.querySelectorAll('button, input[type="submit"]'))
-                        .find(b => (b.textContent || b.value || '').trim().toLowerCase().includes('ödeme'));
-                if (btn) {
-                    btn.scrollIntoView({ block: 'center', inline: 'nearest' });
-                    btn.click();
-                    return true;
-                }
-                return false;
+                const button = document.querySelector('#iyz-payment-button');
+                if (!button) return false;
+
+                button.scrollIntoView({ block: 'center', inline: 'nearest' });
+                button.click();
+
+                return true;
             })();
             """);
 
@@ -128,19 +134,17 @@ public sealed partial class BAService
         return WaitForScriptTrueAsync(
             """
             (() => {
-                const btn = document.querySelector('#iyz-payment-button') ||
-                    Array.from(document.querySelectorAll('button, input[type="submit"]'))
-                        .find(b => (b.textContent || b.value || '').trim().toLocaleLowerCase('tr-TR').includes('ödeme'));
-                if (!btn) return false;
+                const button = document.querySelector('#iyz-payment-button');
+                if (!button) return false;
 
-                const rect = btn.getBoundingClientRect();
-                const style = window.getComputedStyle(btn);
+                const rect = button.getBoundingClientRect();
+                const style = getComputedStyle(button);
                 return rect.width > 0 &&
                     rect.height > 0 &&
                     style.display !== 'none' &&
                     style.visibility !== 'hidden' &&
-                    !btn.disabled &&
-                    btn.getAttribute('aria-disabled') !== 'true';
+                    !button.disabled &&
+                    button.getAttribute('aria-disabled') !== 'true';
             })();
             """,
             timeout);

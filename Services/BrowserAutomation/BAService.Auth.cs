@@ -465,9 +465,18 @@ public sealed partial class BAService
         var completed = await WaitForScriptTrueOrTimeoutAsync(
             """
             (() => {
-                const url = window.location.href;
-                const text = (document.body.innerText || '').toLocaleLowerCase('tr-TR');
-                return !url.includes('login') || text.includes('hesabım') || text.includes('profil') || text.includes('hoş geldin');
+                try {
+                    const user = JSON.parse(localStorage.getItem('user') || 'null');
+                    const token = JSON.parse(localStorage.getItem('token') || 'null');
+
+                    return !!user &&
+                        user.anonymous === false &&
+                        !!token &&
+                        typeof token.accessToken === 'string' &&
+                        token.accessToken.length > 0;
+                } catch {
+                    return false;
+                }
             })();
             """,
             timeout ?? TimeSpan.FromSeconds(30),
