@@ -12,9 +12,6 @@ public sealed partial class BAService
 
         ValidateSandboxCardInput(cardInput);
 
-        Report($"iyzico ödeme sayfası URL: {paymentPageUrl}");
-        Console.WriteLine($"[Iyzico] Payment page URL: {paymentPageUrl}");
-
         Report("Gömülü tarayıcıda iyzico ödeme sayfası açılıyor...");
         await NavigateAsync(paymentPageUrl);
         await WaitForDocumentReadyAsync();
