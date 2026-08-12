@@ -174,23 +174,8 @@ public sealed partial class BAService
                 btn.removeAttribute('disabled');
                 btn.classList.remove('disabled');
 
-                const rect = btn.getBoundingClientRect();
-                const x = rect.left + rect.width / 2;
-                const y = rect.top + rect.height / 2;
-                const opts = { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y, screenX: x + 50, screenY: y + 50 };
-
-                if (typeof PointerEvent === 'function') {
-                    btn.dispatchEvent(new PointerEvent('pointerdown', { ...opts, pointerId: 1, pointerType: 'mouse', isPrimary: true, buttons: 1 }));
-                    btn.dispatchEvent(new PointerEvent('pointerup', { ...opts, pointerId: 1, pointerType: 'mouse', isPrimary: true }));
-                }
-                btn.dispatchEvent(new MouseEvent('mousedown', { ...opts, buttons: 1 }));
-                btn.dispatchEvent(new MouseEvent('mouseup', opts));
                 btn.click();
 
-                const form = btn.closest('form');
-                if (form) {
-                    try { form.requestSubmit(); } catch { try { form.submit(); } catch {} }
-                }
                 return true;
             })();
             """);
@@ -214,11 +199,18 @@ public sealed partial class BAService
             await EvaluateScriptAsync(
                 """
                 (() => {
-                    const btn = Array.from(document.querySelectorAll('button, input[type="submit"]'))
-                        .find(b => (b.textContent || b.value || '').trim().toLowerCase().includes('devam'));
+                    const btn = Array.from(document.querySelectorAll('button, input[type="submit"], [role="button"]'))
+                        .find(b => {
+                            const txt = (b.textContent || b.value || b.getAttribute('aria-label') || '').trim().toLowerCase();
+                            return txt.includes('devam');
+                        });
                     if (!btn) return false;
+
                     btn.disabled = false;
+                    btn.removeAttribute('disabled');
+                    btn.classList.remove('disabled');
                     btn.click();
+
                     return true;
                 })();
                 """);
@@ -229,23 +221,17 @@ public sealed partial class BAService
         await WaitForScriptTrueAsync(
             """
             (() => {
-                const text = (document.body.innerText || '').toLocaleLowerCase('tr-TR');
-                const hasSmsText = text.includes('doğrulama') || text.includes('sms') || text.includes('gönderilen') || text.includes('şifre') || text.includes('tek kullanımlık') || text.includes('verification code');
+                const input = document.querySelector('#sms_input');
 
-                const visible = el => {
-                    const rect = el.getBoundingClientRect();
-                    const style = window.getComputedStyle(el);
-                    return rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden';
-                };
+                if (!input) return false;
 
-                const allInputs = Array.from(document.querySelectorAll('input, [contenteditable="true"]')).filter(visible);
-                const otpLikeInputs = allInputs.filter(input => {
-                    if (input.id === 'languageSearch' || input.id === 'inputPickUpLocation' || input.id === 'is_different_dropoff') return false;
-                    const attrs = `${input.id} ${input.name} ${input.placeholder} ${input.autocomplete} ${input.inputMode} ${input.type} ${input.className}`.toLocaleLowerCase('tr-TR');
-                    return attrs.includes('otp') || attrs.includes('code') || attrs.includes('kod') || attrs.includes('pin') || attrs.includes('verify') || attrs.includes('dogrulama') || attrs.includes('sms') || input.maxLength === 1;
-                });
+                const rect = input.getBoundingClientRect();
+                const style = getComputedStyle(input);
 
-                return hasSmsText || otpLikeInputs.length > 0;
+                return rect.width > 0 &&
+                    rect.height > 0 &&
+                    style.display !== 'none' &&
+                    style.visibility !== 'hidden';
             })();
             """,
             TimeSpan.FromSeconds(30));
@@ -256,10 +242,10 @@ public sealed partial class BAService
         return WaitForScriptTrueAsync(
             """
             (() => {
-                const input = document.querySelector('#phn-input') || document.querySelector('input[type="tel"]');
+                const input = document.querySelector('#phn-input, input[type="tel"]');
                 if (!input) return false;
                 const rect = input.getBoundingClientRect();
-                const style = window.getComputedStyle(input);
+                const style = getComputedStyle(input);
                 return rect.width > 0 &&
                     rect.height > 0 &&
                     style.display !== 'none' &&
@@ -276,7 +262,7 @@ public sealed partial class BAService
         return WaitForScriptTrueAsync(
             """
             (() => {
-                const input = document.querySelector('#phn-input') || document.querySelector('input[type="tel"]');
+                const input = document.querySelector('#phn-input, input[type="tel"]');
                 return !!input && (input.value || '').trim().length === 0;
             })();
             """,
