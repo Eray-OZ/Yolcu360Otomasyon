@@ -62,7 +62,9 @@ public sealed partial class BAService
                         .trim();
                     const compact = value => normalize(value).replace(/\s/g, '');
                     const target = normalize(targetText);
-                    const visible = item => {
+                    const isVisible = item => {
+                        if (!item) return false;
+
                         const rect = item.getBoundingClientRect();
                         const style = getComputedStyle(item);
                         return rect.width > 0 &&
@@ -77,27 +79,19 @@ public sealed partial class BAService
                         const fullText = normalize(item.textContent || '');
                         const mainText = getMainText(item);
                         const compactText = compact(item.textContent || '');
-                        const hasAirportText =
-                            fullText.includes('airport') ||
-                            fullText.includes('havalimanı') ||
-                            fullText.includes('sabiha') ||
-                            fullText.includes('saw') ||
-                            fullText.includes('ist)');
 
                         if (mainText === target) return 0;
                         if (compactText === compact(`${targetText} Türkiye`) || compactText === compact(`${targetText}, Türkiye`)) return 1;
                         if (fullText === target) return 2;
-                        if (!hasAirportText && mainText.startsWith(target + ' ')) return 3;
-                        if (!hasAirportText && fullText.startsWith(target)) return 4;
-                        if (mainText.startsWith(target)) return 5;
-                        if (fullText.startsWith(target)) return 6;
-                        if (mainText.includes(target)) return 7;
-                        if (fullText.includes(target)) return 8;
-                        return 9;
+                        if (mainText.startsWith(target)) return 3;
+                        if (fullText.startsWith(target)) return 4;
+                        if (mainText.includes(target)) return 5;
+                        if (fullText.includes(target)) return 6;
+                        return 7;
                     };
 
                     const items = Array.from(document.querySelectorAll({{locationSuggestionSelectorJson}}))
-                        .filter(item => visible(item) && (!input || (item !== input && !item.contains(input))));
+                        .filter(item => isVisible(item) && (!input || (item !== input && !item.contains(input))));
                     const selected = items
                         .sort((a, b) => {
                             const score = getScore(a) - getScore(b);

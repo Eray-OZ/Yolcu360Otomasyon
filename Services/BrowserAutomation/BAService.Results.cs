@@ -60,20 +60,25 @@ public sealed partial class BAService
         return WaitForScriptTrueOrTimeoutAsync(
             """
             (() => {
-                const visible = el => {
+                const isVisible = el => {
+                    if (!el) return false;
+
                     const rect = el.getBoundingClientRect();
-                    const style = window.getComputedStyle(el);
+                    const style = getComputedStyle(el);
                     return rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden';
                 };
 
-                const filterInputs = Array.from(document.querySelectorAll('label[name^="filter-"], input[name^="filter-"], input[type="checkbox"], input[type="radio"]'))
-                    .filter(visible);
+                const filterContainer = document.querySelector('.filter-container');
+                if (!isVisible(filterContainer)) return false;
 
-                const bodyText = (document.body.innerText || '').toLocaleLowerCase('tr-TR');
-                return filterInputs.length > 0 ||
-                    bodyText.includes('vites') ||
-                    bodyText.includes('yakıt') ||
-                    bodyText.includes('filtre');
+                const filterControl = filterContainer.querySelector(
+                    'label[name^="filter-transmission."], ' +
+                    'label[name^="filter-fuel."], ' +
+                    'input[id^="filter-transmission."], ' +
+                    'input[id^="filter-fuel."]'
+                );
+
+                return isVisible(filterControl);
             })();
             """,
             timeout);
@@ -97,50 +102,36 @@ public sealed partial class BAService
                     .replace(/\s+/g, ' ')
                     .trim();
 
-                const visible = el => {
+                const isVisible = el => {
+                    if (!el) return false;
+
                     const rect = el.getBoundingClientRect();
-                    const style = window.getComputedStyle(el);
+                    const style = getComputedStyle(el);
                     return rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden';
                 };
 
                 const normalizedTargets = targets.map(normalize);
 
-                let labels = Array.from(document.querySelectorAll(`label[name^="${prefix}."], input[name^="${prefix}."]`)).filter(visible);
+                const labels = Array.from(document.querySelectorAll(`label[name^="${prefix}."]`))
+                    .filter(isVisible);
 
-                if (labels.length === 0) {
-                    labels = Array.from(document.querySelectorAll('label, input[type="checkbox"], input[type="radio"]')).filter(visible);
-                }
+                const matchesTarget = text =>
+                    normalizedTargets.some(target =>
+                        text === target ||
+                        text.startsWith(target + ' ') ||
+                        text.includes(target)
+                    );
 
-                const score = text => {
-                    if (normalizedTargets.includes(text)) return 0;
-                    if (normalizedTargets.some(target => text.startsWith(target + ' '))) return 1;
-                    if (normalizedTargets.some(target => text.includes(target))) return 2;
-                    return 3;
-                };
-
-                const candidates = labels
-                    .map(el => {
-                        const text = normalize(el.textContent || el.value || el.getAttribute('aria-label') || '');
-                        return { el, text };
-                    })
-                    .filter(item => item.text.length > 0)
-                    .sort((a, b) => score(a.text) - score(b.text));
-
-                const match = candidates.find(item => score(item.text) < 3);
+                const match = labels.find(label => matchesTarget(normalize(label.textContent || '')));
                 if (!match) return false;
 
-                const targetEl = match.el;
-                targetEl.scrollIntoView({ block: 'center', inline: 'nearest' });
+                match.scrollIntoView({ block: 'center', inline: 'nearest' });
+                match.click();
 
-                ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click'].forEach(type => {
-                    targetEl.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, view: window }));
-                });
-                targetEl.click();
-
-                const checkbox = targetEl.querySelector?.('input[type="checkbox"], input[type="radio"]') || (targetEl.tagName === 'INPUT' ? targetEl : null);
-                if (checkbox && !checkbox.checked) {
-                    checkbox.click();
-                    checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+                const input = match.querySelector('input[type="checkbox"], input[type="radio"]');
+                if (input && !input.checked) {
+                    input.click();
+                    input.dispatchEvent(new Event('change', { bubbles: true }));
                 }
 
                 return true;
@@ -161,12 +152,17 @@ public sealed partial class BAService
         var isReady = await WaitForScriptTrueOrTimeoutAsync(
             """
             (() => {
-                const cards = document.querySelectorAll('#car_card_list .car-card, .car-card, .py-2.car-card');
-                const bodyText = (document.body.innerText || '').toLocaleLowerCase('tr-TR');
-                return cards.length > 0
-                    || bodyText.includes('araç bulundu')
-                    || bodyText.includes('hemen kirala')
-                    || bodyText.includes('günlük fiyat');
+                const cards = Array.from(document.querySelectorAll('#car_card_list .car-card'));
+
+                return cards.some(card => {
+                    const rect = card.getBoundingClientRect();
+                    const style = getComputedStyle(card);
+
+                    return rect.width > 0 &&
+                        rect.height > 0 &&
+                        style.display !== 'none' &&
+                        style.visibility !== 'hidden';
+                });
             })();
             """,
             timeout ?? TimeSpan.FromSeconds(30),
@@ -188,30 +184,40 @@ public sealed partial class BAService
                 (() => {
                     const normalize = value => (value || '').replace(/\s+/g, ' ').trim();
 
-                    const cards = Array.from(document.querySelectorAll('#car_card_list .car-card, .car-card, .py-2.car-card'))
-                        .filter(card => {
-                            const rect = card.getBoundingClientRect();
-                            const style = window.getComputedStyle(card);
-                            return rect.width > 0 &&
-                                rect.height > 0 &&
-                                style.display !== 'none' &&
-                                style.visibility !== 'hidden';
-                        });
+                    const isVisible = el => {
+                        if (!el) return false;
+
+                        const rect = el.getBoundingClientRect();
+                        const style = getComputedStyle(el);
+
+                        return rect.width > 0 &&
+                            rect.height > 0 &&
+                            style.display !== 'none' &&
+                            style.visibility !== 'hidden';
+                    };
+
+                    const firstVisibleText = (root, selector) => {
+                        const element = Array.from(root.querySelectorAll(selector)).find(isVisible);
+                        return normalize(element?.textContent);
+                    };
+
+                    const cards = Array.from(document.querySelectorAll('#car_card_list .car-card'))
+                        .filter(isVisible);
 
                     const items = cards.map(card => {
                         const specs = Array.from(card.querySelectorAll('.icon-gear-type, .icon-gas-type'))
                             .map(icon => normalize(icon.parentElement?.textContent))
                             .filter(Boolean);
 
-                        const title = normalize(card.querySelector('.text-dark-gray.text-lg.font-bold, .car-title, h3, h4')?.textContent);
-                        const subtitle = normalize(card.querySelector('[data-cms-key="or_similar"], .car-subtitle')?.textContent);
-                        const price = normalize(card.querySelector('#car_total_price, .price, .total-price')?.textContent);
-                        const dailyPrice = normalize(card.querySelector('[data-cms-key="text_daily_price2"], .daily-price')?.textContent);
+                        const title = firstVisibleText(card, '.text-dark-gray.text-lg.font-bold');
+                        const subtitle = firstVisibleText(card, '[data-cms-key="or_similar"]');
+                        const price = firstVisibleText(card, '#car_total_price');
+                        const dailyPrice = firstVisibleText(card, '[data-cms-key="text_daily_price2"]');
                         const transmission = specs.find(text => /manuel|otomatik/i.test(text)) || '';
-                        const fuelType = specs.find(text => /benzin|dizel|hibrit|elektrik/i.test(text)) || '';
-                        const supplier = normalize(card.querySelector('figure img[alt], .supplier-logo img')?.getAttribute('alt'));
+                        const fuelType = specs.find(text => /benzin|dizel|hibrit|hybrid|elektrik|electric/i.test(text)) || '';
+                        const supplier = normalize(card.querySelector('figure img[alt]')?.getAttribute('alt'));
                         const pickupInfo = normalize(card.querySelector('.icon-filled')?.parentElement?.textContent);
-                        const actionText = normalize(card.querySelector('[data-cms-key="button_rent_now"], button')?.textContent);
+                        const actionText = firstVisibleText(card, '[data-cms-key="button_rent_now"]');
                         const url = normalize(card.querySelector('a[href]')?.getAttribute('href'));
 
                         return {
