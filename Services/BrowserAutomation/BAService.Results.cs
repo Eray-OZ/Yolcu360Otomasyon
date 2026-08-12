@@ -60,13 +60,7 @@ public sealed partial class BAService
         return WaitForScriptTrueOrTimeoutAsync(
             """
             (() => {
-                const isVisible = el => {
-                    if (!el) return false;
-
-                    const rect = el.getBoundingClientRect();
-                    const style = getComputedStyle(el);
-                    return rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden';
-                };
+                const isVisible = window.__ba?.isVisible || (() => false);
 
                 const filterContainer = document.querySelector('.filter-container');
                 if (!isVisible(filterContainer)) return false;
@@ -97,18 +91,8 @@ public sealed partial class BAService
                 const targets = {{targetTextsJson}};
                 const prefix = {{filterPrefixJson}};
 
-                const normalize = value => (value || '')
-                    .toLocaleLowerCase('tr-TR')
-                    .replace(/\s+/g, ' ')
-                    .trim();
-
-                const isVisible = el => {
-                    if (!el) return false;
-
-                    const rect = el.getBoundingClientRect();
-                    const style = getComputedStyle(el);
-                    return rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden';
-                };
+                const normalize = window.__ba?.normalizeTr || (value => (value || '').toLocaleLowerCase('tr-TR').replace(/\s+/g, ' ').trim());
+                const isVisible = window.__ba?.isVisible || (() => false);
 
                 const normalizedTargets = targets.map(normalize);
 
@@ -153,16 +137,7 @@ public sealed partial class BAService
             """
             (() => {
                 const cards = Array.from(document.querySelectorAll('#car_card_list .car-card'));
-
-                return cards.some(card => {
-                    const rect = card.getBoundingClientRect();
-                    const style = getComputedStyle(card);
-
-                    return rect.width > 0 &&
-                        rect.height > 0 &&
-                        style.display !== 'none' &&
-                        style.visibility !== 'hidden';
-                });
+                return cards.some(window.__ba?.isVisible || (() => false));
             })();
             """,
             timeout ?? TimeSpan.FromSeconds(30),
@@ -182,19 +157,8 @@ public sealed partial class BAService
             var items = await EvaluateJsonScriptAsync<List<SearchResultItem>>(
                 """
                 (() => {
-                    const normalize = value => (value || '').replace(/\s+/g, ' ').trim();
-
-                    const isVisible = el => {
-                        if (!el) return false;
-
-                        const rect = el.getBoundingClientRect();
-                        const style = getComputedStyle(el);
-
-                        return rect.width > 0 &&
-                            rect.height > 0 &&
-                            style.display !== 'none' &&
-                            style.visibility !== 'hidden';
-                    };
+                    const normalize = window.__ba?.normalizeText || (value => (value || '').replace(/\s+/g, ' ').trim());
+                    const isVisible = window.__ba?.isVisible || (() => false);
 
                     const firstVisibleText = (root, selector) => {
                         const element = Array.from(root.querySelectorAll(selector)).find(isVisible);

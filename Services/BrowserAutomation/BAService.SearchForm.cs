@@ -56,22 +56,10 @@ public sealed partial class BAService
                 (() => {
                     const input = document.querySelector({{pickupLocationInputSelectorJson}});
                     const targetText = {{locationJson}};
-                    const normalize = value => (value || '')
-                        .toLocaleLowerCase('tr-TR')
-                        .replace(/\s+/g, ' ')
-                        .trim();
-                    const compact = value => normalize(value).replace(/\s/g, '');
+                    const normalize = window.__ba?.normalizeTr || (value => (value || '').toLocaleLowerCase('tr-TR').replace(/\s+/g, ' ').trim());
+                    const compact = window.__ba?.compactTr || (value => normalize(value).replace(/\s/g, ''));
                     const target = normalize(targetText);
-                    const isVisible = item => {
-                        if (!item) return false;
-
-                        const rect = item.getBoundingClientRect();
-                        const style = getComputedStyle(item);
-                        return rect.width > 0 &&
-                            rect.height > 0 &&
-                            style.display !== 'none' &&
-                            style.visibility !== 'hidden';
-                    };
+                    const isVisible = window.__ba?.isVisible || (() => false);
                     const getMainText = item => normalize(
                         item.querySelector('strong, .search-autocomplete__item__text-wrapper span:first-child, .search-autocomplete-mobile__item__text-wrapper span:first-child, div > div:first-child')?.textContent || ''
                     );
@@ -764,17 +752,7 @@ public sealed partial class BAService
             (() => {
                 const pickupInput = document.querySelector({{pickupLocationInputSelectorJson}});
 
-                const isVisible = element => {
-                    if (!element) return false;
-
-                    const rect = element.getBoundingClientRect();
-                    const style = getComputedStyle(element);
-
-                    return rect.width > 0 &&
-                        rect.height > 0 &&
-                        style.display !== 'none' &&
-                        style.visibility !== 'hidden';
-                };
+                const isVisible = window.__ba?.isVisible || (() => false);
 
                 const openSuggestions = Array
                     .from(document.querySelectorAll({{locationSuggestionSelectorJson}}))
@@ -803,17 +781,7 @@ public sealed partial class BAService
                 var headerText = await EvaluateScriptAsync(
                     """
                     (() => {
-                        const isVisible = element => {
-                            if (!element) return false;
-
-                            const rect = element.getBoundingClientRect();
-                            const style = getComputedStyle(element);
-
-                            return rect.width > 0 &&
-                                rect.height > 0 &&
-                                style.display !== 'none' &&
-                                style.visibility !== 'hidden';
-                        };
+                        const isVisible = window.__ba?.isVisible || (() => false);
 
                         const visibleMenu = Array
                             .from(document.querySelectorAll('.dp__menu, .dp__outer_menu_wrap'))
@@ -937,17 +905,7 @@ public sealed partial class BAService
         return WaitForScriptTrueOrTimeoutAsync(
             """
             (() => {
-                const isVisible = element => {
-                    if (!element) return false;
-
-                    const rect = element.getBoundingClientRect();
-                    const style = getComputedStyle(element);
-
-                    return rect.width > 0 &&
-                        rect.height > 0 &&
-                        style.display !== 'none' &&
-                        style.visibility !== 'hidden';
-                };
+                const isVisible = window.__ba?.isVisible || (() => false);
 
                 const visibleDatePickerMenus = Array
                     .from(document.querySelectorAll('.dp__menu, .dp__outer_menu_wrap'))
@@ -967,16 +925,13 @@ public sealed partial class BAService
             $$"""
             (() => {
                 const target = {{timeJson}};
-                const visible = el => {
-                    const rect = el.getBoundingClientRect();
-                    const style = window.getComputedStyle(el);
-                    return rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden';
-                };
+                const isVisible = window.__ba?.isVisible || (() => false);
 
-                return Array.from(document.querySelectorAll('.dropdown-item, [role="option"], li, .time-option, div[class*="option"], div[class*="item"], div, span, button'))
-                    .filter(visible)
-                    .some(el => {
-                        const text = (el.textContent || el.value || '').trim();
+                return Array
+                    .from(document.querySelectorAll('.relative.inline-block li, li'))
+                    .filter(isVisible)
+                    .some(option => {
+                        const text = (option.textContent || '').trim();
                         return text === target || text.startsWith(target);
                     });
             })();
@@ -1011,14 +966,16 @@ public sealed partial class BAService
         return WaitForScriptTrueOrTimeoutAsync(
             """
             (() => {
-                const visible = el => {
-                    const rect = el.getBoundingClientRect();
-                    const style = window.getComputedStyle(el);
-                    return rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden';
-                };
+                const isVisible = window.__ba?.isVisible || (() => false);
 
-                return Array.from(document.querySelectorAll('.dp__menu, .dp__outer_menu_wrap, .search-autocomplete'))
-                    .filter(visible)
+                const floatingMenuSelector = [
+                    '.dp__menu',
+                    '.dp__outer_menu_wrap',
+                    '.search-autocomplete'
+                ].join(',');
+
+                return Array.from(document.querySelectorAll(floatingMenuSelector))
+                    .filter(isVisible)
                     .length === 0;
             })();
             """,
@@ -1036,15 +993,19 @@ public sealed partial class BAService
                 lastResult = await EvaluateScriptAsync(
                 $$"""
                 (() => {
-                    const items = Array.from(document.querySelectorAll({{selectorJson}}));
-                    const visibleItems = items.filter(item => {
-                        const rect = item.getBoundingClientRect();
-                        return rect.width > 0 && rect.height > 0;
-                    });
+                    const isVisible = window.__ba?.isVisible || (() => false);
+
+                    const suggestions = Array
+                        .from(document.querySelectorAll({{selectorJson}}));
+
+                    const visibleSuggestions = suggestions.filter(isVisible);
+
                     return JSON.stringify({
-                        total: items.length,
-                        visible: visibleItems.length,
-                        text: visibleItems.slice(0, 3).map(item => (item.textContent || '').replace(/\s+/g, ' ').trim())
+                        total: suggestions.length,
+                        visible: visibleSuggestions.length,
+                        text: visibleSuggestions
+                            .slice(0, 3)
+                            .map(suggestion => (suggestion.textContent || '').replace(/\s+/g, ' ').trim())
                     });
                 })();
                 """);

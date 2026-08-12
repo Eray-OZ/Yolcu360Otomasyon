@@ -95,9 +95,42 @@ public sealed partial class BAService
         await NavigateAsync(Yolcu360HomeUrl);
         Report("Sayfanın hazır olması bekleniyor...");
         await WaitForDocumentReadyAsync();
+        await EnsureJavaScriptHelpersAsync();
         Report("Başlangıç popup'ı bekleniyor...");
         var popupClosed = await WaitForInitialPopupAndCloseAsync(TimeSpan.FromSeconds(5));
         Report(popupClosed ? "Başlangıç popup'ı kapatıldı." : "Başlangıç popup'ı görünmedi.");
+    }
+
+    private async Task EnsureJavaScriptHelpersAsync()
+    {
+        await EvaluateScriptAsync(
+            """
+            (() => {
+                window.__ba = window.__ba || {};
+
+                window.__ba.normalizeText = value =>
+                    (value || '').replace(/\s+/g, ' ').trim();
+
+                window.__ba.normalizeTr = value =>
+                    window.__ba.normalizeText(value).toLocaleLowerCase('tr-TR');
+
+                window.__ba.compactTr = value =>
+                    window.__ba.normalizeTr(value).replace(/\s/g, '');
+
+                window.__ba.isVisible = element => {
+                    if (!element) return false;
+
+                    const rect = element.getBoundingClientRect();
+                    const style = getComputedStyle(element);
+
+                    return rect.width > 0 &&
+                        rect.height > 0 &&
+                        style.display !== 'none' &&
+                        style.visibility !== 'hidden';
+                };
+                return true;
+            })();
+            """);
     }
 
     public async Task WaitForDocumentReadyAsync(TimeSpan? timeout = null)
@@ -120,16 +153,9 @@ public sealed partial class BAService
             """
             (() => {
                 const closeButton = document.querySelector('.gs_trigger_discount_popup_close_container');
-                if (!closeButton) return false;
-
-                const rect = closeButton.getBoundingClientRect();
-                const style = window.getComputedStyle(closeButton);
-                const visible = rect.width > 0 &&
-                    rect.height > 0 &&
-                    style.visibility !== 'hidden' &&
-                    style.display !== 'none';
-
-                if (!visible) return false;
+                if (!window.__ba?.isVisible(closeButton)) {
+                    return false;
+                }
 
                 closeButton.click();
                 return true;
@@ -149,36 +175,42 @@ public sealed partial class BAService
         return EvaluateScriptAsync(
             """
             (() => {
-                const compact = value => (value || '').replace(/\s+/g, ' ').trim();
-                const inputs = Array.from(document.querySelectorAll('input, textarea'))
+                const normalizeText = window.__ba?.normalizeText || (value => (value || '').replace(/\s+/g, ' ').trim());
+                const isVisible = window.__ba?.isVisible || (() => false);
+
+                const inputs = Array
+                    .from(document.querySelectorAll('input, textarea'))
                     .slice(0, 20)
-                    .map((el, index) => ({
+                    .map((input, index) => ({
                         index,
-                        id: el.id || '',
-                        name: el.getAttribute('name') || '',
-                        type: el.getAttribute('type') || '',
-                        placeholder: el.getAttribute('placeholder') || '',
-                        value: el.value || '',
-                        ariaLabel: el.getAttribute('aria-label') || '',
-                        visible: (() => {
-                            const rect = el.getBoundingClientRect();
-                            return rect.width > 0 && rect.height > 0;
-                        })()
+                        id: input.id || '',
+                        name: input.getAttribute('name') || '',
+                        type: input.getAttribute('type') || '',
+                        placeholder: input.getAttribute('placeholder') || '',
+                        value: input.value || '',
+                        ariaLabel: input.getAttribute('aria-label') || '',
+                        visible: isVisible(input)
                     }));
 
-                const possibleLocationElements = Array.from(document.querySelectorAll('[id*="location" i], [placeholder*="alış" i], [placeholder*="teslim" i], [class*="location" i], [class*="autocomplete" i]'))
+                const locationCandidateSelector = [
+                    '[id*="location" i]',
+                    '[placeholder*="alış" i]',
+                    '[placeholder*="teslim" i]',
+                    '[class*="location" i]',
+                    '[class*="autocomplete" i]'
+                ].join(',');
+
+                const possibleLocationElements = Array
+                    .from(document.querySelectorAll(locationCandidateSelector))
                     .slice(0, 20)
-                    .map((el, index) => ({
+                    .map((element, index) => ({
                         index,
-                        tag: el.tagName,
-                        id: el.id || '',
-                        className: el.className || '',
-                        placeholder: el.getAttribute('placeholder') || '',
-                        text: compact(el.textContent).slice(0, 120),
-                        visible: (() => {
-                            const rect = el.getBoundingClientRect();
-                            return rect.width > 0 && rect.height > 0;
-                        })()
+                        tag: element.tagName,
+                        id: element.id || '',
+                        className: element.className || '',
+                        placeholder: element.getAttribute('placeholder') || '',
+                        text: normalizeText(element.textContent).slice(0, 120),
+                        visible: isVisible(element)
                     }));
 
                 return JSON.stringify({

@@ -15,6 +15,7 @@ public sealed partial class BAService
         Report("Gömülü tarayıcıda iyzico ödeme sayfası açılıyor...");
         await NavigateAsync(paymentPageUrl);
         await WaitForDocumentReadyAsync();
+        await EnsureJavaScriptHelpersAsync();
 
         Report("iyzico ödeme formu bekleniyor...");
         await WaitForScriptTrueAsync(
@@ -115,13 +116,7 @@ public sealed partial class BAService
                 const selectors = ['#ccname', '#ccnumber', '#ccexp', '#cccvc'];
                 return selectors.every(selector => {
                     const input = document.querySelector(selector);
-                    if (!input) return false;
-                    const rect = input.getBoundingClientRect();
-                    const style = window.getComputedStyle(input);
-                    return rect.width > 0 &&
-                        rect.height > 0 &&
-                        style.display !== 'none' &&
-                        style.visibility !== 'hidden' &&
+                    return !!window.__ba?.isVisible(input) &&
                         !input.disabled;
                 });
             })();
@@ -135,14 +130,7 @@ public sealed partial class BAService
             """
             (() => {
                 const button = document.querySelector('#iyz-payment-button');
-                if (!button) return false;
-
-                const rect = button.getBoundingClientRect();
-                const style = getComputedStyle(button);
-                return rect.width > 0 &&
-                    rect.height > 0 &&
-                    style.display !== 'none' &&
-                    style.visibility !== 'hidden' &&
+                return !!window.__ba?.isVisible(button) &&
                     !button.disabled &&
                     button.getAttribute('aria-disabled') !== 'true';
             })();

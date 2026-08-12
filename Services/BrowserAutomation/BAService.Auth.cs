@@ -69,6 +69,7 @@ public sealed partial class BAService
         Report("Gömülü tarayıcıda Yolcu360 login sayfası açılıyor...");
         await NavigateAsync("https://www.yolcu360.com/login?redirect=%2F");
         await WaitForDocumentReadyAsync();
+        await EnsureJavaScriptHelpersAsync();
         await InjectStealthAndHumanMouseScriptAsync();
         await WaitForInitialPopupAndCloseAsync(TimeSpan.FromSeconds(5));
 
@@ -222,16 +223,7 @@ public sealed partial class BAService
             """
             (() => {
                 const input = document.querySelector('#sms_input');
-
-                if (!input) return false;
-
-                const rect = input.getBoundingClientRect();
-                const style = getComputedStyle(input);
-
-                return rect.width > 0 &&
-                    rect.height > 0 &&
-                    style.display !== 'none' &&
-                    style.visibility !== 'hidden';
+                return !!window.__ba?.isVisible(input);
             })();
             """,
             TimeSpan.FromSeconds(30));
@@ -243,13 +235,7 @@ public sealed partial class BAService
             """
             (() => {
                 const input = document.querySelector('#phn-input, input[type="tel"]');
-                if (!input) return false;
-                const rect = input.getBoundingClientRect();
-                const style = getComputedStyle(input);
-                return rect.width > 0 &&
-                    rect.height > 0 &&
-                    style.display !== 'none' &&
-                    style.visibility !== 'hidden' &&
+                return !!window.__ba?.isVisible(input) &&
                     !input.disabled &&
                     input.getAttribute('readonly') === null;
             })();
@@ -286,15 +272,7 @@ public sealed partial class BAService
                     const smsInput = document.querySelector('#sms_input');
                     if (!smsInput) return 'waiting';
 
-                    const rect = smsInput.getBoundingClientRect();
-                    const style = getComputedStyle(smsInput);
-
-                    const isVisible = rect.width > 0 &&
-                        rect.height > 0 &&
-                        style.display !== 'none' &&
-                        style.visibility !== 'hidden';
-
-                    return isVisible ? 'sms' : 'waiting';
+                    return window.__ba?.isVisible(smsInput) ? 'sms' : 'waiting';
                 })();
                 """);
 
@@ -318,15 +296,7 @@ public sealed partial class BAService
             """
             (() => {
                 const input = document.querySelector('#sms_input');
-                if (!input) return false;
-
-                const rect = input.getBoundingClientRect();
-                const style = getComputedStyle(input);
-
-                return rect.width > 0 &&
-                    rect.height > 0 &&
-                    style.display !== 'none' &&
-                    style.visibility !== 'hidden' &&
+                return !!window.__ba?.isVisible(input) &&
                     !input.disabled &&
                     input.getAttribute('readonly') === null;
             })();
@@ -340,15 +310,7 @@ public sealed partial class BAService
             """
             (() => {
                 const button = document.querySelector('button[data-cms-key="button_apply"]');
-                if (!button) return false;
-
-                const rect = button.getBoundingClientRect();
-                const style = getComputedStyle(button);
-
-                return rect.width > 0 &&
-                    rect.height > 0 &&
-                    style.display !== 'none' &&
-                    style.visibility !== 'hidden' &&
+                return !!window.__ba?.isVisible(button) &&
                     !button.disabled &&
                     button.getAttribute('aria-disabled') !== 'true';
             })();
@@ -380,13 +342,7 @@ public sealed partial class BAService
                     });
                 }
 
-                const rect = input.getBoundingClientRect();
-                const style = getComputedStyle(input);
-
-                const isReady = rect.width > 0 &&
-                    rect.height > 0 &&
-                    style.display !== 'none' &&
-                    style.visibility !== 'hidden' &&
+                const isReady = !!window.__ba?.isVisible(input) &&
                     !input.disabled &&
                     input.getAttribute('readonly') === null;
 
@@ -433,17 +389,7 @@ public sealed partial class BAService
             """
             (() => {
                 const button = document.querySelector('button[data-cms-key="button_apply"]');
-                if (!button) return false;
-
-                const rect = button.getBoundingClientRect();
-                const style = getComputedStyle(button);
-
-                const isVisible = rect.width > 0 &&
-                    rect.height > 0 &&
-                    style.display !== 'none' &&
-                    style.visibility !== 'hidden';
-
-                if (!isVisible) return false;
+                if (!window.__ba?.isVisible(button)) return false;
 
                 button.disabled = false;
                 button.removeAttribute('disabled');
