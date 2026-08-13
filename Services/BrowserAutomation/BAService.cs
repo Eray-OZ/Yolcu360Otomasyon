@@ -325,6 +325,7 @@ public sealed partial class BAService
 
     private void Report(string message)
     {
+        Console.WriteLine($"[BAService] {message}");
         ProgressChanged?.Invoke(message);
     }
 

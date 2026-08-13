@@ -30,6 +30,12 @@ public partial class MainWindow : Window
     private CancellationTokenSource? _pickupLocationSuggestionCts;
     private int _pickupLocationSuggestionRequestVersion;
     private bool _suppressPickupLocationSuggestionLookup;
+    private CancellationTokenSource? _flightFromSuggestionCts;
+    private CancellationTokenSource? _flightToSuggestionCts;
+    private int _flightFromSuggestionRequestVersion;
+    private int _flightToSuggestionRequestVersion;
+    private bool _suppressFlightFromSuggestionLookup;
+    private bool _suppressFlightToSuggestionLookup;
     // Extra - Location Suggestion END
     private bool _isAuthenticating;
 
@@ -78,6 +84,10 @@ public partial class MainWindow : Window
         // Extra - Location Suggestion START
         _pickupLocationSuggestionCts?.Cancel();
         _pickupLocationSuggestionCts?.Dispose();
+        _flightFromSuggestionCts?.Cancel();
+        _flightFromSuggestionCts?.Dispose();
+        _flightToSuggestionCts?.Cancel();
+        _flightToSuggestionCts?.Dispose();
         // Extra - Location Suggestion END
         await _smsReceiverService.DisposeAsync();
         await _iyzicoCallbackService.DisposeAsync();

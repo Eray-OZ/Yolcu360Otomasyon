@@ -397,6 +397,10 @@
                                 Content="Arama"
                                 Width="160"
                                 Click="SearchTabButton_Click" />
+                        <Button x:Name="FlightTabButton"
+                                Content="Uçak"
+                                Width="160"
+                                Click="FlightTabButton_Click" />
                         <Button x:Name="HistoryTabButton"
                                 Content="Geçmiş Kayıtlar"
                                 Width="180"
@@ -603,6 +607,144 @@
                                           MinHeight="420" />
                             </Border>
                         </Grid>
+                    </Border>
+
+                    <Border Grid.Row="1"
+                            Grid.RowSpan="2"
+                            x:Name="FlightPanel"
+                            IsVisible="False"
+                            Background="White"
+                            BorderBrush="#D9E2EC"
+                            BorderThickness="1"
+                            CornerRadius="10"
+                            Padding="22">
+                        <StackPanel Spacing="18">
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="Uçak Bileti Arama"
+                                           FontSize="22"
+                                           FontWeight="Bold"
+                                           Foreground="#122033" />
+                                <TextBlock Text="Uçuş araması ayrı Flight akışıyla gömülü tarayıcıda çalıştırılır."
+                                           Foreground="#5F7187" />
+                            </StackPanel>
+
+                            <TextBlock x:Name="FlightStatusTextBlock"
+                                       Text=""
+                                       VerticalAlignment="Center"
+                                       TextWrapping="Wrap"
+                                       Foreground="#132235"
+                                       FontWeight="SemiBold" />
+
+                            <Grid ColumnDefinitions="*,*"
+                                  ColumnSpacing="14">
+                                <StackPanel Spacing="6">
+                                    <TextBlock Text="Nereden?"
+                                               Foreground="#243446"
+                                               FontWeight="SemiBold" />
+                                    <TextBox x:Name="FlightFromTextBox"
+                                             PlaceholderText="İstanbul Havalimanı"
+                                             TextChanged="FlightFromTextBox_TextChanged" />
+                                    <Border x:Name="FlightFromSuggestionsPanel"
+                                            IsVisible="False"
+                                            Background="White"
+                                            BorderBrush="#D6DFEA"
+                                            BorderThickness="1"
+                                            CornerRadius="10"
+                                            Margin="0,-2,0,0"
+                                            MaxHeight="220">
+                                        <ListBox x:Name="FlightFromSuggestionsListBox"
+                                                 Background="White"
+                                                 SelectionChanged="FlightFromSuggestionsListBox_SelectionChanged">
+                                            <ListBox.ItemTemplate>
+                                                <DataTemplate x:DataType="models:LocationSuggestionItem">
+                                                    <Border Padding="10,8">
+                                                        <StackPanel Spacing="2">
+                                                            <TextBlock Text="{Binding MainText}"
+                                                                       Foreground="#132235"
+                                                                       FontWeight="SemiBold" />
+                                                            <TextBlock Text="{Binding SecondaryText}"
+                                                                       Foreground="#5F7187"
+                                                                       FontSize="12" />
+                                                        </StackPanel>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ListBox.ItemTemplate>
+                                        </ListBox>
+                                    </Border>
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="1"
+                                            Spacing="6">
+                                    <TextBlock Text="Nereye?"
+                                               Foreground="#243446"
+                                               FontWeight="SemiBold" />
+                                    <TextBox x:Name="FlightToTextBox"
+                                             PlaceholderText="Esenboğa Havalimanı"
+                                             TextChanged="FlightToTextBox_TextChanged" />
+                                    <Border x:Name="FlightToSuggestionsPanel"
+                                            IsVisible="False"
+                                            Background="White"
+                                            BorderBrush="#D6DFEA"
+                                            BorderThickness="1"
+                                            CornerRadius="10"
+                                            Margin="0,-2,0,0"
+                                            MaxHeight="220">
+                                        <ListBox x:Name="FlightToSuggestionsListBox"
+                                                 Background="White"
+                                                 SelectionChanged="FlightToSuggestionsListBox_SelectionChanged">
+                                            <ListBox.ItemTemplate>
+                                                <DataTemplate x:DataType="models:LocationSuggestionItem">
+                                                    <Border Padding="10,8">
+                                                        <StackPanel Spacing="2">
+                                                            <TextBlock Text="{Binding MainText}"
+                                                                       Foreground="#132235"
+                                                                       FontWeight="SemiBold" />
+                                                            <TextBlock Text="{Binding SecondaryText}"
+                                                                       Foreground="#5F7187"
+                                                                       FontSize="12" />
+                                                        </StackPanel>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ListBox.ItemTemplate>
+                                        </ListBox>
+                                    </Border>
+                                </StackPanel>
+                            </Grid>
+
+                            <Grid ColumnDefinitions="*,*"
+                                  ColumnSpacing="14">
+                                <StackPanel Spacing="6">
+                                    <TextBlock Text="Gidiş tarihi"
+                                               Foreground="#243446"
+                                               FontWeight="SemiBold" />
+                                    <TextBox x:Name="FlightDepartureDateTextBox"
+                                             PlaceholderText="2026-08-20" />
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="1"
+                                            Spacing="6">
+                                    <TextBlock Text="Dönüş tarihi"
+                                               Foreground="#243446"
+                                               FontWeight="SemiBold" />
+                                    <TextBox x:Name="FlightReturnDateTextBox"
+                                             PlaceholderText="Tek yön için boş bırakın" />
+                                </StackPanel>
+                            </Grid>
+
+                            <StackPanel Orientation="Horizontal"
+                                        Spacing="16">
+                                <CheckBox x:Name="FlightRoundTripCheckBox"
+                                          Content="Gidiş-Dönüş" />
+                                <CheckBox x:Name="FlightOnlyNonStopCheckBox"
+                                          Content="Sadece aktarmasız uçuşlar" />
+                            </StackPanel>
+
+                            <Button x:Name="FlightSearchButton"
+                                    Classes="primary"
+                                    Content="Uçuş Ara"
+                                    Click="FlightSearchButton_Click"
+                                    Width="160" />
+                        </StackPanel>
                     </Border>
 
                     <Border Grid.Row="1"
