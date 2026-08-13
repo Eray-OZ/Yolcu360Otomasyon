@@ -8,7 +8,7 @@ public sealed partial class BAService
     private const string Yolcu360FlightUrl = "https://www.yolcu360.com/ucak-bileti";
     private const string FlightFromInputSelector = "#inputPickUpLocation";
     private const string FlightToInputSelector = "#inputDropOffLocation";
-    private const string FlightLocationSuggestionSelector = ".search-autocomplete__item, .search-autocomplete-mobile__item, .search-autocomplete .location-item, .location-item, [role='option']";
+    private const string FlightLocationSuggestionSelector = ".search-autocomplete.w-full .search-autocomplete__item.location-item, .search-autocomplete__item.location-item, .search-autocomplete .location-item";
     private const string FlightSearchButtonSelector = "#flight_search";
     private const string FlightInputResolverScript =
         """
@@ -26,18 +26,26 @@ public sealed partial class BAService
                     attrs.includes('city');
             };
 
-            const active = document.activeElement;
-            if (active instanceof HTMLInputElement &&
-                isVisible(active) &&
-                !active.disabled &&
-                active.getAttribute('readonly') === null &&
-                looksLikeLocationInput(active)) {
-                return active;
-            }
-
             const allMatches = Array.from(document.querySelectorAll(selector));
-            const flightMatches = allMatches.filter(input => input.closest('.flight-search-bar-wrapper, .flight-search-bar__search'));
-            const selectorMatch = flightMatches.find(isVisible) || allMatches.find(isVisible);
+            const exactMatch = allMatches.find(input =>
+                input.closest('#inputPickUpLocation-label, #inputDropOffLocation-label') &&
+                isVisible(input) &&
+                !input.disabled &&
+                input.getAttribute('readonly') === null
+            );
+            if (exactMatch) return exactMatch;
+
+            const flightMatches = allMatches.filter(input =>
+                input.closest('.flight-search-bar-wrapper, .flight-search-bar__search') &&
+                isVisible(input) &&
+                !input.disabled &&
+                input.getAttribute('readonly') === null
+            );
+            const selectorMatch = flightMatches[0] || allMatches.find(input =>
+                isVisible(input) &&
+                !input.disabled &&
+                input.getAttribute('readonly') === null
+            );
             if (selectorMatch) return selectorMatch;
 
             return Array
@@ -83,7 +91,8 @@ public sealed partial class BAService
         var clicked = await EvaluateBooleanScriptAsync(
             $$"""
             (() => {
-                const container = document.querySelector(`[data-cms-key="${{{targetCmsKeyJson}}}"]`);
+                const cmsKey = {{targetCmsKeyJson}};
+                const container = document.querySelector(`[data-cms-key="${cmsKey}"]`);
                 const label = container?.querySelector('label') || container;
                 if (!window.__ba?.isVisible(label)) return false;
 
@@ -287,18 +296,31 @@ public sealed partial class BAService
                     return 7;
                 };
 
-                const items = Array
+                const visibleItems = Array
                     .from(document.querySelectorAll({{suggestionSelectorJson}}))
                     .filter(item => {
                         if (!isVisible(item) || (input && (item === input || item.contains(input)))) {
                             return false;
                         }
 
-                        const fullText = normalize(item.textContent || '');
-                        return fullText.includes(target) || target.includes(fullText);
+                        return true;
                     });
 
-                const selected = items
+                const matchingItems = visibleItems.filter(item => {
+                    const fullText = normalize(item.textContent || '');
+                    const mainText = getMainText(item);
+                    const compactText = compact(item.textContent || '');
+                    const compactTarget = compact(targetText);
+
+                    return fullText.includes(target) ||
+                        target.includes(fullText) ||
+                        mainText.includes(target) ||
+                        target.includes(mainText) ||
+                        compactText.includes(compactTarget) ||
+                        compactTarget.includes(compactText);
+                });
+
+                const selected = (matchingItems.length > 0 ? matchingItems : visibleItems)
                     .sort((a, b) => {
                         const score = getScore(a) - getScore(b);
                         if (score !== 0) return score;
@@ -312,20 +334,38 @@ public sealed partial class BAService
                     return JSON.stringify({
                         clicked: false,
                         reason: 'öneri bulunamadı',
-                        itemCount: items.length
+                        itemCount: visibleItems.length
                     });
                 }
 
-                const clickResult = window.__ba.clickLikeUser
-                    ? window.__ba.clickLikeUser(selected, {{suggestionSelectorJson}})
-                    : (selected.click(), { clicked: true, pointTargetText: '' });
+                selected.scrollIntoView({ block: 'center', inline: 'nearest' });
+                const rect = selected.getBoundingClientRect();
+                const x = rect.left + rect.width / 2;
+                const y = rect.top + rect.height / 2;
+                const pointTarget = document.elementFromPoint(x, y);
+                const targetElement = pointTarget?.closest?.({{suggestionSelectorJson}}) || pointTarget || selected;
+
+                const opts = { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y };
+                selected.dispatchEvent(new MouseEvent('mouseover', opts));
+                selected.dispatchEvent(new MouseEvent('mousemove', opts));
+                selected.dispatchEvent(new MouseEvent('mousedown', { ...opts, buttons: 1 }));
+                selected.dispatchEvent(new MouseEvent('mouseup', opts));
+                selected.dispatchEvent(new MouseEvent('click', opts));
+                if (typeof selected.click === 'function') selected.click();
+
+                const clickResult = {
+                    clicked: true,
+                    pointTargetText: (targetElement?.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 120)
+                };
 
                 return JSON.stringify({
                     clicked: !!clickResult.clicked,
                     selectedText: (selected.textContent || '').replace(/\s+/g, ' ').trim(),
                     pointTargetText: clickResult.pointTargetText || '',
                     inputValue: input?.value || '',
-                    remainingSuggestions: document.querySelectorAll({{suggestionSelectorJson}}).length
+                    remainingSuggestions: document.querySelectorAll({{suggestionSelectorJson}}).length,
+                    visibleCount: visibleItems.length,
+                    matchingCount: matchingItems.length
                 });
             })();
             """);
@@ -412,10 +452,13 @@ public sealed partial class BAService
                     """);
 
                 var summary = (lastResult ?? string.Empty).Trim('"');
-                Report($"{fieldName} önerileri: {summary}");
-
-                return summary.Contains("\"matching\":", StringComparison.OrdinalIgnoreCase) &&
+                var hasMatch = summary.Contains("\"matching\":", StringComparison.OrdinalIgnoreCase) &&
                     !summary.Contains("\"matching\":0", StringComparison.OrdinalIgnoreCase);
+
+                if (hasMatch)
+                    Report($"{fieldName} önerileri bulundu: {summary}");
+
+                return hasMatch;
             },
             timeout,
             TimeSpan.FromMilliseconds(350));
@@ -435,8 +478,9 @@ public sealed partial class BAService
         var opened = await EvaluateBooleanScriptAsync(
             $$"""
             (() => {
+                const cmsKey = {{triggerCmsKeyJson}};
                 const trigger = Array
-                    .from(document.querySelectorAll(`[triggerlabelcmskey="${{{triggerCmsKeyJson}}}"], [modaltitlecmskey="${{{triggerCmsKeyJson}}}"]`))
+                    .from(document.querySelectorAll(`[triggerlabelcmskey="${cmsKey}"], [modaltitlecmskey="${cmsKey}"]`))
                     .find(window.__ba?.isVisible || (() => false));
 
                 if (!trigger) return false;

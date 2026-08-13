@@ -39,11 +39,14 @@ public partial class MainWindow : Window
         if (FlightFromSuggestionsListBox.SelectedItem is not LocationSuggestionItem suggestion)
             return;
 
+        _flightFromSuggestionRequestVersion++;
+        CancelPickupLocationSuggestionRequest(_flightFromSuggestionCts);
+        _flightFromSuggestionCts = null;
         _suppressFlightFromSuggestionLookup = true;
         FlightFromTextBox.Text = GetFlightSuggestionText(suggestion);
-        _suppressFlightFromSuggestionLookup = false;
 
         HideFlightLocationSuggestions(FlightFromSuggestionsPanel, FlightFromSuggestionsListBox);
+        Dispatcher.UIThread.Post(() => _suppressFlightFromSuggestionLookup = false);
     }
 
     private void FlightToSuggestionsListBox_SelectionChanged(object? sender, SelectionChangedEventArgs e)
@@ -51,11 +54,14 @@ public partial class MainWindow : Window
         if (FlightToSuggestionsListBox.SelectedItem is not LocationSuggestionItem suggestion)
             return;
 
+        _flightToSuggestionRequestVersion++;
+        CancelPickupLocationSuggestionRequest(_flightToSuggestionCts);
+        _flightToSuggestionCts = null;
         _suppressFlightToSuggestionLookup = true;
         FlightToTextBox.Text = GetFlightSuggestionText(suggestion);
-        _suppressFlightToSuggestionLookup = false;
 
         HideFlightLocationSuggestions(FlightToSuggestionsPanel, FlightToSuggestionsListBox);
+        Dispatcher.UIThread.Post(() => _suppressFlightToSuggestionLookup = false);
     }
 
     private async Task LoadFlightLocationSuggestionsAsync(

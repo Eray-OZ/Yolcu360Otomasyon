@@ -47,9 +47,16 @@ public sealed class DynamicCollectionService
         await baService.SelectTimeAsync(1, filter.ReturnTime);
         await baService.ClickSearchButtonAsync();
         await baService.WaitForSearchResultsAsync();
-        await baService.ApplyResultFiltersAsync(filter);
 
         var refreshedResults = await baService.ReadSearchResultsAsync();
+        if (refreshedResults.Count == 0)
+            throw new InvalidOperationException("Güncel aramada sonuç bulunamadı. Eski araç listesi korundu.");
+
+        await baService.ApplyResultFiltersAsync(filter);
+        refreshedResults = await baService.ReadSearchResultsAsync();
+        if (refreshedResults.Count == 0)
+            throw new InvalidOperationException("Filtrelerden sonra sonuç bulunamadı. Eski araç listesi korundu.");
+
         await _databaseService.ReplaceCollectionVehiclesAsync(koleksiyonId, kullaniciId, refreshedResults);
 
         return refreshedResults;
