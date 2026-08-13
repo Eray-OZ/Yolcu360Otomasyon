@@ -31,6 +31,8 @@ public sealed class DynamicCollectionService
         if (filter is null)
             throw new InvalidOperationException("Güncellenecek koleksiyon bulunamadı.");
 
+        filter = NormalizeRefreshDateRange(filter);
+
         if (!string.IsNullOrWhiteSpace(sessionStatePath))
             await baService.RestoreSessionAsync(sessionStatePath);
 
@@ -47,6 +49,30 @@ public sealed class DynamicCollectionService
         await _databaseService.ReplaceCollectionVehiclesAsync(koleksiyonId, kullaniciId, refreshedResults);
 
         return refreshedResults;
+    }
+
+    private static SearchFilter NormalizeRefreshDateRange(SearchFilter filter)
+    {
+        var today = DateTime.Today;
+        var pickupDate = filter.PickupDate.Date;
+        var returnDate = filter.ReturnDate.Date;
+
+        if (returnDate < today)
+            throw new InvalidOperationException("Bu koleksiyonun tarih aralığı geçmişte kaldığı için güncellenemez.");
+
+        if (pickupDate < today)
+            pickupDate = today;
+
+        return new SearchFilter
+        {
+            PickupLocation = filter.PickupLocation,
+            PickupDate = pickupDate,
+            ReturnDate = returnDate,
+            PickupTime = filter.PickupTime,
+            ReturnTime = filter.ReturnTime,
+            TransmissionType = filter.TransmissionType,
+            FuelType = filter.FuelType
+        };
     }
 }
 // Extra - Dynamic Collections END

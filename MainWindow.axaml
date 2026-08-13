@@ -937,7 +937,7 @@
                                               SelectionMode="Extended"
                                               SelectionChanged="CollectionsDataGrid_SelectionChanged"
                                               DoubleTapped="CollectionsDataGrid_DoubleTapped"
-                                              MinHeight="280" />
+                                              Height="360" />
                                 </Border>
 
                                 <StackPanel Grid.Row="3"

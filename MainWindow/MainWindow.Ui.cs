@@ -101,6 +101,15 @@ public partial class MainWindow : Window
         PaymentsTabButton.Classes.Set("primary", false);
     }
 
+    private void KeepBrowserAliveOffscreen()
+    {
+        BrowserSectionPanel.IsVisible = true;
+        BrowserSectionPanel.Opacity = 1;
+        BrowserSectionPanel.IsHitTestVisible = false;
+        BrowserSectionPanel.Margin = new Avalonia.Thickness(-10000, 0, 10000, 0);
+        BrowserSectionPanel.ZIndex = 0;
+    }
+
     private void ResetBrowserPanelVisualState()
     {
         BrowserSectionPanel.Opacity = 1;

@@ -57,6 +57,7 @@ public partial class MainWindow : Window
         }
 
         SetCollectionRefreshButtonsEnabled(false);
+        SetCollectionRefreshButtonText("Güncelleniyor...");
         var collection = _selectedCollection;
         var wasVehiclesViewVisible = VehiclesViewPanel.IsVisible;
 
@@ -64,7 +65,7 @@ public partial class MainWindow : Window
         {
             HistoryStatusTextBlock.Text = $"{collection.OzelAd} güncelleniyor...";
             VehicleStatusTextBlock.Text = $"{collection.OzelAd} için güncel araçlar getiriliyor...";
-            ShowBrowserSection();
+            KeepBrowserAliveOffscreen();
 
             var baService = CreateBAService();
             baService.ProgressChanged += message =>
@@ -117,6 +118,7 @@ public partial class MainWindow : Window
         finally
         {
             SetCollectionRefreshButtonsEnabled(true);
+            SetCollectionRefreshButtonText("Güncelle");
         }
     }
     // Extra - Dynamic Collections END
@@ -181,6 +183,12 @@ public partial class MainWindow : Window
         DeleteCollectionButton.IsEnabled = enabled;
         ExportPngButton.IsEnabled = enabled;
         ExportPngButtonVehicles.IsEnabled = enabled;
+    }
+
+    private void SetCollectionRefreshButtonText(string text)
+    {
+        RefreshCollectionButton.Content = text;
+        RefreshCollectionButtonVehicles.Content = text;
     }
     // Extra - Dynamic Collections END
 
