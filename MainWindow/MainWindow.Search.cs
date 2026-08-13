@@ -108,31 +108,29 @@ public partial class MainWindow : Window
 
         try
         {
-            if (!DateTime.TryParseExact(
-                    PickupDateTextBox.Text?.Trim(),
-                    "yyyy-MM-dd",
-                    CultureInfo.InvariantCulture,
-                    DateTimeStyles.None,
-                    out var pickupDate)
-                || !DateTime.TryParseExact(
-                    ReturnDateTextBox.Text?.Trim(),
-                    "yyyy-MM-dd",
-                    CultureInfo.InvariantCulture,
-                    DateTimeStyles.None,
-                    out var returnDate))
+            var pickupDate = PickupDatePicker.SelectedDate?.Date;
+            var returnDate = ReturnDatePicker.SelectedDate?.Date;
+
+            if (pickupDate is null || returnDate is null)
             {
-                SearchStatusTextBlock.Text = "Tarih formatı gecersiz. Ornek: 2026-08-10";
+                SearchStatusTextBlock.Text = "Alış ve dönüş tarihi seçilmelidir.";
                 return;
             }
 
-            var pickupTime = PickupTimeTextBox.Text?.Trim() ?? "10:00";
-            var returnTime = ReturnTimeTextBox.Text?.Trim() ?? "18:00";
+            var pickupTime = GetComboBoxTag(PickupTimeComboBox);
+            var returnTime = GetComboBoxTag(ReturnTimeComboBox);
+
+            if (string.IsNullOrWhiteSpace(pickupTime) || string.IsNullOrWhiteSpace(returnTime))
+            {
+                SearchStatusTextBlock.Text = "Alış ve dönüş saati seçilmelidir.";
+                return;
+            }
 
             var filter = new SearchFilter
             {
                 PickupLocation = PickupLocationTextBox.Text?.Trim() ?? string.Empty,
-                PickupDate = pickupDate.Date,
-                ReturnDate = returnDate.Date,
+                PickupDate = pickupDate.Value.Date,
+                ReturnDate = returnDate.Value.Date,
                 PickupTime = pickupTime,
                 ReturnTime = returnTime,
                 TransmissionType = GetComboBoxTag(TransmissionComboBox),

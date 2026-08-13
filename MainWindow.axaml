@@ -56,23 +56,31 @@
             <Setter Property="BorderBrush" Value="#0F62FE" />
         </Style>
 
-        <Style Selector="DatePicker">
-            <Setter Property="MinHeight" Value="42" />
-            <Setter Property="Background" Value="White" />
+        <Style Selector="CalendarDatePicker.search-picker">
+            <Setter Property="MinHeight" Value="38" />
+            <Setter Property="Background" Value="Transparent" />
             <Setter Property="Foreground" Value="#132235" />
-            <Setter Property="BorderBrush" Value="#D6DFEA" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="CornerRadius" Value="10" />
-            <Setter Property="Padding" Value="12,8" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Padding" Value="0,7" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="FocusAdorner" Value="{x:Null}" />
         </Style>
 
-        <Style Selector="DatePicker:focus">
-            <Setter Property="Background" Value="White" />
+        <Style Selector="CalendarDatePicker.search-picker:focus">
+            <Setter Property="Background" Value="Transparent" />
             <Setter Property="Foreground" Value="#132235" />
-            <Setter Property="BorderBrush" Value="#0F62FE" />
+            <Setter Property="BorderBrush" Value="Transparent" />
         </Style>
 
-        <Style Selector="DatePicker TextBlock">
+        <Style Selector="CalendarDatePicker.search-picker:pointerover">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="#132235" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+        </Style>
+
+        <Style Selector="CalendarDatePicker.search-picker TextBlock">
             <Setter Property="Foreground" Value="#132235" />
         </Style>
 
@@ -128,6 +136,27 @@
         <Style Selector="DatePickerPresenter">
             <Setter Property="Background" Value="White" />
             <Setter Property="BorderBrush" Value="#D6DFEA" />
+        </Style>
+
+        <Style Selector="ComboBox.search-picker">
+            <Setter Property="MinHeight" Value="38" />
+            <Setter Property="Background" Value="White" />
+            <Setter Property="Foreground" Value="#132235" />
+            <Setter Property="BorderBrush" Value="#D6DFEA" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Padding" Value="10,7" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+        </Style>
+
+        <Style Selector="ComboBox.search-picker:focus">
+            <Setter Property="Background" Value="White" />
+            <Setter Property="Foreground" Value="#132235" />
+            <Setter Property="BorderBrush" Value="#0F62FE" />
+        </Style>
+
+        <Style Selector="ComboBox.search-picker TextBlock">
+            <Setter Property="Foreground" Value="#132235" />
         </Style>
 
         <Style Selector="PopupRoot">
@@ -394,11 +423,11 @@
                                 Spacing="10">
                         <Button x:Name="SearchTabButton"
                                 Classes="primary"
-                                Content="Arama"
+                                Content="Araç Kirala"
                                 Width="160"
                                 Click="SearchTabButton_Click" />
                         <Button x:Name="FlightTabButton"
-                                Content="Uçak"
+                                Content="Uçak Bileti"
                                 Width="160"
                                 Click="FlightTabButton_Click" />
                         <Button x:Name="HistoryTabButton"
@@ -443,6 +472,8 @@
                                     <!-- Extra - Location Suggestion START -->
                                     <TextBox x:Name="PickupLocationTextBox"
                                              PlaceholderText="Düzce"
+                                             Width="430"
+                                             HorizontalAlignment="Left"
                                              TextChanged="PickupLocationTextBox_TextChanged" />
                                     <Border x:Name="PickupLocationSuggestionsPanel"
                                             IsVisible="False"
@@ -451,6 +482,8 @@
                                             BorderThickness="1"
                                             CornerRadius="10"
                                             Margin="0,-2,0,0"
+                                            Width="430"
+                                            HorizontalAlignment="Left"
                                             MaxHeight="220">
                                         <ListBox x:Name="PickupLocationSuggestionsListBox"
                                                  Background="White"
@@ -474,43 +507,58 @@
                                     <!-- Extra - Location Suggestion END -->
                                 </StackPanel>
 
-                                <Grid ColumnDefinitions="*,*"
-                                      ColumnSpacing="14">
-                                    <StackPanel Spacing="6">
-                                        <TextBlock Text="Alış tarihi"
-                                                   Foreground="#243446"
-                                                   FontWeight="SemiBold" />
-                                        <TextBox x:Name="PickupDateTextBox"
-                                                 PlaceholderText="2026-08-10" />
+                                <Grid ColumnDefinitions="Auto,Auto"
+                                      ColumnSpacing="75"
+                                      HorizontalAlignment="Left">
+                                    <StackPanel Spacing="14">
+                                        <StackPanel Spacing="6">
+                                            <TextBlock Text="Alış tarihi"
+                                                       Foreground="#243446"
+                                                       FontWeight="SemiBold" />
+                                            <CalendarDatePicker x:Name="PickupDatePicker"
+                                                                Classes="search-picker"
+                                                                Width="118"
+                                                                FlowDirection="RightToLeft"
+                                                                HorizontalAlignment="Left"
+                                                                Height="38" />
+                                        </StackPanel>
+
+                                        <StackPanel Spacing="6">
+                                            <TextBlock Text="Alış saati"
+                                                       Foreground="#243446"
+                                                       FontWeight="SemiBold" />
+                                            <ComboBox x:Name="PickupTimeComboBox"
+                                                      Classes="search-picker"
+                                                      Width="92"
+                                                      HorizontalAlignment="Left"
+                                                      Height="38" />
+                                        </StackPanel>
                                     </StackPanel>
 
                                     <StackPanel Grid.Column="1"
-                                                Spacing="6">
-                                        <TextBlock Text="Dönüş tarihi"
-                                                   Foreground="#243446"
-                                                   FontWeight="SemiBold" />
-                                        <TextBox x:Name="ReturnDateTextBox"
-                                                 PlaceholderText="2026-08-12" />
-                                    </StackPanel>
-                                </Grid>
+                                                Spacing="14">
+                                        <StackPanel Spacing="6">
+                                            <TextBlock Text="Dönüş tarihi"
+                                                       Foreground="#243446"
+                                                       FontWeight="SemiBold" />
+                                            <CalendarDatePicker x:Name="ReturnDatePicker"
+                                                                Classes="search-picker"
+                                                                Width="118"
+                                                                FlowDirection="RightToLeft"
+                                                                HorizontalAlignment="Left"
+                                                                Height="38" />
+                                        </StackPanel>
 
-                                <Grid ColumnDefinitions="*,*"
-                                      ColumnSpacing="14">
-                                    <StackPanel Spacing="6">
-                                        <TextBlock Text="Alış saati"
-                                                   Foreground="#243446"
-                                                   FontWeight="SemiBold" />
-                                        <TextBox x:Name="PickupTimeTextBox"
-                                                 PlaceholderText="10:00" />
-                                    </StackPanel>
-
-                                    <StackPanel Grid.Column="1"
-                                                Spacing="6">
-                                        <TextBlock Text="Dönüş saati"
-                                                   Foreground="#243446"
-                                                   FontWeight="SemiBold" />
-                                        <TextBox x:Name="ReturnTimeTextBox"
-                                                 PlaceholderText="18:00" />
+                                        <StackPanel Spacing="6">
+                                            <TextBlock Text="Dönüş saati"
+                                                       Foreground="#243446"
+                                                       FontWeight="SemiBold" />
+                                            <ComboBox x:Name="ReturnTimeComboBox"
+                                                      Classes="search-picker"
+                                                      Width="92"
+                                                      HorizontalAlignment="Left"
+                                                      Height="38" />
+                                        </StackPanel>
                                     </StackPanel>
                                 </Grid>
 

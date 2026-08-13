@@ -46,10 +46,12 @@ public partial class MainWindow : Window
         _dynamicCollectionService = new DynamicCollectionService(_databaseService);
         // Extra - Dynamic Collections END
         _iyzicoPaymentService = new IyzicoPaymentService(AppSettings.GetIyzicoSettings(), _iyzicoCallbackService);
-        PickupDateTextBox.Text = DateTime.Today.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
-        ReturnDateTextBox.Text = DateTime.Today.AddDays(2).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
-        PickupTimeTextBox.Text = "10:00";
-        ReturnTimeTextBox.Text = "18:00";
+        PickupDatePicker.DisplayDateStart = DateTime.Today;
+        ReturnDatePicker.DisplayDateStart = DateTime.Today;
+        PickupDatePicker.SelectedDate = DateTime.Today;
+        ReturnDatePicker.SelectedDate = DateTime.Today.AddDays(2);
+        InitializeTimeComboBox(PickupTimeComboBox, "10:00");
+        InitializeTimeComboBox(ReturnTimeComboBox, "18:00");
         ConfigureResultsGrid();
         ConfigureCollectionsGrid();
         ConfigurePaymentsGrid();
@@ -59,6 +61,28 @@ public partial class MainWindow : Window
 
         _activeUser = null;
         ShowLoginView();
+    }
+
+    private static void InitializeTimeComboBox(ComboBox comboBox, string selectedTime)
+    {
+        comboBox.Items.Clear();
+
+        for (var hour = 0; hour < 24; hour++)
+        {
+            foreach (var minute in new[] { 0, 30 })
+            {
+                var time = $"{hour:00}:{minute:00}";
+                comboBox.Items.Add(new ComboBoxItem
+                {
+                    Content = time,
+                    Tag = time
+                });
+            }
+        }
+
+        comboBox.SelectedItem = comboBox.Items
+            .OfType<ComboBoxItem>()
+            .FirstOrDefault(item => item.Tag?.ToString() == selectedTime);
     }
 
     private void SetNavigationEnabled(bool enabled)
