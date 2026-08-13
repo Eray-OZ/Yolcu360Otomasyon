@@ -84,6 +84,23 @@
             <Setter Property="Foreground" Value="#132235" />
         </Style>
 
+        <Style Selector="CalendarDatePicker.search-picker /template/ Button">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="FocusAdorner" Value="{x:Null}" />
+        </Style>
+
+        <Style Selector="CalendarDatePicker.search-picker /template/ Button:pointerover">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+        </Style>
+
+        <Style Selector="CalendarDatePicker.search-picker /template/ Button:pressed">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+        </Style>
+
         <Style Selector="Calendar">
             <Setter Property="Background" Value="White" />
             <Setter Property="Foreground" Value="#132235" />
@@ -447,7 +464,10 @@
                             BorderThickness="1"
                             CornerRadius="10"
                             Padding="22">
-                        <StackPanel Spacing="18">
+                        <Grid ColumnDefinitions="Auto,*"
+                              ColumnSpacing="26">
+                        <StackPanel Grid.Column="0"
+                                    Spacing="18">
                             <StackPanel Spacing="4">
                                 <TextBlock Text="Arama ve Filtreleme"
                                            FontSize="22"
@@ -515,12 +535,29 @@
                                             <TextBlock Text="Alış tarihi"
                                                        Foreground="#243446"
                                                        FontWeight="SemiBold" />
-                                            <CalendarDatePicker x:Name="PickupDatePicker"
-                                                                Classes="search-picker"
-                                                                Width="118"
-                                                                FlowDirection="RightToLeft"
-                                                                HorizontalAlignment="Left"
-                                                                Height="38" />
+                                            <Grid>
+                                            <Border x:Name="PickupDateBox"
+                                                    Width="142"
+                                                    Height="38"
+                                                    Background="White"
+                                                    BorderBrush="#D6DFEA"
+                                                    BorderThickness="1"
+                                                    CornerRadius="8"
+                                                    PointerPressed="PickupDateBox_PointerPressed">
+                                                <TextBlock x:Name="PickupDateTextBlock"
+                                                           VerticalAlignment="Center"
+                                                           Margin="12,0"
+                                                           Foreground="#132235"
+                                                           FontSize="16" />
+                                            </Border>
+                                                <CalendarDatePicker x:Name="PickupDatePicker"
+                                                                    Classes="search-picker"
+                                                                    Width="1"
+                                                                    HorizontalAlignment="Left"
+                                                                    Height="1"
+                                                                    Opacity="0"
+                                                                    SelectedDateChanged="SearchDatePicker_SelectedDateChanged" />
+                                            </Grid>
                                         </StackPanel>
 
                                         <StackPanel Spacing="6">
@@ -541,12 +578,29 @@
                                             <TextBlock Text="Dönüş tarihi"
                                                        Foreground="#243446"
                                                        FontWeight="SemiBold" />
-                                            <CalendarDatePicker x:Name="ReturnDatePicker"
-                                                                Classes="search-picker"
-                                                                Width="118"
-                                                                FlowDirection="RightToLeft"
-                                                                HorizontalAlignment="Left"
-                                                                Height="38" />
+                                            <Grid>
+                                            <Border x:Name="ReturnDateBox"
+                                                    Width="142"
+                                                    Height="38"
+                                                    Background="White"
+                                                    BorderBrush="#D6DFEA"
+                                                    BorderThickness="1"
+                                                    CornerRadius="8"
+                                                    PointerPressed="ReturnDateBox_PointerPressed">
+                                                <TextBlock x:Name="ReturnDateTextBlock"
+                                                           VerticalAlignment="Center"
+                                                           Margin="12,0"
+                                                           Foreground="#132235"
+                                                           FontSize="16" />
+                                            </Border>
+                                                <CalendarDatePicker x:Name="ReturnDatePicker"
+                                                                    Classes="search-picker"
+                                                                    Width="1"
+                                                                    HorizontalAlignment="Left"
+                                                                    Height="1"
+                                                                    Opacity="0"
+                                                                    SelectedDateChanged="SearchDatePicker_SelectedDateChanged" />
+                                            </Grid>
                                         </StackPanel>
 
                                         <StackPanel Spacing="6">
@@ -600,55 +654,56 @@
                                     Click="SearchButton_Click"
                                     Width="160" />
                         </StackPanel>
-                    </Border>
 
-                    <Border Grid.Row="2"
-                            x:Name="SearchResultsPanel"
-                            IsVisible="False"
-                            Background="White"
-                            BorderBrush="#D9E2EC"
-                            BorderThickness="1"
-                            CornerRadius="10"
-                            Padding="22">
-                        <Grid RowDefinitions="Auto,Auto,*"
-                              RowSpacing="16">
-                            <StackPanel Spacing="4">
-                                <TextBlock Text="Arama Sonuçları"
-                                           FontSize="22"
-                                           FontWeight="Bold"
-                                           Foreground="#122033" />
-                                <TextBlock Text="Liste doğrudan tarayıcıdan okunan sonuçlarla güncellenir."
-                                           Foreground="#5F7187" />
-                            </StackPanel>
+                        <Border Grid.Column="1"
+                                x:Name="SearchResultsPanel"
+                                IsVisible="False"
+                                Background="White"
+                                BorderBrush="#D9E2EC"
+                                BorderThickness="1"
+                                CornerRadius="10"
+                                Padding="18">
+                            <Grid RowDefinitions="Auto,Auto,*"
+                                  RowSpacing="14">
+                                <StackPanel Spacing="4">
+                                    <TextBlock Text="Arama Sonuçları"
+                                               FontSize="20"
+                                               FontWeight="Bold"
+                                               Foreground="#122033" />
+                                    <TextBlock Text="Liste doğrudan tarayıcıdan okunan sonuçlarla güncellenir."
+                                               Foreground="#5F7187" />
+                                </StackPanel>
 
-                            <Grid Grid.Row="1"
-                                  ColumnDefinitions="*,Auto"
-                                  ColumnSpacing="12">
-                                <TextBox x:Name="CollectionNameTextBox"
-                                         PlaceholderText="Kaydetmek için özel isim girin" />
-                                <Button Grid.Column="1"
-                                        x:Name="SaveResultsButton"
-                                        Classes="primary"
-                                        Content="Kaydet"
-                                        Width="140"
-                                        Click="SaveResultsButton_Click" />
+                                <Grid Grid.Row="1"
+                                      ColumnDefinitions="*,Auto"
+                                      ColumnSpacing="10">
+                                    <TextBox x:Name="CollectionNameTextBox"
+                                             PlaceholderText="Kaydetmek için özel isim girin" />
+                                    <Button Grid.Column="1"
+                                            x:Name="SaveResultsButton"
+                                            Classes="primary"
+                                            Content="Kaydet"
+                                            Width="120"
+                                            Click="SaveResultsButton_Click" />
+                                </Grid>
+
+                                <Border Grid.Row="2"
+                                        Background="#FBFDFF"
+                                        BorderBrush="#E2EAF2"
+                                        BorderThickness="1"
+                                        CornerRadius="10"
+                                        Padding="0">
+                                    <DataGrid x:Name="ResultsDataGrid"
+                                              AutoGenerateColumns="True"
+                                              IsReadOnly="True"
+                                              CanUserResizeColumns="True"
+                                              CanUserSortColumns="True"
+                                              VerticalAlignment="Stretch"
+                                              HorizontalAlignment="Stretch"
+                                              Height="420" />
+                                </Border>
                             </Grid>
-
-                            <Border Grid.Row="2"
-                                    Background="#FBFDFF"
-                                    BorderBrush="#E2EAF2"
-                                    BorderThickness="1"
-                                    CornerRadius="10"
-                                    Padding="0">
-                                <DataGrid x:Name="ResultsDataGrid"
-                                          AutoGenerateColumns="True"
-                                          IsReadOnly="True"
-                                          CanUserResizeColumns="True"
-                                          CanUserSortColumns="True"
-                                          VerticalAlignment="Stretch"
-                                          HorizontalAlignment="Stretch"
-                                          MinHeight="420" />
-                            </Border>
+                        </Border>
                         </Grid>
                     </Border>
 

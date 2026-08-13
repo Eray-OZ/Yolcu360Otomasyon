@@ -50,6 +50,7 @@ public partial class MainWindow : Window
         ReturnDatePicker.DisplayDateStart = DateTime.Today;
         PickupDatePicker.SelectedDate = DateTime.Today;
         ReturnDatePicker.SelectedDate = DateTime.Today.AddDays(2);
+        UpdateSearchDateTexts();
         InitializeTimeComboBox(PickupTimeComboBox, "10:00");
         InitializeTimeComboBox(ReturnTimeComboBox, "18:00");
         ConfigureResultsGrid();

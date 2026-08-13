@@ -1,5 +1,6 @@
 using System.Globalization;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
 using Yolcu360Otomasyon.Models;
@@ -9,6 +10,35 @@ namespace Yolcu360Otomasyon;
 
 public partial class MainWindow : Window
 {
+    private void PickupDateBox_PointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        PickupDatePicker.IsDropDownOpen = true;
+        e.Handled = true;
+    }
+
+    private void ReturnDateBox_PointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        ReturnDatePicker.IsDropDownOpen = true;
+        e.Handled = true;
+    }
+
+    private void SearchDatePicker_SelectedDateChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        UpdateSearchDateTexts();
+    }
+
+    private void UpdateSearchDateTexts()
+    {
+        PickupDateTextBlock.Text = FormatSearchDate(PickupDatePicker.SelectedDate);
+        ReturnDateTextBlock.Text = FormatSearchDate(ReturnDatePicker.SelectedDate);
+    }
+
+    private static string FormatSearchDate(DateTime? date)
+    {
+        return date?.ToString("dd.MM.yyyy", CultureInfo.InvariantCulture) ?? string.Empty;
+    }
+
+
     // Extra - Location Suggestion START
     private async void PickupLocationTextBox_TextChanged(object? sender, TextChangedEventArgs e)
     {
