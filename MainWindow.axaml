@@ -409,11 +409,6 @@
                                 Content="Ödemeler"
                                 Width="160"
                                 Click="PaymentsTabButton_Click" />
-                        <Button x:Name="NativeWebViewTestButton"
-                                Content="Tarayıcı"
-                                IsVisible="False"
-                                Width="160"
-                                Click="NativeWebViewTestButton_Click" />
                     </StackPanel>
 
                     <Border Grid.Row="1"

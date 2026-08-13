@@ -274,26 +274,6 @@ public partial class MainWindow : Window
         return (comboBox.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? string.Empty;
     }
 
-    private async void NativeWebViewTestButton_Click(object? sender, RoutedEventArgs e)
-    {
-        if (_isAuthenticating) return;
-        try
-        {
-            ShowBrowserSection();
-            SearchStatusTextBlock.Text = "Gömülü tarayıcı açılıyor...";
-
-            var baService = CreateBAService();
-            await baService.OpenYolcu360HomeAsync();
-
-            var title = await baService.GetTitleAsync();
-            SearchStatusTextBlock.Text = $"Gömülü tarayıcı hazır. Title: {title}";
-        }
-        catch (Exception ex)
-        {
-            SearchStatusTextBlock.Text = $"Gömülü tarayıcı hatası: {ex.Message}";
-        }
-    }
-
     private BAService CreateBAService()
     {
         var baService = new BAService(EmbeddedBrowser);

@@ -67,7 +67,6 @@ public partial class MainWindow : Window
         SearchTabButton.IsEnabled = enabled;
         HistoryTabButton.IsEnabled = enabled;
         PaymentsTabButton.IsEnabled = enabled;
-        NativeWebViewTestButton.IsEnabled = enabled;
         if (LogoutButton is not null)
             LogoutButton.IsEnabled = enabled;
     }

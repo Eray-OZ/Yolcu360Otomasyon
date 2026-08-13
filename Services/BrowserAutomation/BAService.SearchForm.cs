@@ -426,13 +426,10 @@ public sealed partial class BAService
 
                 btn.scrollIntoView({ block: 'center', inline: 'center' });
 
-                const rect = btn.getBoundingClientRect();
                 const style = getComputedStyle(btn);
+                const isVisible = window.__ba?.isVisible || (() => false);
                 const isClickable =
-                    rect.width > 0 &&
-                    rect.height > 0 &&
-                    style.display !== 'none' &&
-                    style.visibility !== 'hidden' &&
+                    isVisible(btn) &&
                     style.pointerEvents !== 'none' &&
                     !btn.disabled &&
                     btn.getAttribute('aria-disabled') !== 'true';
@@ -445,6 +442,7 @@ public sealed partial class BAService
                     });
                 }
 
+                const rect = btn.getBoundingClientRect();
                 const x = rect.left + rect.width / 2;
                 const y = rect.top + rect.height / 2;
                 const eventOptions = {

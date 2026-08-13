@@ -19,8 +19,6 @@ public partial class MainWindow : Window
         FlightTabButton.Classes.Set("primary", false);
         HistoryTabButton.Classes.Set("primary", false);
         PaymentsTabButton.Classes.Set("primary", false);
-        NativeWebViewTestButton.Classes.Set("primary", false);
-        NativeWebViewTestButton.IsVisible = false;
     }
 
     private void ShowHistorySection()
@@ -36,8 +34,6 @@ public partial class MainWindow : Window
         FlightTabButton.Classes.Set("primary", false);
         HistoryTabButton.Classes.Set("primary", true);
         PaymentsTabButton.Classes.Set("primary", false);
-        NativeWebViewTestButton.Classes.Set("primary", false);
-        NativeWebViewTestButton.IsVisible = false;
     }
 
     private void ShowPaymentsSection()
@@ -53,8 +49,6 @@ public partial class MainWindow : Window
         FlightTabButton.Classes.Set("primary", false);
         HistoryTabButton.Classes.Set("primary", false);
         PaymentsTabButton.Classes.Set("primary", true);
-        NativeWebViewTestButton.Classes.Set("primary", false);
-        NativeWebViewTestButton.IsVisible = false;
     }
 
     private void ShowPaymentCheckoutSection()
@@ -70,8 +64,6 @@ public partial class MainWindow : Window
         FlightTabButton.Classes.Set("primary", false);
         HistoryTabButton.Classes.Set("primary", false);
         PaymentsTabButton.Classes.Set("primary", true);
-        NativeWebViewTestButton.Classes.Set("primary", false);
-        NativeWebViewTestButton.IsVisible = false;
     }
 
     private void ShowBrowserSection()
@@ -87,8 +79,6 @@ public partial class MainWindow : Window
         FlightTabButton.Classes.Set("primary", false);
         HistoryTabButton.Classes.Set("primary", false);
         PaymentsTabButton.Classes.Set("primary", false);
-        NativeWebViewTestButton.Classes.Set("primary", true);
-        NativeWebViewTestButton.IsVisible = true;
     }
 
     private void ShowFlightSection()
@@ -104,8 +94,6 @@ public partial class MainWindow : Window
         FlightTabButton.Classes.Set("primary", true);
         HistoryTabButton.Classes.Set("primary", false);
         PaymentsTabButton.Classes.Set("primary", false);
-        NativeWebViewTestButton.Classes.Set("primary", false);
-        NativeWebViewTestButton.IsVisible = false;
     }
 
     private void ConfigureResultsGrid()

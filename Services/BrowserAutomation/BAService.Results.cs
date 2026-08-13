@@ -65,14 +65,9 @@ public sealed partial class BAService
                 const filterContainer = document.querySelector('.filter-container');
                 if (!isVisible(filterContainer)) return false;
 
-                const filterControl = filterContainer.querySelector(
-                    'label[name^="filter-transmission."], ' +
-                    'label[name^="filter-fuel."], ' +
-                    'input[id^="filter-transmission."], ' +
-                    'input[id^="filter-fuel."]'
-                );
-
-                return isVisible(filterControl);
+                return Array
+                    .from(filterContainer.querySelectorAll('label[name^="filter-transmission."], label[name^="filter-fuel."]'))
+                    .some(isVisible);
             })();
             """,
             timeout);
@@ -102,8 +97,7 @@ public sealed partial class BAService
                 const matchesTarget = text =>
                     normalizedTargets.some(target =>
                         text === target ||
-                        text.startsWith(target + ' ') ||
-                        text.includes(target)
+                        text.startsWith(target + ' ')
                     );
 
                 const match = labels.find(label => matchesTarget(normalize(label.textContent || '')));
@@ -136,8 +130,11 @@ public sealed partial class BAService
         var isReady = await WaitForScriptTrueOrTimeoutAsync(
             """
             (() => {
-                const cards = Array.from(document.querySelectorAll('#car_card_list .car-card'));
-                return cards.some(window.__ba?.isVisible || (() => false));
+                const isVisible = window.__ba?.isVisible || (() => false);
+
+                return Array
+                    .from(document.querySelectorAll('#car_card_list .car-card'))
+                    .some(isVisible);
             })();
             """,
             timeout ?? TimeSpan.FromSeconds(30),
