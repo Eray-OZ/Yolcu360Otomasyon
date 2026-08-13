@@ -332,98 +332,51 @@ public sealed partial class BAService
 
         Report($"Saat seçimi yapılıyor (index {timePickerIndex}): {time}");
         var timeJson = JsonSerializer.Serialize(time.Trim());
-        var indexJson = JsonSerializer.Serialize(timePickerIndex);
+        var labelJson = JsonSerializer.Serialize(timePickerIndex == 0 ? "Alış Saati" : "Bırakış Saati");
 
-        var opened = await EvaluateScriptAsync(
-            $$"""
-            (() => {
-                const groups = document.querySelectorAll('[modaltitle="Alış ve Bırakış Tarihi"], [modaltitlecmskey="pickup_and_dropoff_date"]');
-                if (groups.length > {{indexJson}}) {
-                    const group = groups[{{indexJson}}];
-                    const timeBox = group.querySelectorAll(':scope > div')[1] || group.querySelector('select, input, div[class*="time"]');
-                    if (timeBox) {
+        var selected = await WaitUntilAsync(
+            async () => await EvaluateBooleanScriptAsync(
+                $$"""
+                (() => {
+                    const target = {{timeJson}};
+                    const labelText = {{labelJson}};
+                    const isVisible = window.__ba?.isVisible || (() => false);
+                    const label = Array
+                        .from(document.querySelectorAll('span'))
+                        .find(item => isVisible(item) && item.textContent.trim() === labelText);
+                    const timeRoot = label?.closest('.flex.flex-col.min-w-0');
+                    const timeBox = timeRoot?.querySelector('.relative.inline-block .cursor-pointer');
+
+                    if (!timeRoot || !timeBox) {
+                        return false;
+                    }
+
+                    const dropdown = Array
+                        .from(timeRoot?.querySelectorAll('.absolute.z-50') || [])
+                        .find(isVisible);
+
+                    if (!dropdown) {
+                        timeBox.scrollIntoView({ block: 'nearest', inline: 'nearest' });
                         timeBox.click();
-                        return true;
+                        return false;
                     }
-                }
 
-                const timeElements = Array.from(document.querySelectorAll('div, select, button, input'))
-                    .filter(el => {
-                        const txt = (el.textContent || el.value || '').trim();
-                        const style = window.getComputedStyle(el);
-                        const rect = el.getBoundingClientRect();
-                        return rect.width > 0 && rect.height > 0 && style.display !== 'none' && /^\d{2}:\d{2}$/.test(txt);
-                    });
+                    const option = Array
+                        .from(dropdown.querySelectorAll('li.cursor-pointer'))
+                        .find(item => isVisible(item) && item.textContent.trim() === target);
 
-                if (timeElements.length > {{indexJson}}) {
-                    const targetEl = timeElements[{{indexJson}}];
-                    targetEl.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-                    targetEl.click();
-                    return true;
-                }
-
-                return false;
-            })();
-            """);
-
-        if (!IsScriptTrue(opened))
-        {
-            Report($"Saat kutusu [{timePickerIndex}] tetiklenemedi veya açılamadı.");
-            return;
-        }
-
-        await WaitForTimeOptionVisibleAsync(time.Trim(), TimeSpan.FromSeconds(5));
-
-        var selected = await EvaluateScriptAsync(
-            $$"""
-            (() => {
-                const target = {{timeJson}};
-                const visible = el => {
-                    const r = el.getBoundingClientRect();
-                    const s = window.getComputedStyle(el);
-                    return r.width > 0 && r.height > 0 && s.display !== 'none' && s.visibility !== 'hidden';
-                };
-
-                const options = Array.from(document.querySelectorAll('.dropdown-item, [role="option"], li, .time-option, div[class*="option"], div[class*="item"]'))
-                    .filter(visible);
-
-                let found = options.find(o => {
-                    const txt = (o.textContent || '').trim();
-                    return txt === target || txt.startsWith(target);
-                });
-
-                if (!found) {
-                    const allLeafs = Array.from(document.querySelectorAll('div, li, span, button'))
-                        .filter(el => {
-                            if (!visible(el)) return false;
-                            const t = (el.textContent || '').trim();
-                            return (t === target || t.startsWith(target)) && el.children.length === 0;
-                        });
-                    if (allLeafs.length > 0) found = allLeafs[0];
-                }
-
-                if (found) {
-                    found.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-                    const rect = found.getBoundingClientRect();
-                    const x = rect.left + rect.width / 2;
-                    const y = rect.top + rect.height / 2;
-                    const opts = { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y };
-
-                    if (typeof PointerEvent === 'function') {
-                        found.dispatchEvent(new PointerEvent('pointerdown', { ...opts, pointerId: 1, pointerType: 'mouse', isPrimary: true, buttons: 1 }));
-                        found.dispatchEvent(new PointerEvent('pointerup', { ...opts, pointerId: 1, pointerType: 'mouse', isPrimary: true }));
+                    if (!option) {
+                        return false;
                     }
-                    found.dispatchEvent(new MouseEvent('mousedown', { ...opts, buttons: 1 }));
-                    found.dispatchEvent(new MouseEvent('mouseup', { ...opts }));
-                    found.click();
+
+                    option.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+                    option.click();
                     return true;
-                }
+                })();
+                """),
+            TimeSpan.FromSeconds(5));
 
-                return false;
-            })();
-            """);
-
-        if (IsScriptTrue(selected))
+        if (selected)
         {
             Report($"Saat seçildi: {time}");
         }
@@ -658,45 +611,23 @@ public sealed partial class BAService
             timeout);
     }
 
-    private Task<bool> WaitForTimeOptionVisibleAsync(string time, TimeSpan timeout)
-    {
-        var timeJson = JsonSerializer.Serialize(time);
-
-        return WaitForScriptTrueOrTimeoutAsync(
-            $$"""
-            (() => {
-                const target = {{timeJson}};
-                const isVisible = window.__ba?.isVisible || (() => false);
-
-                return Array
-                    .from(document.querySelectorAll('.relative.inline-block li, li'))
-                    .filter(isVisible)
-                    .some(option => {
-                        const text = (option.textContent || '').trim();
-                        return text === target || text.startsWith(target);
-                    });
-            })();
-            """,
-            timeout);
-    }
-
     private Task<bool> WaitForTimeSelectionAppliedAsync(int timePickerIndex, string time, TimeSpan timeout)
     {
         var timeJson = JsonSerializer.Serialize(time);
-        var indexJson = JsonSerializer.Serialize(timePickerIndex);
+        var labelJson = JsonSerializer.Serialize(timePickerIndex == 0 ? "Alış Saati" : "Bırakış Saati");
 
         return WaitForScriptTrueOrTimeoutAsync(
             $$"""
             (() => {
                 const target = {{timeJson}};
-                const index = {{indexJson}};
-                const groups = document.querySelectorAll('[modaltitle="Alış ve Bırakış Tarihi"], [modaltitlecmskey="pickup_and_dropoff_date"]');
-                const group = groups.length > index ? groups[index] : null;
-                const text = (group?.textContent || '').trim();
-                if (text.includes(target)) return true;
-
-                const inputs = Array.from(document.querySelectorAll('input, select'));
-                return inputs.some(input => ((input.value || '').trim() === target));
+                const labelText = {{labelJson}};
+                const isVisible = window.__ba?.isVisible || (() => false);
+                const label = Array
+                    .from(document.querySelectorAll('span'))
+                    .find(item => isVisible(item) && item.textContent.trim() === labelText);
+                const timeRoot = label?.closest('.flex.flex-col.min-w-0');
+                const text = (timeRoot?.textContent || '').trim();
+                return text.includes(target);
             })();
             """,
             timeout);
