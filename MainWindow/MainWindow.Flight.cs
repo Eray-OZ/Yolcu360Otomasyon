@@ -200,8 +200,6 @@ public partial class MainWindow : Window
                 OnlyNonStop = FlightOnlyNonStopCheckBox.IsChecked == true
             };
 
-            Console.WriteLine($"[FlightUI] From='{filter.FromLocation}' To='{filter.ToLocation}' Departure='{filter.DepartureDate:yyyy-MM-dd}' Return='{filter.ReturnDate:yyyy-MM-dd}'");
-
             if (string.IsNullOrWhiteSpace(filter.FromLocation) || string.IsNullOrWhiteSpace(filter.ToLocation))
             {
                 FlightStatusTextBlock.Text = "Nereden ve nereye alanları boş olamaz.";
@@ -217,17 +215,9 @@ public partial class MainWindow : Window
             ShowBrowserSection();
             FlightStatusTextBlock.Text = "Gömülü tarayıcı uçuş araması için hazırlanıyor...";
 
-            var baService = CreateBAService();
+            var baService = CreateBAService(attachProgress: false);
             if (!string.IsNullOrWhiteSpace(_activeUser.SessionStatePath))
                 await baService.RestoreSessionAsync(_activeUser.SessionStatePath);
-
-            baService.ProgressChanged += message =>
-            {
-                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
-                {
-                    FlightStatusTextBlock.Text = message;
-                });
-            };
 
             await baService.SearchFlightTicketsAsync(filter);
             FlightStatusTextBlock.Text = "Uçuş araması başlatıldı. Sonuç HTML'i geldikten sonra okuma kısmı ayrı Flight koduyla eklenecek.";

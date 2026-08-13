@@ -452,13 +452,13 @@ public sealed partial class BAService
                     """);
 
                 var summary = (lastResult ?? string.Empty).Trim('"');
-                var hasMatch = summary.Contains("\"matching\":", StringComparison.OrdinalIgnoreCase) &&
-                    !summary.Contains("\"matching\":0", StringComparison.OrdinalIgnoreCase);
+                var hasVisibleSuggestion = summary.Contains("\"visible\":", StringComparison.OrdinalIgnoreCase) &&
+                    !summary.Contains("\"visible\":0", StringComparison.OrdinalIgnoreCase);
 
-                if (hasMatch)
+                if (hasVisibleSuggestion)
                     Report($"{fieldName} önerileri bulundu: {summary}");
 
-                return hasMatch;
+                return hasVisibleSuggestion;
             },
             timeout,
             TimeSpan.FromMilliseconds(350));

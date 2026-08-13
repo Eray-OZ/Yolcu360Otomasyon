@@ -441,9 +441,12 @@ public partial class MainWindow : Window
         return (comboBox.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? string.Empty;
     }
 
-    private BAService CreateBAService()
+    private BAService CreateBAService(bool attachProgress = true)
     {
         var baService = new BAService(EmbeddedBrowser);
+        if (!attachProgress)
+            return baService;
+
         baService.ProgressChanged += message =>
         {
             Dispatcher.UIThread.Post(() =>
