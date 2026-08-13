@@ -274,123 +274,57 @@ public sealed partial class BAService
         var result = await EvaluateScriptAsync(
             $$"""
             (() => {
-                const menu = Array.from(document.querySelectorAll('.dp__menu, .dp__outer_menu_wrap'))
-                    .find(m => {
-                        const s = window.getComputedStyle(m);
-                        const r = m.getBoundingClientRect();
-                        return s.display !== 'none' && s.visibility !== 'hidden' && r.width > 0;
-                    });
-                if (!menu) return false;
-
                 const dayTarget = {{dayJson}};
                 const monthTarget = {{monthJson}};
                 const yearTarget = {{yearJson}};
-                const normalize = value => (value || '').toLocaleLowerCase('tr-TR').replace(/\s+/g, ' ').trim();
-                const compact = value => normalize(value).replace(/\s/g, '');
-                const targetMonth = normalize(monthTarget);
-                const targetYear = normalize(yearTarget);
-                const targetHeaderText = normalize(`${monthTarget} ${yearTarget}`);
-                const targetHeaderCompact = compact(`${monthTarget} ${yearTarget}`);
-                const isVisible = el => {
-                    const rect = el.getBoundingClientRect();
-                    const style = getComputedStyle(el);
-                    return rect.width > 0 &&
-                        rect.height > 0 &&
-                        style.display !== 'none' &&
-                        style.visibility !== 'hidden';
-                };
-                const hasTargetHeader = el => {
-                    const text = normalize(el?.textContent || '');
-                    const compactText = compact(el?.textContent || '');
-                    return text.includes(targetHeaderText) ||
-                        compactText.includes(targetHeaderCompact) ||
-                        (text.includes(targetMonth) && text.includes(targetYear));
-                };
+                const isVisible = window.__ba?.isVisible || (() => false);
+                const normalize = window.__ba?.normalizeTr || (value => (value || '').toLocaleLowerCase('tr-TR').replace(/\s+/g, ' ').trim());
+                const calendar = Array
+                    .from(document.querySelectorAll('.dp__instance_calendar'))
+                    .find(isVisible);
 
-                const allCalendars = Array.from(menu.querySelectorAll('.dp__calendar')).filter(isVisible);
-                let searchRoot = null;
-
-                for (const cal of allCalendars) {
-                    const owner = cal.closest('.dp__instance_calendar, .dp__calendar_wrap') || cal.parentElement || cal;
-                    const hdr = owner.querySelector('.dp__month_year_select, .dp__month_year_wrap, .dp__month_year_row, .dp__calendar_header');
-                    if (hasTargetHeader(hdr) || hasTargetHeader(owner)) {
-                        searchRoot = cal;
-                        break;
-                    }
-                }
-
-                if (!searchRoot) {
-                    const section = Array.from(menu.querySelectorAll('.dp__instance_calendar, .dp__calendar_wrap, .dp__month_year_row, .dp__calendar_next, .dp__calendar'))
-                        .filter(el => isVisible(el) && hasTargetHeader(el) && el.querySelector('.dp__calendar, .dp__calendar_item, .dp__cell_inner'))
-                        .sort((a, b) => a.getBoundingClientRect().width - b.getBoundingClientRect().width)[0];
-                    searchRoot = section?.querySelector('.dp__calendar') || section || null;
-                }
-
-                if (!searchRoot) {
-                    const targetHeader = Array.from(menu.querySelectorAll('.dp__month_year_select, .dp__month_year_wrap, .dp__month_year_row, .dp__calendar_header_item, .dp__calendar_header'))
-                        .filter(el => isVisible(el) && hasTargetHeader(el))[0];
-
-                    if (targetHeader && allCalendars.length > 0) {
-                        const headerRect = targetHeader.getBoundingClientRect();
-                        const headerCenterX = headerRect.left + headerRect.width / 2;
-                        searchRoot = allCalendars
-                            .map(cal => {
-                                const rect = cal.getBoundingClientRect();
-                                const centerX = rect.left + rect.width / 2;
-                                return { cal, distance: Math.abs(centerX - headerCenterX) };
-                            })
-                            .sort((a, b) => a.distance - b.distance)[0]?.cal || null;
-                    }
-                }
-
-                if (!searchRoot && allCalendars.length === 1 && hasTargetHeader(menu)) {
-                    searchRoot = allCalendars[0];
-                }
-
-                if (!searchRoot) {
+                if (!calendar) {
                     return false;
                 }
 
-                const selectors = [
-                    '.dp__cell_inner',
-                    '.dp__calendar_item button',
-                    '.dp__calendar_item > div',
-                    '.dp__calendar_item'
-                ];
+                const headerValues = Array
+                    .from(calendar.querySelectorAll('.dp__month_year_select'))
+                    .map(element => normalize(element.textContent || ''));
 
-                for (const sel of selectors) {
-                    const candidates = Array.from(searchRoot.querySelectorAll(sel))
-                        .filter(c => {
-                            const text = (c.textContent || '').trim();
-                            const num = parseInt(text, 10);
-                            if (!text || isNaN(num)) return false;
-                            const item = c.closest('.dp__calendar_item') ?? c;
-                            return !item.classList.contains('dp__cell_offset') &&
-                                   !item.classList.contains('dp__cell_disabled') &&
-                                   !c.classList.contains('dp__cell_offset') &&
-                                   !c.classList.contains('dp__cell_disabled');
-                        });
-
-                    const cell = candidates.find(c => parseInt((c.textContent || '').trim(), 10) === dayTarget);
-                    if (cell) {
-                        cell.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-                        const rect = cell.getBoundingClientRect();
-                        const x = rect.left + rect.width / 2;
-                        const y = rect.top + rect.height / 2;
-                        const opts = { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y };
-
-                        if (typeof PointerEvent === 'function') {
-                            cell.dispatchEvent(new PointerEvent('pointerdown', { ...opts, pointerId: 1, pointerType: 'mouse', isPrimary: true, buttons: 1 }));
-                            cell.dispatchEvent(new PointerEvent('pointerup', { ...opts, pointerId: 1, pointerType: 'mouse', isPrimary: true }));
-                        }
-                        cell.dispatchEvent(new MouseEvent('mouseover', opts));
-                        cell.dispatchEvent(new MouseEvent('mousedown', { ...opts, buttons: 1 }));
-                        cell.dispatchEvent(new MouseEvent('mouseup', opts));
-                        cell.click();
-                        return true;
-                    }
+                if (!headerValues.includes(normalize(monthTarget)) ||
+                    !headerValues.includes(normalize(yearTarget))) {
+                    return false;
                 }
-                return false;
+
+                const dayCell = Array
+                    .from(calendar.querySelectorAll('.dp__calendar_item'))
+                    .find(cell => {
+                        if (!isVisible(cell)) return false;
+                        if (cell.getAttribute('aria-disabled') === 'true') return false;
+
+                        const inner = cell.querySelector('.dp__cell_inner') || cell;
+                        if (inner.classList.contains('dp__cell_offset') ||
+                            inner.classList.contains('dp__cell_disabled')) {
+                            return false;
+                        }
+
+                        return parseInt((inner.textContent || '').trim(), 10) === dayTarget;
+                    });
+
+                if (!dayCell) {
+                    return false;
+                }
+
+                const target = dayCell.querySelector('.dp__cell_inner') || dayCell;
+                target.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+                target.click();
+                target.dispatchEvent(new MouseEvent('click', {
+                    bubbles: true,
+                    cancelable: true,
+                    view: window
+                }));
+
+                return true;
             })();
             """);
 
