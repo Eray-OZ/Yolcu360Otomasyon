@@ -653,11 +653,14 @@
                                     Content="Ara"
                                     Click="SearchButton_Click"
                                     Width="160" />
+                            <CheckBox x:Name="ShowBrowserDuringSearchCheckBox"
+                                      Content="İşlem sırasında tarayıcıyı göster"
+                                      IsChecked="True"
+                                      Foreground="#243446" />
                         </StackPanel>
 
                         <Border Grid.Column="1"
                                 x:Name="SearchResultsPanel"
-                                IsVisible="False"
                                 Background="White"
                                 BorderBrush="#D9E2EC"
                                 BorderThickness="1"
@@ -693,6 +696,7 @@
                                         BorderThickness="1"
                                         CornerRadius="10"
                                         Padding="0">
+                                    <Grid>
                                     <DataGrid x:Name="ResultsDataGrid"
                                               AutoGenerateColumns="True"
                                               IsReadOnly="True"
@@ -701,6 +705,16 @@
                                               VerticalAlignment="Stretch"
                                               HorizontalAlignment="Stretch"
                                               Height="420" />
+                                    <TextBlock x:Name="SearchResultsEmptyTextBlock"
+                                               Text="Sonuçları görmek için arama yapın."
+                                               IsVisible="False"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center"
+                                               TextAlignment="Center"
+                                               TextWrapping="Wrap"
+                                               Foreground="#5F7187"
+                                               FontWeight="SemiBold" />
+                                    </Grid>
                                 </Border>
                             </Grid>
                         </Border>

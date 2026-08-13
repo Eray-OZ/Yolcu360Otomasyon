@@ -180,8 +180,17 @@ public partial class MainWindow : Window
                 return;
             }
 
-            ShowBrowserSection();
-            SearchStatusTextBlock.Text = "Gömülü tarayıcı arama formu hazırlanıyor...";
+            ResultsDataGrid.ItemsSource = null;
+            SetSearchResultsPlaceholder("Arama yapılıyor, bekleyiniz...");
+            var showBrowserDuringSearch = ShowBrowserDuringSearchCheckBox.IsChecked == true;
+            if (showBrowserDuringSearch)
+                ShowBrowserSection();
+            else
+                KeepBrowserAliveBehindSearch();
+
+            SearchStatusTextBlock.Text = showBrowserDuringSearch
+                ? "Gömülü tarayıcı arama formu hazırlanıyor..."
+                : "Arama arka planda yapılıyor...";
 
             var baService = CreateBAService();
             if (_activeUser is not null && !string.IsNullOrWhiteSpace(_activeUser.SessionStatePath))
@@ -208,7 +217,9 @@ public partial class MainWindow : Window
             {
                 ResultsDataGrid.ItemsSource = null;
                 ResultsDataGrid.ItemsSource = _latestResults;
-                SearchResultsPanel.IsVisible = _latestResults.Count > 0;
+                SetSearchResultsPlaceholder(_latestResults.Count == 0
+                    ? "Arama tamamlandı, sonuç bulunamadı."
+                    : null);
             });
 
             SearchStatusTextBlock.Text = _latestResults.Count == 0
@@ -218,11 +229,13 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             SearchStatusTextBlock.Text = $"Arama hatası: {ex.Message}";
+            SetSearchResultsPlaceholder("Arama sırasında hata oluştu.");
         }
         finally
         {
             SearchButton.IsEnabled = true;
-            ShowSearchSection();
+            if (ShowBrowserDuringSearchCheckBox.IsChecked == true)
+                ShowSearchSection();
         }
     }
 

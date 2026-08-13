@@ -9,7 +9,10 @@ public partial class MainWindow : Window
     private void ShowSearchSection()
     {
         SearchPanel.IsVisible = true;
-        SearchResultsPanel.IsVisible = _latestResults is not null && _latestResults.Count > 0;
+        SearchResultsPanel.IsVisible = true;
+        SetSearchResultsPlaceholder(_latestResults is not null && _latestResults.Count > 0
+            ? null
+            : "Sonuçları görmek için arama yapın.");
         FlightPanel.IsVisible = false;
         HistoryPanel.IsVisible = false;
         PaymentsPanel.IsVisible = false;
@@ -24,7 +27,6 @@ public partial class MainWindow : Window
     private void ShowHistorySection()
     {
         SearchPanel.IsVisible = false;
-        SearchResultsPanel.IsVisible = false;
         FlightPanel.IsVisible = false;
         HistoryPanel.IsVisible = true;
         PaymentsPanel.IsVisible = false;
@@ -39,7 +41,6 @@ public partial class MainWindow : Window
     private void ShowPaymentsSection()
     {
         SearchPanel.IsVisible = false;
-        SearchResultsPanel.IsVisible = false;
         FlightPanel.IsVisible = false;
         HistoryPanel.IsVisible = false;
         PaymentsPanel.IsVisible = true;
@@ -54,7 +55,6 @@ public partial class MainWindow : Window
     private void ShowPaymentCheckoutSection()
     {
         SearchPanel.IsVisible = false;
-        SearchResultsPanel.IsVisible = false;
         FlightPanel.IsVisible = false;
         HistoryPanel.IsVisible = false;
         PaymentsPanel.IsVisible = false;
@@ -68,8 +68,8 @@ public partial class MainWindow : Window
 
     private void ShowBrowserSection()
     {
+        ResetBrowserPanelVisualState();
         SearchPanel.IsVisible = false;
-        SearchResultsPanel.IsVisible = false;
         FlightPanel.IsVisible = false;
         HistoryPanel.IsVisible = false;
         PaymentsPanel.IsVisible = false;
@@ -81,10 +81,38 @@ public partial class MainWindow : Window
         PaymentsTabButton.Classes.Set("primary", false);
     }
 
+    private void KeepBrowserAliveBehindSearch()
+    {
+        SearchPanel.IsVisible = true;
+        SearchResultsPanel.IsVisible = true;
+        FlightPanel.IsVisible = false;
+        HistoryPanel.IsVisible = false;
+        PaymentsPanel.IsVisible = false;
+        PaymentCheckoutPanel.IsVisible = false;
+        BrowserSectionPanel.IsVisible = true;
+        BrowserSectionPanel.Opacity = 1;
+        BrowserSectionPanel.IsHitTestVisible = false;
+        BrowserSectionPanel.Margin = new Avalonia.Thickness(-10000, 0, 10000, 0);
+        BrowserSectionPanel.ZIndex = 0;
+        SearchPanel.ZIndex = 1;
+        SearchTabButton.Classes.Set("primary", true);
+        FlightTabButton.Classes.Set("primary", false);
+        HistoryTabButton.Classes.Set("primary", false);
+        PaymentsTabButton.Classes.Set("primary", false);
+    }
+
+    private void ResetBrowserPanelVisualState()
+    {
+        BrowserSectionPanel.Opacity = 1;
+        BrowserSectionPanel.IsHitTestVisible = true;
+        BrowserSectionPanel.Margin = new Avalonia.Thickness(0);
+        BrowserSectionPanel.ZIndex = 0;
+        SearchPanel.ZIndex = 0;
+    }
+
     private void ShowFlightSection()
     {
         SearchPanel.IsVisible = false;
-        SearchResultsPanel.IsVisible = false;
         FlightPanel.IsVisible = true;
         HistoryPanel.IsVisible = false;
         PaymentsPanel.IsVisible = false;
@@ -156,6 +184,14 @@ public partial class MainWindow : Window
             Binding = new Binding(nameof(SearchResultItem.PickupInfo)),
             Width = new DataGridLength(2, DataGridLengthUnitType.Star)
         });
+    }
+
+    private void SetSearchResultsPlaceholder(string? message)
+    {
+        var hasMessage = !string.IsNullOrWhiteSpace(message);
+        SearchResultsEmptyTextBlock.Text = message ?? string.Empty;
+        SearchResultsEmptyTextBlock.IsVisible = hasMessage;
+        ResultsDataGrid.IsVisible = !hasMessage;
     }
 
     private void ConfigureCollectionsGrid()
