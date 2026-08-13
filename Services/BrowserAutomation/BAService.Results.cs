@@ -132,9 +132,40 @@ public sealed partial class BAService
             (() => {
                 const isVisible = window.__ba?.isVisible || (() => false);
 
-                return Array
+                const hasVisibleCarCard = Array
                     .from(document.querySelectorAll('#car_card_list .car-card'))
                     .some(isVisible);
+
+                if (hasVisibleCarCard) return true;
+
+                const resultArea = document.querySelector('#car_card_list') ||
+                    document.querySelector('[id*="car"][id*="list"]') ||
+                    document.querySelector('[class*="car-card"]')?.parentElement;
+
+                const loadingText = [
+                    'yükleniyor',
+                    'aranıyor',
+                    'bekleyiniz',
+                    'loading'
+                ];
+
+                const text = (document.body?.innerText || '').toLocaleLowerCase('tr-TR');
+                const hasLoadingText = loadingText.some(item => text.includes(item));
+
+                const hasVisibleLoader = Array
+                    .from(document.querySelectorAll('[class*="loading"], [class*="spinner"], [class*="skeleton"], [aria-busy="true"]'))
+                    .some(isVisible);
+
+                if (resultArea && isVisible(resultArea) && !hasVisibleLoader && !hasLoadingText) {
+                    return true;
+                }
+
+                return text.includes('sonuç bulunamadı') ||
+                    text.includes('aradığınız kriterlere uygun bir sonuç bulamadık') ||
+                    text.includes('araç bulunamadı') ||
+                    text.includes('uygun araç bulunamadı') ||
+                    text.includes('kriterlerinize uygun') ||
+                    text.includes('no result');
             })();
             """,
             timeout ?? TimeSpan.FromSeconds(30),

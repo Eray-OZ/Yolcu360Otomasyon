@@ -12,7 +12,7 @@ public partial class MainWindow : Window
         SearchResultsPanel.IsVisible = true;
         SetSearchResultsPlaceholder(_latestResults is not null && _latestResults.Count > 0
             ? null
-            : "Sonuçları görmek için arama yapın.");
+            : _searchResultsPlaceholderText);
         FlightPanel.IsVisible = false;
         HistoryPanel.IsVisible = false;
         PaymentsPanel.IsVisible = false;

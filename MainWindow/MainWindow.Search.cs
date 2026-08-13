@@ -181,7 +181,8 @@ public partial class MainWindow : Window
             }
 
             ResultsDataGrid.ItemsSource = null;
-            SetSearchResultsPlaceholder("Arama yapılıyor, bekleyiniz...");
+            _searchResultsPlaceholderText = "Arama yapılıyor, bekleyiniz...";
+            SetSearchResultsPlaceholder(_searchResultsPlaceholderText);
             var showBrowserDuringSearch = ShowBrowserDuringSearchCheckBox.IsChecked == true;
             if (showBrowserDuringSearch)
                 ShowBrowserSection();
@@ -207,19 +208,27 @@ public partial class MainWindow : Window
             await baService.SelectTimeAsync(1, filter.ReturnTime);
             await baService.ClickSearchButtonAsync();
             await baService.WaitForSearchResultsAsync();
-            await baService.ApplyResultFiltersAsync(filter);
 
             SearchStatusTextBlock.Text = "Arama sonuçları okunuyor...";
             var results = await baService.ReadSearchResultsAsync();
+
+            if (results.Count > 0)
+            {
+                await baService.ApplyResultFiltersAsync(filter);
+                SearchStatusTextBlock.Text = "Filtrelenmiş arama sonuçları okunuyor...";
+                results = await baService.ReadSearchResultsAsync();
+            }
+
             _latestResults = results;
 
             await Dispatcher.UIThread.InvokeAsync(() =>
             {
                 ResultsDataGrid.ItemsSource = null;
                 ResultsDataGrid.ItemsSource = _latestResults;
-                SetSearchResultsPlaceholder(_latestResults.Count == 0
-                    ? "Arama tamamlandı, sonuç bulunamadı."
-                    : null);
+                _searchResultsPlaceholderText = _latestResults.Count == 0
+                    ? "Sonuç bulunamadı."
+                    : "Sonuçları görmek için arama yapın.";
+                SetSearchResultsPlaceholder(_latestResults.Count == 0 ? _searchResultsPlaceholderText : null);
             });
 
             SearchStatusTextBlock.Text = _latestResults.Count == 0
@@ -229,13 +238,13 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             SearchStatusTextBlock.Text = $"Arama hatası: {ex.Message}";
-            SetSearchResultsPlaceholder("Arama sırasında hata oluştu.");
+            _searchResultsPlaceholderText = "Arama sırasında hata oluştu.";
+            SetSearchResultsPlaceholder(_searchResultsPlaceholderText);
         }
         finally
         {
             SearchButton.IsEnabled = true;
-            if (ShowBrowserDuringSearchCheckBox.IsChecked == true)
-                ShowSearchSection();
+            ShowSearchSection();
         }
     }
 

@@ -26,6 +26,7 @@ public partial class MainWindow : Window
     private List<KoleksiyonListItem> _selectedCollections = new();
     private List<OdemeHazirlikItem> _paymentPreviewItems = new();
     private SearchFilter? _latestSearchFilter;
+    private string _searchResultsPlaceholderText = "Sonuçları görmek için arama yapın.";
     // Extra - Location Suggestion START
     private CancellationTokenSource? _pickupLocationSuggestionCts;
     private int _pickupLocationSuggestionRequestVersion;
