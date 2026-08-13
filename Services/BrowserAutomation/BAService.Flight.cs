@@ -507,7 +507,6 @@ public sealed partial class BAService
         if (!selected)
             throw new InvalidOperationException($"{fieldName} seçilemedi.");
 
-        await ConfirmDatePickerAsync();
         await WaitForDatePickerClosedAsync(TimeSpan.FromSeconds(4));
     }
 

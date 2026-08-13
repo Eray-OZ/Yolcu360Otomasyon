@@ -4,6 +4,12 @@ namespace Yolcu360Otomasyon.Services;
 
 public sealed partial class BAService
 {
+    private static readonly string[] TurkishMonthNames =
+    {
+        "Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran",
+        "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"
+    };
+
     public async Task FillPickupLocationAsync(string location)
     {
         if (string.IsNullOrWhiteSpace(location))
@@ -141,7 +147,6 @@ public sealed partial class BAService
 
         await WaitForCalendarSelectionStateAsync(returnDate, TimeSpan.FromSeconds(2));
 
-        await ConfirmDatePickerAsync();
         await WaitForDatePickerClosedAsync(TimeSpan.FromSeconds(4));
     }
 
@@ -263,12 +268,7 @@ public sealed partial class BAService
     private async Task<bool> ClickCalendarDayAsync(DateTime date)
     {
         var dayJson = JsonSerializer.Serialize(date.Day);
-        var turkishMonths = new[]
-        {
-            "Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran",
-            "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"
-        };
-        var monthJson = JsonSerializer.Serialize(turkishMonths[date.Month - 1]);
+        var monthJson = JsonSerializer.Serialize(TurkishMonthNames[date.Month - 1]);
         var yearJson = JsonSerializer.Serialize(date.Year.ToString());
 
         var result = await EvaluateScriptAsync(
@@ -297,18 +297,13 @@ public sealed partial class BAService
                 }
 
                 const dayCell = Array
-                    .from(calendar.querySelectorAll('.dp__calendar_item'))
+                    .from(calendar.querySelectorAll('.dp__calendar_item[aria-disabled="false"]'))
                     .find(cell => {
-                        if (!isVisible(cell)) return false;
-                        if (cell.getAttribute('aria-disabled') === 'true') return false;
+                        const inner = cell.querySelector('.dp__cell_inner');
 
-                        const inner = cell.querySelector('.dp__cell_inner') || cell;
-                        if (inner.classList.contains('dp__cell_offset') ||
-                            inner.classList.contains('dp__cell_disabled')) {
-                            return false;
-                        }
-
-                        return parseInt((inner.textContent || '').trim(), 10) === dayTarget;
+                        return inner &&
+                            !inner.classList.contains('dp__cell_offset') &&
+                            parseInt(inner.textContent.trim(), 10) === dayTarget;
                     });
 
                 if (!dayCell) {
@@ -329,32 +324,6 @@ public sealed partial class BAService
             """);
 
         return IsScriptTrue(result);
-    }
-
-    private async Task ConfirmDatePickerAsync()
-    {
-        await EvaluateScriptAsync(
-            """
-            (() => {
-                const button = document.querySelector('.dp__action_select, .dp__select');
-                if (!button) return false;
-
-                const rect = button.getBoundingClientRect();
-                const style = getComputedStyle(button);
-
-                const isClickable = rect.width > 0 &&
-                    rect.height > 0 &&
-                    style.display !== 'none' &&
-                    style.visibility !== 'hidden' &&
-                    !button.disabled &&
-                    button.getAttribute('aria-disabled') !== 'true';
-
-                if (!isClickable) return false;
-
-                button.click();
-                return true;
-            })();
-            """);
     }
 
     public async Task SelectTimeAsync(int timePickerIndex, string time)
@@ -552,13 +521,7 @@ public sealed partial class BAService
         if (string.IsNullOrWhiteSpace(headerText))
             return false;
 
-        var turkishMonths = new[]
-        {
-            "Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran",
-            "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"
-        };
-
-        var monthName = turkishMonths[target.Month - 1];
+        var monthName = TurkishMonthNames[target.Month - 1];
         var yearStr = target.Year.ToString();
 
         return headerText.Contains(monthName, StringComparison.OrdinalIgnoreCase)
@@ -580,15 +543,9 @@ public sealed partial class BAService
             }
         }
 
-        var turkishMonths = new[]
+        for (var i = 0; i < TurkishMonthNames.Length; i++)
         {
-            "Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran",
-            "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"
-        };
-
-        for (var i = 0; i < turkishMonths.Length; i++)
-        {
-            if (headerText.Contains(turkishMonths[i], StringComparison.OrdinalIgnoreCase))
+            if (headerText.Contains(TurkishMonthNames[i], StringComparison.OrdinalIgnoreCase))
                 return (i + 1) > target.Month;
         }
 
@@ -640,85 +597,45 @@ public sealed partial class BAService
     private Task<bool> WaitForCalendarSelectionStateAsync(DateTime date, TimeSpan timeout)
     {
         var dayJson = JsonSerializer.Serialize(date.Day);
-        var turkishMonths = new[]
-        {
-            "Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran",
-            "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"
-        };
-        var monthJson = JsonSerializer.Serialize(turkishMonths[date.Month - 1]);
+        var monthJson = JsonSerializer.Serialize(TurkishMonthNames[date.Month - 1]);
         var yearJson = JsonSerializer.Serialize(date.Year.ToString());
 
         return WaitForScriptTrueOrTimeoutAsync(
             $$"""
             (() => {
-                const day = {{dayJson}};
+                const dayTarget = {{dayJson}};
                 const monthTarget = {{monthJson}};
                 const yearTarget = {{yearJson}};
-                const normalize = value => (value || '').toLocaleLowerCase('tr-TR').replace(/\s+/g, ' ').trim();
-                const compact = value => normalize(value).replace(/\s/g, '');
-                const targetMonth = normalize(monthTarget);
-                const targetYear = normalize(yearTarget);
-                const targetHeaderText = normalize(`${monthTarget} ${yearTarget}`);
-                const targetHeaderCompact = compact(`${monthTarget} ${yearTarget}`);
-                const selectedClassNames = ['selected', 'active', 'range_start', 'range_end', 'dp__active_date', 'dp__range_start', 'dp__range_end'];
-                const visible = el => {
-                    const rect = el.getBoundingClientRect();
-                    const style = window.getComputedStyle(el);
-                    return rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden';
-                };
-                const hasTargetHeader = el => {
-                    const text = normalize(el?.textContent || '');
-                    const compactText = compact(el?.textContent || '');
-                    return text.includes(targetHeaderText) ||
-                        compactText.includes(targetHeaderCompact) ||
-                        (text.includes(targetMonth) && text.includes(targetYear));
-                };
-                const menus = Array.from(document.querySelectorAll('.dp__menu, .dp__outer_menu_wrap')).filter(visible);
+                const isVisible = window.__ba?.isVisible || (() => false);
+                const normalize = window.__ba?.normalizeTr || (value => (value || '').toLocaleLowerCase('tr-TR').replace(/\s+/g, ' ').trim());
+                const calendar = Array
+                    .from(document.querySelectorAll('.dp__instance_calendar'))
+                    .find(isVisible);
 
-                const findTargetRoot = menu => {
-                    const calendars = Array.from(menu.querySelectorAll('.dp__calendar')).filter(visible);
+                if (!calendar) {
+                    return false;
+                }
 
-                    for (const cal of calendars) {
-                        const owner = cal.closest('.dp__instance_calendar, .dp__calendar_wrap') || cal.parentElement || cal;
-                        const hdr = owner.querySelector('.dp__month_year_select, .dp__month_year_wrap, .dp__month_year_row, .dp__calendar_header');
-                        if (hasTargetHeader(hdr) || hasTargetHeader(owner)) return cal;
-                    }
+                const headerValues = Array
+                    .from(calendar.querySelectorAll('.dp__month_year_select'))
+                    .map(element => normalize(element.textContent || ''));
 
-                    const section = Array.from(menu.querySelectorAll('.dp__instance_calendar, .dp__calendar_wrap, .dp__month_year_row, .dp__calendar_next, .dp__calendar'))
-                        .filter(el => visible(el) && hasTargetHeader(el) && el.querySelector('.dp__calendar, .dp__calendar_item, .dp__cell_inner'))
-                        .sort((a, b) => a.getBoundingClientRect().width - b.getBoundingClientRect().width)[0];
-                    if (section) return section.querySelector('.dp__calendar') || section;
+                if (!headerValues.includes(normalize(monthTarget)) ||
+                    !headerValues.includes(normalize(yearTarget))) {
+                    return false;
+                }
 
-                    const targetHeader = Array.from(menu.querySelectorAll('.dp__month_year_select, .dp__month_year_wrap, .dp__month_year_row, .dp__calendar_header_item, .dp__calendar_header'))
-                        .filter(el => visible(el) && hasTargetHeader(el))[0];
-                    if (targetHeader && calendars.length > 0) {
-                        const headerRect = targetHeader.getBoundingClientRect();
-                        const headerCenterX = headerRect.left + headerRect.width / 2;
-                        return calendars
-                            .map(cal => {
-                                const rect = cal.getBoundingClientRect();
-                                const centerX = rect.left + rect.width / 2;
-                                return { cal, distance: Math.abs(centerX - headerCenterX) };
-                            })
-                            .sort((a, b) => a.distance - b.distance)[0]?.cal || null;
-                    }
+                const dayCell = Array
+                    .from(calendar.querySelectorAll('.dp__calendar_item[aria-disabled="false"]'))
+                    .find(cell => {
+                        const inner = cell.querySelector('.dp__cell_inner');
 
-                    if (calendars.length === 1 && hasTargetHeader(menu)) return calendars[0];
-                    return null;
-                };
+                        return inner &&
+                            !inner.classList.contains('dp__cell_offset') &&
+                            parseInt(inner.textContent.trim(), 10) === dayTarget;
+                    });
 
-                return menus.filter(visible).some(menu => {
-                    const root = findTargetRoot(menu);
-                    if (!root) return false;
-                    return Array.from(root.querySelectorAll('.dp__cell_inner, .dp__calendar_item button, .dp__calendar_item > div, .dp__calendar_item'))
-                        .some(cell => {
-                            const text = (cell.textContent || '').trim();
-                            if (parseInt(text, 10) !== day) return false;
-                            const classText = `${cell.className || ''} ${cell.closest?.('.dp__calendar_item')?.className || ''}`.toLowerCase();
-                            return cell.getAttribute('aria-selected') === 'true' ||
-                                selectedClassNames.some(name => classText.includes(name));
-                        });
-                });
+                return dayCell?.getAttribute('aria-selected') === 'true';
             })();
             """,
             timeout);
