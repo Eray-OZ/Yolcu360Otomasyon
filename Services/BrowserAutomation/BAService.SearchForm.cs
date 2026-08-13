@@ -115,39 +115,30 @@ public sealed partial class BAService
 
     public async Task SelectDateRangeAsync(DateTime pickupDate, DateTime returnDate)
     {
-        Report($"Alış ve Bırakış tarihleri seçiliyor: {pickupDate:dd.MM.yyyy} – {returnDate:dd.MM.yyyy}");
 
-        Report("Tarih seçici açılıyor...");
         var opened = await OpenDatePickerAsync();
         if (!opened)
             throw new InvalidOperationException("Tarih seçici (datepicker) açılamadı.");
 
-        Report("Tarih takvimi bekleniyor...");
         await WaitForDatePickerMenuAsync(TimeSpan.FromSeconds(10));
 
-        Report($"Alış tarihi için ay kontrol ediliyor: {pickupDate:MMMM yyyy}");
         await NavigateToMonthAsync(pickupDate);
 
-        Report($"Alış tarihi seçiliyor: {pickupDate:dd.MM.yyyy}");
         var pickupSelected = await ClickCalendarDayAsync(pickupDate);
         if (!pickupSelected)
             throw new InvalidOperationException($"Alış tarihi ({pickupDate:dd.MM.yyyy}) takvimde seçilemedi.");
 
-        Report($"Alış tarihi seçildi: {pickupDate:dd.MM.yyyy}");
         await WaitForCalendarSelectionStateAsync(pickupDate, TimeSpan.FromSeconds(2));
 
         if (returnDate.Year != pickupDate.Year || returnDate.Month != pickupDate.Month)
         {
-            Report($"Bırakış tarihi için ay geziliyor: {returnDate:MMMM yyyy}");
             await NavigateToMonthAsync(returnDate);
         }
 
-        Report($"Bırakış tarihi seçiliyor: {returnDate:dd.MM.yyyy}");
         var returnSelected = await ClickCalendarDayAsync(returnDate);
         if (!returnSelected)
             throw new InvalidOperationException($"Bırakış tarihi ({returnDate:dd.MM.yyyy}) takvimde seçilemedi.");
 
-        Report($"Bırakış tarihi seçildi: {returnDate:dd.MM.yyyy}");
         await WaitForCalendarSelectionStateAsync(returnDate, TimeSpan.FromSeconds(2));
 
         await ConfirmDatePickerAsync();
@@ -202,37 +193,7 @@ public sealed partial class BAService
     {
         for (var attempt = 0; attempt < 24; attempt++)
         {
-            var headerText = await EvaluateScriptAsync(
-                """
-                (() => {
-                    const menu = Array.from(document.querySelectorAll('.dp__menu, .dp__outer_menu_wrap'))
-                        .find(menu => {
-                            const rect = menu.getBoundingClientRect();
-                            const style = getComputedStyle(menu);
-
-                            return rect.width > 0 &&
-                                rect.height > 0 &&
-                                style.display !== 'none' &&
-                                style.visibility !== 'hidden';
-                        });
-                    if (!menu) return '';
-
-                    const headers = Array.from(menu.querySelectorAll(
-                        '.dp__month_year_select, ' +
-                        '.dp__calendar_header_item, ' +
-                        '.dp__month_year_wrap, ' +
-                        '.dp__calendar_header'
-                    ));
-
-                    return headers
-                        .map(header => (header.textContent || '').trim())
-                        .filter(Boolean)
-                        .join(' ');
-                })();
-                """);
-
-            var currentText = (headerText ?? string.Empty).Trim('"');
-            Report($"Takvim başlığı: '{currentText}' | Hedef: {target:MMMM yyyy}");
+            var currentText = await GetVisibleCalendarHeaderAsync();
 
             if (IsTargetMonthVisible(currentText, target))
                 return;
@@ -241,7 +202,6 @@ public sealed partial class BAService
             var navSuccess = await ClickCalendarNavAsync(forward: !goBack);
             if (!navSuccess)
             {
-                Report("Takvim yönlendirme butonuna tıklanamadı.");
                 break;
             }
 
@@ -249,36 +209,48 @@ public sealed partial class BAService
         }
     }
 
+    private async Task<string> GetVisibleCalendarHeaderAsync()
+    {
+        var headerText = await EvaluateScriptAsync(
+            """
+            (() => {
+                const isVisible = window.__ba?.isVisible || (() => false);
+                const calendar = Array
+                    .from(document.querySelectorAll('.dp__instance_calendar'))
+                    .find(isVisible);
+
+                if (!calendar) return '';
+
+                const selects = calendar.querySelectorAll('.dp__month_year_select');
+                const month = (selects[0]?.textContent || '').trim();
+                const year = (selects[1]?.textContent || '').trim();
+
+                return `${month} ${year}`.trim();
+            })();
+            """);
+
+        return (headerText ?? string.Empty).Trim('"');
+    }
+
     private async Task<bool> ClickCalendarNavAsync(bool forward)
     {
-        var forwardJson = JsonSerializer.Serialize(forward);
+        var buttonSelector = forward
+            ? "button[aria-label='Next month']"
+            : "button[aria-label='Previous month']";
+        var buttonSelectorJson = JsonSerializer.Serialize(buttonSelector);
+
         var result = await EvaluateScriptAsync(
             $$"""
             (() => {
-                const forward = {{forwardJson}};
-                const isClickable = button => {
-                    if (!button) return false;
+                const isVisible = window.__ba?.isVisible || (() => false);
+                const button = document.querySelector({{buttonSelectorJson}});
 
-                    const rect = button.getBoundingClientRect();
-                    const style = getComputedStyle(button);
-
-                    return rect.width > 0 &&
-                        rect.height > 0 &&
-                        style.display !== 'none' &&
-                        style.visibility !== 'hidden' &&
-                        !button.disabled &&
-                        button.getAttribute('aria-disabled') !== 'true';
-                };
-
-                const next = document.querySelector("[data-dp-element='action-next'], .dp__next_btn, button[aria-label*='Next']");
-                const prev = document.querySelector("[data-dp-element='action-prev'], .dp__prev_btn, button[aria-label*='Prev']");
-                const navButtons = Array.from(document.querySelectorAll('.dp__nav_btn')).filter(isClickable);
-
-                const button = forward
-                    ? (isClickable(next) ? next : navButtons.at(-1))
-                    : (isClickable(prev) ? prev : navButtons[0]);
-
-                if (!isClickable(button)) return false;
+                if (!button ||
+                    !isVisible(button) ||
+                    button.disabled ||
+                    button.getAttribute('aria-disabled') === 'true') {
+                    return false;
+                }
 
                 button.click();
                 return true;
@@ -724,35 +696,7 @@ public sealed partial class BAService
         return WaitUntilAsync(
             async () =>
             {
-                var headerText = await EvaluateScriptAsync(
-                    """
-                    (() => {
-                        const isVisible = window.__ba?.isVisible || (() => false);
-
-                        const visibleMenu = Array
-                            .from(document.querySelectorAll('.dp__menu, .dp__outer_menu_wrap'))
-                            .find(isVisible);
-
-                        if (!visibleMenu) {
-                            return '';
-                        }
-
-                        const headerSelectors = [
-                            '.dp__month_year_select',
-                            '.dp__calendar_header_item',
-                            '.dp__month_year_wrap',
-                            '.dp__calendar_header'
-                        ].join(',');
-
-                        return Array
-                            .from(visibleMenu.querySelectorAll(headerSelectors))
-                            .map(header => (header.textContent || '').trim())
-                            .filter(Boolean)
-                            .join(' ');
-                    })();
-                    """);
-
-                var currentText = (headerText ?? string.Empty).Trim('"');
+                var currentText = await GetVisibleCalendarHeaderAsync();
                 return !string.Equals(currentText, previousHeader, StringComparison.Ordinal) ||
                     IsTargetMonthVisible(currentText, target);
             },
