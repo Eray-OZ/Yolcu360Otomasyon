@@ -446,6 +446,7 @@
                         <Button x:Name="FlightTabButton"
                                 Content="Uçak Bileti"
                                 Width="160"
+                                IsVisible="False"
                                 Click="FlightTabButton_Click" />
                         <Button x:Name="HistoryTabButton"
                                 Content="Geçmiş Kayıtlar"

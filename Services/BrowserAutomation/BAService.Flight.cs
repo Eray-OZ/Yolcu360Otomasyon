@@ -14,6 +14,23 @@ public sealed partial class BAService
         """
         const resolveFlightInput = selector => {
             const isVisible = window.__ba?.isVisible || (() => false);
+            const scopedLabelSelector = selector === '#inputPickUpLocation'
+                ? '#inputPickUpLocation-label'
+                : selector === '#inputDropOffLocation'
+                    ? '#inputDropOffLocation-label'
+                    : '';
+
+            if (scopedLabelSelector) {
+                const scopedLabel = document.querySelector(scopedLabelSelector);
+                const scopedInput = scopedLabel?.querySelector(selector);
+                if (scopedInput &&
+                    isVisible(scopedInput) &&
+                    !scopedInput.disabled &&
+                    scopedInput.getAttribute('readonly') === null) {
+                    return scopedInput;
+                }
+            }
+
             const looksLikeLocationInput = input => {
                 if (!input) return false;
                 const attrs = `${input.id || ''} ${input.name || ''} ${input.placeholder || ''} ${input.getAttribute('data-cms-key') || ''} ${input.className || ''}`.toLocaleLowerCase('tr-TR');
@@ -212,8 +229,8 @@ public sealed partial class BAService
     {
         var selectorJson = JsonSerializer.Serialize(selector);
         var labelSelector = selector == FlightFromInputSelector
-            ? "#inputPickUpLocation-label, [data-cms-key='flight_welcome_from']"
-            : "#inputDropOffLocation-label, [data-cms-key='flight_welcome_to']";
+            ? "#inputPickUpLocation-label"
+            : "#inputDropOffLocation-label";
         var labelSelectorJson = JsonSerializer.Serialize(labelSelector);
 
         Report($"{fieldName} alanı açılıyor...");
@@ -470,23 +487,22 @@ public sealed partial class BAService
     private async Task SelectFlightDateAsync(string triggerCmsKey, DateTime date, string fieldName)
     {
         var triggerCmsKeyJson = JsonSerializer.Serialize(triggerCmsKey);
-        var dayJson = JsonSerializer.Serialize(date.Day);
-        var monthJson = JsonSerializer.Serialize(GetTurkishMonthName(date.Month));
-        var yearJson = JsonSerializer.Serialize(date.Year.ToString());
 
         Report($"{fieldName} açılıyor: {date:dd.MM.yyyy}");
         var opened = await EvaluateBooleanScriptAsync(
             $$"""
             (() => {
                 const cmsKey = {{triggerCmsKeyJson}};
+                const isVisible = window.__ba?.isVisible || (() => false);
                 const trigger = Array
-                    .from(document.querySelectorAll(`[triggerlabelcmskey="${cmsKey}"], [modaltitlecmskey="${cmsKey}"]`))
-                    .find(window.__ba?.isVisible || (() => false));
+                    .from(document.querySelectorAll(`[triggerlabelcmskey="${cmsKey}"][modaltitlecmskey="${cmsKey}"], [triggerlabelcmskey="${cmsKey}"], [modaltitlecmskey="${cmsKey}"]`))
+                    .find(isVisible);
 
                 if (!trigger) return false;
 
-                trigger.scrollIntoView({ block: 'center', inline: 'nearest' });
-                trigger.click();
+                const clickable = trigger.querySelector('.dp__main, .flex.items-center, .icon-calendar') || trigger;
+                clickable.scrollIntoView({ block: 'center', inline: 'nearest' });
+                clickable.click();
                 return true;
             })();
             """);
@@ -497,60 +513,11 @@ public sealed partial class BAService
         await WaitForDatePickerMenuAsync(TimeSpan.FromSeconds(10));
         await NavigateToMonthAsync(date);
 
-        var selected = await EvaluateBooleanScriptAsync(
-            $$"""
-            (() => {
-                const dayTarget = {{dayJson}};
-                const monthTarget = {{monthJson}};
-                const yearTarget = {{yearJson}};
-                const normalize = window.__ba?.normalizeTr || (value => (value || '').toLocaleLowerCase('tr-TR').replace(/\s+/g, ' ').trim());
-                const compact = window.__ba?.compactTr || (value => normalize(value).replace(/\s/g, ''));
-                const isVisible = window.__ba?.isVisible || (() => false);
-                const targetHeaderText = normalize(`${monthTarget} ${yearTarget}`);
-                const targetHeaderCompact = compact(`${monthTarget} ${yearTarget}`);
-
-                const hasTargetHeader = el => {
-                    const text = normalize(el?.textContent || '');
-                    const compactText = compact(el?.textContent || '');
-                    return text.includes(targetHeaderText) || compactText.includes(targetHeaderCompact);
-                };
-
-                const menu = Array.from(document.querySelectorAll('.dp__menu, .dp__outer_menu_wrap')).find(isVisible);
-                if (!menu) return false;
-
-                const calendars = Array.from(menu.querySelectorAll('.dp__calendar')).filter(isVisible);
-                let root = calendars.find(calendar => {
-                    const owner = calendar.closest('.dp__instance_calendar, .dp__calendar_wrap') || calendar.parentElement || calendar;
-                    return hasTargetHeader(owner);
-                }) || calendars[0];
-
-                if (!root) return false;
-
-                const cell = Array.from(root.querySelectorAll('.dp__cell_inner, .dp__calendar_item button, .dp__calendar_item > div, .dp__calendar_item'))
-                    .filter(isVisible)
-                    .find(candidate => {
-                        const text = (candidate.textContent || '').trim();
-                        const item = candidate.closest('.dp__calendar_item') ?? candidate;
-                        return parseInt(text, 10) === dayTarget &&
-                            !item.classList.contains('dp__cell_offset') &&
-                            !item.classList.contains('dp__cell_disabled') &&
-                            !candidate.classList.contains('dp__cell_offset') &&
-                            !candidate.classList.contains('dp__cell_disabled');
-                    });
-
-                if (!cell) return false;
-
-                const clickResult = window.__ba.clickLikeUser
-                    ? window.__ba.clickLikeUser(cell)
-                    : (cell.click(), { clicked: true });
-
-                return !!clickResult.clicked;
-            })();
-            """);
-
+        var selected = await ClickCalendarDayAsync(date);
         if (!selected)
             throw new InvalidOperationException($"{fieldName} seçilemedi.");
 
+        await WaitForCalendarSelectionStateAsync(date, TimeSpan.FromSeconds(2));
         await WaitForDatePickerClosedAsync(TimeSpan.FromSeconds(4));
     }
 
