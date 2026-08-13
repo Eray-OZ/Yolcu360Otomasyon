@@ -38,6 +38,10 @@ public sealed class DynamicCollectionService
 
         await baService.OpenYolcu360HomeAsync();
         await baService.FillPickupLocationAsync(filter.PickupLocation);
+        // Extra - Dropoff Location START
+        if (!string.IsNullOrWhiteSpace(filter.DropoffLocation))
+            await baService.FillDropoffLocationAsync(filter.DropoffLocation);
+        // Extra - Dropoff Location END
         await baService.SelectDateRangeAsync(filter.PickupDate, filter.ReturnDate);
         await baService.SelectTimeAsync(0, filter.PickupTime);
         await baService.SelectTimeAsync(1, filter.ReturnTime);
@@ -66,6 +70,9 @@ public sealed class DynamicCollectionService
         return new SearchFilter
         {
             PickupLocation = filter.PickupLocation,
+            // Extra - Dropoff Location START
+            DropoffLocation = filter.DropoffLocation,
+            // Extra - Dropoff Location END
             PickupDate = pickupDate,
             ReturnDate = returnDate,
             PickupTime = filter.PickupTime,

@@ -119,6 +119,133 @@ public sealed partial class BAService
         Report("Alış yeri önerisi seçildi.");
     }
 
+    // Extra - Dropoff Location START
+    // Enables Yolcu360 "different dropoff" checkbox and selects the requested dropoff suggestion.
+    public async Task FillDropoffLocationAsync(string location)
+    {
+        if (string.IsNullOrWhiteSpace(location))
+            return;
+
+        var locationJson = JsonSerializer.Serialize(location.Trim());
+        var differentDropoffCheckboxSelectorJson = JsonSerializer.Serialize(DifferentDropoffCheckboxSelector);
+        var dropoffLocationInputSelectorJson = JsonSerializer.Serialize(DropoffLocationInputSelector);
+        var locationSuggestionSelectorJson = JsonSerializer.Serialize(LocationSuggestionSelector);
+
+        Report("Farklı bırakış yeri seçeneği açılıyor...");
+        await EvaluateScriptAsync(
+            $$"""
+            (() => {
+                const checkbox = document.querySelector({{differentDropoffCheckboxSelectorJson}});
+                if (checkbox && !checkbox.checked) {
+                    const label = checkbox.closest('label') || checkbox;
+                    label.click();
+                    checkbox.checked = true;
+                    checkbox.dispatchEvent(new Event('input', { bubbles: true }));
+                    checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+                return true;
+            })();
+            """);
+
+        Report("Bırakış yeri inputu bekleniyor...");
+        await WaitForScriptTrueAsync(
+            $$"""
+            (() => !!document.querySelector({{dropoffLocationInputSelectorJson}}))();
+            """,
+            TimeSpan.FromSeconds(10));
+
+        Report($"Bırakış yeri yazılıyor: {location}");
+        await EvaluateScriptAsync(
+            $$"""
+            (() => {
+                const input = document.querySelector({{dropoffLocationInputSelectorJson}});
+                const text = {{locationJson}};
+                input.focus();
+                input.value = '';
+                input.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'deleteContentBackward', data: null }));
+
+                for (const char of text) {
+                    input.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: char }));
+                    input.value += char;
+                    input.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: char }));
+                    input.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true, key: char }));
+                }
+
+                input.dispatchEvent(new Event('change', { bubbles: true }));
+                return true;
+            })();
+            """);
+
+        Report("Bırakış yeri önerileri bekleniyor...");
+        await WaitForLocationSuggestionsAsync(LocationSuggestionSelector, TimeSpan.FromSeconds(12));
+
+        var selectionApplied = false;
+        for (var attempt = 1; attempt <= 3 && !selectionApplied; attempt++)
+        {
+            Report($"Bırakış yeri önerisi seçiliyor. Deneme: {attempt}");
+            var selected = await EvaluateScriptAsync(
+                $$"""
+                (() => {
+                    const input = document.querySelector({{dropoffLocationInputSelectorJson}});
+                    const targetText = {{locationJson}};
+                    const normalize = window.__ba?.normalizeTr || (value => (value || '').toLocaleLowerCase('tr-TR').replace(/\s+/g, ' ').trim());
+                    const compact = window.__ba?.compactTr || (value => normalize(value).replace(/\s/g, ''));
+                    const target = normalize(targetText);
+                    const isVisible = window.__ba?.isVisible || (() => false);
+                    const getMainText = item => normalize(
+                        item.querySelector('strong, .search-autocomplete__item__text-wrapper span:first-child, .search-autocomplete-mobile__item__text-wrapper span:first-child, div > div:first-child')?.textContent || ''
+                    );
+                    const getScore = item => {
+                        const fullText = normalize(item.textContent || '');
+                        const mainText = getMainText(item);
+                        const compactText = compact(item.textContent || '');
+
+                        if (mainText === target) return 0;
+                        if (compactText === compact(`${targetText} Türkiye`) || compactText === compact(`${targetText}, Türkiye`)) return 1;
+                        if (fullText === target) return 2;
+                        if (mainText.startsWith(target)) return 3;
+                        if (fullText.startsWith(target)) return 4;
+                        if (mainText.includes(target)) return 5;
+                        if (fullText.includes(target)) return 6;
+                        return 7;
+                    };
+
+                    const items = Array.from(document.querySelectorAll({{locationSuggestionSelectorJson}}))
+                        .filter(item => isVisible(item) && (!input || (item !== input && !item.contains(input))));
+                    const selected = items
+                        .sort((a, b) => {
+                            const score = getScore(a) - getScore(b);
+                            if (score !== 0) return score;
+                            const ar = a.getBoundingClientRect();
+                            const br = b.getBoundingClientRect();
+                            return ar.top === br.top ? ar.left - br.left : ar.top - br.top;
+                        })[0];
+
+                    if (!selected) return JSON.stringify({ clicked: false, reason: 'öneri bulunamadı', itemCount: items.length });
+
+                    const clickResult = window.__ba.clickLikeUser(selected, {{locationSuggestionSelectorJson}});
+
+                    return JSON.stringify({
+                        clicked: clickResult.clicked,
+                        selectedText: (selected.textContent || '').replace(/\s+/g, ' ').trim(),
+                        pointTargetText: clickResult.pointTargetText,
+                        inputValue: input?.value || '',
+                        remainingSuggestions: document.querySelectorAll({{locationSuggestionSelectorJson}}).length
+                    });
+                })();
+                """);
+
+            Report($"Bırakış yeri seçim sonucu: {selected}");
+            selectionApplied = await WaitForDropoffLocationSelectionAppliedAsync(TimeSpan.FromSeconds(3));
+        }
+
+        if (!selectionApplied)
+            throw new InvalidOperationException("Bırakış yeri önerisi seçilemedi.");
+
+        Report("Bırakış yeri önerisi seçildi.");
+    }
+    // Extra - Dropoff Location END
+
     public async Task SelectDateRangeAsync(DateTime pickupDate, DateTime returnDate)
     {
 
@@ -532,6 +659,38 @@ public sealed partial class BAService
     {
         return await WaitUntilAsync(IsPickupLocationSelectionAppliedAsync, timeout);
     }
+
+    // Extra - Dropoff Location START
+    // Verifies that Yolcu360 accepted the optional dropoff location selection.
+    private async Task<bool> IsDropoffLocationSelectionAppliedAsync()
+    {
+        var dropoffLocationInputSelectorJson = JsonSerializer.Serialize(DropoffLocationInputSelector);
+        var locationSuggestionSelectorJson = JsonSerializer.Serialize(LocationSuggestionSelector);
+        var result = await EvaluateScriptAsync(
+            $$"""
+            (() => {
+                const dropoffInput = document.querySelector({{dropoffLocationInputSelectorJson}});
+                const isVisible = window.__ba?.isVisible || (() => false);
+
+                const openSuggestions = Array
+                    .from(document.querySelectorAll({{locationSuggestionSelectorJson}}))
+                    .filter(isVisible);
+
+                const hasDropoffText = !!dropoffInput &&
+                    dropoffInput.value.trim().length > 0;
+
+                return hasDropoffText && openSuggestions.length === 0;
+            })();
+            """);
+
+        return IsScriptTrue(result);
+    }
+
+    private async Task<bool> WaitForDropoffLocationSelectionAppliedAsync(TimeSpan timeout)
+    {
+        return await WaitUntilAsync(IsDropoffLocationSelectionAppliedAsync, timeout);
+    }
+    // Extra - Dropoff Location END
 
     private Task<bool> WaitForCalendarHeaderChangedOrTargetVisibleAsync(string previousHeader, DateTime target, TimeSpan timeout)
     {

@@ -118,6 +118,104 @@ public partial class MainWindow : Window
         PickupLocationSuggestionsPanel.IsVisible = false;
     }
 
+    // Extra - Dropoff Location START
+    // UI autocomplete flow for optional different dropoff location.
+    private void DifferentDropoffCheckBox_Changed(object? sender, RoutedEventArgs e)
+    {
+        var isEnabled = DifferentDropoffCheckBox.IsChecked == true;
+        DropoffLocationPanel.IsVisible = isEnabled;
+
+        if (!isEnabled)
+        {
+            _dropoffLocationSuggestionRequestVersion++;
+            CancelPickupLocationSuggestionRequest(_dropoffLocationSuggestionCts);
+            _dropoffLocationSuggestionCts = null;
+            _suppressDropoffLocationSuggestionLookup = true;
+            DropoffLocationTextBox.Text = string.Empty;
+            HideDropoffLocationSuggestions();
+            Dispatcher.UIThread.Post(() => _suppressDropoffLocationSuggestionLookup = false);
+        }
+    }
+
+    private async void DropoffLocationTextBox_TextChanged(object? sender, TextChangedEventArgs e)
+    {
+        if (_suppressDropoffLocationSuggestionLookup)
+            return;
+
+        var input = DropoffLocationTextBox.Text?.Trim() ?? string.Empty;
+        var requestVersion = ++_dropoffLocationSuggestionRequestVersion;
+        var previousCts = _dropoffLocationSuggestionCts;
+        CancelPickupLocationSuggestionRequest(previousCts);
+
+        if (input.Length < 2)
+        {
+            HideDropoffLocationSuggestions();
+            return;
+        }
+
+        var cts = new CancellationTokenSource();
+        _dropoffLocationSuggestionCts = cts;
+
+        try
+        {
+            var suggestions = await _locationSuggestionService.GetSuggestionsAsync(input, cts.Token);
+            if (cts.IsCancellationRequested || requestVersion != _dropoffLocationSuggestionRequestVersion)
+                return;
+
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                if (cts.IsCancellationRequested || requestVersion != _dropoffLocationSuggestionRequestVersion)
+                    return;
+
+                DropoffLocationSuggestionsListBox.ItemsSource = suggestions;
+                DropoffLocationSuggestionsPanel.IsVisible = suggestions.Count > 0;
+            });
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception ex)
+        {
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                if (requestVersion != _dropoffLocationSuggestionRequestVersion)
+                    return;
+
+                DropoffLocationSuggestionsListBox.ItemsSource = null;
+                DropoffLocationSuggestionsPanel.IsVisible = false;
+                SearchStatusTextBlock.Text = $"Bırakış yeri önerileri alınamadı: {ex.Message}";
+            });
+        }
+    }
+
+    private void DropoffLocationSuggestionsListBox_SelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (DropoffLocationSuggestionsListBox.SelectedItem is not LocationSuggestionItem suggestion)
+            return;
+
+        _dropoffLocationSuggestionRequestVersion++;
+        CancelPickupLocationSuggestionRequest(_dropoffLocationSuggestionCts);
+        _dropoffLocationSuggestionCts = null;
+        _suppressDropoffLocationSuggestionLookup = true;
+        DropoffLocationTextBox.Text = suggestion.MainText;
+        HideDropoffLocationSuggestions();
+        Dispatcher.UIThread.Post(() => _suppressDropoffLocationSuggestionLookup = false);
+    }
+
+    private void HideDropoffLocationSuggestions()
+    {
+        if (!Dispatcher.UIThread.CheckAccess())
+        {
+            Dispatcher.UIThread.Post(HideDropoffLocationSuggestions);
+            return;
+        }
+
+        DropoffLocationSuggestionsListBox.SelectedItem = null;
+        DropoffLocationSuggestionsListBox.ItemsSource = null;
+        DropoffLocationSuggestionsPanel.IsVisible = false;
+    }
+    // Extra - Dropoff Location END
+
     private static void CancelPickupLocationSuggestionRequest(CancellationTokenSource? cts)
     {
         if (cts is null)
@@ -161,6 +259,11 @@ public partial class MainWindow : Window
             var filter = new SearchFilter
             {
                 PickupLocation = PickupLocationTextBox.Text?.Trim() ?? string.Empty,
+                // Extra - Dropoff Location START
+                DropoffLocation = DifferentDropoffCheckBox.IsChecked == true
+                    ? DropoffLocationTextBox.Text?.Trim() ?? string.Empty
+                    : string.Empty,
+                // Extra - Dropoff Location END
                 PickupDate = pickupDate.Value.Date,
                 ReturnDate = returnDate.Value.Date,
                 PickupTime = pickupTime,
@@ -175,6 +278,14 @@ public partial class MainWindow : Window
                 SearchStatusTextBlock.Text = "Alış yeri boş olamaz.";
                 return;
             }
+
+            // Extra - Dropoff Location START
+            if (DifferentDropoffCheckBox.IsChecked == true && string.IsNullOrWhiteSpace(filter.DropoffLocation))
+            {
+                SearchStatusTextBlock.Text = "Bırakış yeri boş olamaz.";
+                return;
+            }
+            // Extra - Dropoff Location END
 
             if (_activeUser is null)
             {
@@ -205,6 +316,10 @@ public partial class MainWindow : Window
 
             await baService.OpenYolcu360HomeAsync();
             await baService.FillPickupLocationAsync(filter.PickupLocation);
+            // Extra - Dropoff Location START
+            if (!string.IsNullOrWhiteSpace(filter.DropoffLocation))
+                await baService.FillDropoffLocationAsync(filter.DropoffLocation);
+            // Extra - Dropoff Location END
             await baService.SelectDateRangeAsync(filter.PickupDate, filter.ReturnDate);
             await baService.SelectTimeAsync(0, filter.PickupTime);
             await baService.SelectTimeAsync(1, filter.ReturnTime);

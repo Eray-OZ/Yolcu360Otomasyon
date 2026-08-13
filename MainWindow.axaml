@@ -527,6 +527,58 @@
                                     <!-- Extra - Location Suggestion END -->
                                 </StackPanel>
 
+                                <!-- Extra - Dropoff Location START -->
+                                <!-- Optional different dropoff location field and Yolcu360-compatible suggestions. -->
+                                <StackPanel Spacing="8">
+                                    <CheckBox x:Name="DifferentDropoffCheckBox"
+                                              Content="Aracı farklı bir yere bırakacağım"
+                                              Foreground="#243446"
+                                              IsCheckedChanged="DifferentDropoffCheckBox_Changed" />
+
+                                    <StackPanel x:Name="DropoffLocationPanel"
+                                                IsVisible="False"
+                                                Spacing="6">
+                                        <TextBlock Text="Bırakış yeri"
+                                                   Foreground="#243446"
+                                                   FontWeight="SemiBold" />
+                                        <TextBox x:Name="DropoffLocationTextBox"
+                                                 PlaceholderText="İstanbul Havalimanı"
+                                                 Width="430"
+                                                 HorizontalAlignment="Left"
+                                                 TextChanged="DropoffLocationTextBox_TextChanged" />
+                                        <Border x:Name="DropoffLocationSuggestionsPanel"
+                                                IsVisible="False"
+                                                Background="White"
+                                                BorderBrush="#D6DFEA"
+                                                BorderThickness="1"
+                                                CornerRadius="10"
+                                                Margin="0,-2,0,0"
+                                                Width="430"
+                                                HorizontalAlignment="Left"
+                                                MaxHeight="220">
+                                            <ListBox x:Name="DropoffLocationSuggestionsListBox"
+                                                     Background="White"
+                                                     SelectionChanged="DropoffLocationSuggestionsListBox_SelectionChanged">
+                                                <ListBox.ItemTemplate>
+                                                    <DataTemplate x:DataType="models:LocationSuggestionItem">
+                                                        <Border Padding="10,8">
+                                                            <StackPanel Spacing="2">
+                                                                <TextBlock Text="{Binding MainText}"
+                                                                           Foreground="#132235"
+                                                                           FontWeight="SemiBold" />
+                                                                <TextBlock Text="{Binding SecondaryText}"
+                                                                           Foreground="#5F7187"
+                                                                           FontSize="12" />
+                                                            </StackPanel>
+                                                        </Border>
+                                                    </DataTemplate>
+                                                </ListBox.ItemTemplate>
+                                            </ListBox>
+                                        </Border>
+                                    </StackPanel>
+                                </StackPanel>
+                                <!-- Extra - Dropoff Location END -->
+
                                 <Grid ColumnDefinitions="Auto,Auto"
                                       ColumnSpacing="75"
                                       HorizontalAlignment="Left">

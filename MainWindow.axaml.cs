@@ -31,6 +31,12 @@ public partial class MainWindow : Window
     private CancellationTokenSource? _pickupLocationSuggestionCts;
     private int _pickupLocationSuggestionRequestVersion;
     private bool _suppressPickupLocationSuggestionLookup;
+    // Extra - Dropoff Location START
+    // Separate suggestion state for optional different dropoff location.
+    private CancellationTokenSource? _dropoffLocationSuggestionCts;
+    private int _dropoffLocationSuggestionRequestVersion;
+    private bool _suppressDropoffLocationSuggestionLookup;
+    // Extra - Dropoff Location END
     private CancellationTokenSource? _flightFromSuggestionCts;
     private CancellationTokenSource? _flightToSuggestionCts;
     private int _flightFromSuggestionRequestVersion;

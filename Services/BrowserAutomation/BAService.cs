@@ -8,6 +8,11 @@ public sealed partial class BAService
 {
     private const string Yolcu360HomeUrl = "https://www.yolcu360.com/";
     private const string PickupLocationInputSelector = "#inputPickUpLocation";
+    // Extra - Dropoff Location START
+    // Yolcu360 selectors for optional different dropoff location.
+    private const string DifferentDropoffCheckboxSelector = "#is_different_dropoff";
+    private const string DropoffLocationInputSelector = "#inputDropOffLocation";
+    // Extra - Dropoff Location END
     private const string LocationSuggestionSelector = ".search-autocomplete__item, .search-autocomplete-mobile__item, .search-autocomplete .location-item, .location-item";
     private const string DateTimeGroupSelector = "[modaltitle='Alış ve Bırakış Tarihi']";
     private const string DatePickerSelector = ".dp__main.dp__theme_light";
