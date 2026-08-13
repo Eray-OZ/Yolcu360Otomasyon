@@ -96,11 +96,13 @@ public partial class MainWindow : Window
         if (PickupLocationSuggestionsListBox.SelectedItem is not LocationSuggestionItem suggestion)
             return;
 
+        _pickupLocationSuggestionRequestVersion++;
+        CancelPickupLocationSuggestionRequest(_pickupLocationSuggestionCts);
+        _pickupLocationSuggestionCts = null;
         _suppressPickupLocationSuggestionLookup = true;
         PickupLocationTextBox.Text = suggestion.MainText;
-        _suppressPickupLocationSuggestionLookup = false;
-
         HidePickupLocationSuggestions();
+        Dispatcher.UIThread.Post(() => _suppressPickupLocationSuggestionLookup = false);
     }
 
     private void HidePickupLocationSuggestions()
