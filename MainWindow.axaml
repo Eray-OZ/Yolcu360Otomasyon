@@ -458,14 +458,15 @@
                     </StackPanel>
 
                     <Border Grid.Row="1"
+                            Grid.RowSpan="2"
                             x:Name="SearchPanel"
                             Background="White"
                             BorderBrush="#D9E2EC"
                             BorderThickness="1"
                             CornerRadius="10"
                             Padding="22">
-                        <Grid ColumnDefinitions="Auto,*"
-                              ColumnSpacing="26">
+                        <Grid ColumnDefinitions="430,*"
+                              ColumnSpacing="18">
                         <StackPanel Grid.Column="0"
                                     Spacing="18">
                             <StackPanel Spacing="4">
@@ -754,9 +755,11 @@
                                               IsReadOnly="True"
                                               CanUserResizeColumns="True"
                                               CanUserSortColumns="True"
+                                              HorizontalScrollBarVisibility="Auto"
+                                              VerticalScrollBarVisibility="Auto"
                                               VerticalAlignment="Stretch"
                                               HorizontalAlignment="Stretch"
-                                              Height="420" />
+                                              MinHeight="520" />
                                     <TextBlock x:Name="SearchResultsEmptyTextBlock"
                                                Text="Sonuçları görmek için arama yapın."
                                                IsVisible="False"
@@ -782,8 +785,8 @@
                             BorderThickness="1"
                             CornerRadius="10"
                             Padding="22">
-                        <Grid ColumnDefinitions="0.9*,1.1*"
-                              ColumnSpacing="22">
+                        <Grid ColumnDefinitions="420,*"
+                              ColumnSpacing="18">
                             <StackPanel Spacing="18">
                                 <StackPanel Spacing="4">
                                     <TextBlock Text="Uçak Bileti Arama"
@@ -939,9 +942,11 @@
                                                       IsReadOnly="True"
                                                       CanUserResizeColumns="True"
                                                       CanUserSortColumns="True"
+                                                      HorizontalScrollBarVisibility="Auto"
+                                                      VerticalScrollBarVisibility="Auto"
                                                       VerticalAlignment="Stretch"
                                                       HorizontalAlignment="Stretch"
-                                                      Height="520" />
+                                                      MinHeight="560" />
                                             <TextBlock x:Name="FlightResultsEmptyTextBlock"
                                                        Text="Uçuş sonuçlarını görmek için arama yapın."
                                                        IsVisible="True"

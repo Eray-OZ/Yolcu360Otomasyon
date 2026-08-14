@@ -212,10 +212,8 @@ public partial class MainWindow : Window
                 return;
             }
 
-            var fromSuggestion = _selectedFlightFromSuggestion ??
-                await _flightLocationSuggestionService.ResolveBestSuggestionAsync(filter.FromLocation);
-            var toSuggestion = _selectedFlightToSuggestion ??
-                await _flightLocationSuggestionService.ResolveBestSuggestionAsync(filter.ToLocation);
+            var fromSuggestion = await _flightLocationSuggestionService.ResolveBestSuggestionAsync(filter.FromLocation);
+            var toSuggestion = await _flightLocationSuggestionService.ResolveBestSuggestionAsync(filter.ToLocation);
 
             if (fromSuggestion is null || toSuggestion is null)
             {
