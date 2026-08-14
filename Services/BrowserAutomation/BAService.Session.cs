@@ -17,8 +17,7 @@ public sealed partial class BAService
                 """
                 (() => {
                     try {
-                        const keepPrefixes = ['_ga', '_gid', '_gat', '_gcl', '_gac', 'gtm', '__gfp'];
-                        const domains = ['', '.yolcu360.com', 'www.yolcu360.com', 'yolcu360.com'];
+                        const domains = ['', '.yolcu360.com', 'www.yolcu360.com', 'yolcu360.com', '.google.com', '.recaptcha.net'];
                         const paths = ['/', '/login', '/api'];
                         const cookies = document.cookie.split(";");
                         for (let i = 0; i < cookies.length; i++) {
@@ -26,8 +25,6 @@ public sealed partial class BAService
                             const eqPos = cookie.indexOf("=");
                             const name = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim();
                             if (!name) continue;
-                            const isGoogleTrust = keepPrefixes.some(p => name.toLowerCase().startsWith(p));
-                            if (isGoogleTrust) continue; // Google Analytics ve güven çerezlerini koru
 
                             for (const d of domains) {
                                 for (const p of paths) {
@@ -36,14 +33,7 @@ public sealed partial class BAService
                             }
                         }
                     } catch {}
-                    try {
-                        for (let i = localStorage.length - 1; i >= 0; i--) {
-                            const key = localStorage.key(i);
-                            if (key && !key.toLowerCase().startsWith('_ga') && !key.toLowerCase().startsWith('gtm')) {
-                                localStorage.removeItem(key);
-                            }
-                        }
-                    } catch {}
+                    try { localStorage.clear(); } catch {}
                     try { sessionStorage.clear(); } catch {}
                     try {
                         if (window.indexedDB && window.indexedDB.databases) {
@@ -61,14 +51,7 @@ public sealed partial class BAService
                 """
                 (() => {
                     try {
-                        const keepPrefixes = ['_ga', '_gid', '_gat', '_gcl', '_gac', 'gtm', '__gfp'];
-                        for (let i = 0; i < localStorage.length; i++) {
-                            const key = localStorage.key(i);
-                            if (key && !keepPrefixes.some(p => key.toLowerCase().startsWith(p))) {
-                                return false; // Silinmemiş korunmayan anahtar var
-                            }
-                        }
-                        return sessionStorage.length === 0;
+                        return localStorage.length === 0 && sessionStorage.length === 0;
                     } catch {
                         return true;
                     }
@@ -142,7 +125,6 @@ public sealed partial class BAService
 
             var json = JsonSerializer.Serialize(state, new JsonSerializerOptions { WriteIndented = true });
             await File.WriteAllTextAsync(filePath, json);
-            Report($"Oturum gömülü tarayıcıdan dosyaya kaydedildi: {filePath}");
         }
         catch (Exception ex)
         {

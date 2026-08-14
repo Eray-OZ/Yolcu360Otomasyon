@@ -14,6 +14,10 @@ public sealed partial class BAService
                 window.__stealthInjected = true;
     
                 try { Object.defineProperty(navigator, 'webdriver', { get: () => undefined, configurable: true }); } catch {}
+                try { Object.defineProperty(navigator, 'platform', { get: () => 'MacIntel', configurable: true }); } catch {}
+                try { Object.defineProperty(navigator, 'vendor', { get: () => 'Google Inc.', configurable: true }); } catch {}
+                try { Object.defineProperty(navigator, 'maxTouchPoints', { get: () => 0, configurable: true }); } catch {}
+                try { Object.defineProperty(navigator, 'hardwareConcurrency', { get: () => 8, configurable: true }); } catch {}
                 try {
                     if (!window.chrome) {
                         window.chrome = { runtime: {}, loadTimes: function() {}, csi: function() {}, app: {} };
@@ -35,6 +39,27 @@ public sealed partial class BAService
                     });
                 } catch {}
 
+                // Canvas & WebGL fingerprint masking
+                try {
+                    const origGetImageData = CanvasRenderingContext2D.prototype.getImageData;
+                    CanvasRenderingContext2D.prototype.getImageData = function(x, y, w, h) {
+                        const imgData = origGetImageData.apply(this, arguments);
+                        if (imgData && imgData.data && imgData.data.length > 4) {
+                            imgData.data[imgData.data.length - 1] = (imgData.data[imgData.data.length - 1] ^ 1);
+                        }
+                        return imgData;
+                    };
+                } catch {}
+
+                try {
+                    const getParam = WebGLRenderingContext.prototype.getParameter;
+                    WebGLRenderingContext.prototype.getParameter = function(param) {
+                        if (param === 37445) return 'Apple Inc.';
+                        if (param === 37446) return 'Apple GPU';
+                        return getParam.apply(this, [param]);
+                    };
+                } catch {}
+
                 window.__dispatchHumanMousePath = (targetX, targetY) => {
                     const el = document.elementFromPoint(targetX, targetY) || document.body;
                     const opts = { bubbles: true, cancelable: true, view: window, clientX: targetX, clientY: targetY, screenX: targetX + 50, screenY: targetY + 50 };
@@ -44,14 +69,51 @@ public sealed partial class BAService
                     el.dispatchEvent(new MouseEvent('mousemove', opts));
                 };
 
+                window.__lastApiRecaptchaError = false;
+                window.__clearRecaptchaError = () => { window.__lastApiRecaptchaError = false; };
+
+                // Hook fetch to detect API error payload
+                if (!window.__origFetch) {
+                    window.__origFetch = window.fetch;
+                    window.fetch = async function(...args) {
+                        const response = await window.__origFetch.apply(this, args);
+                        try {
+                            const clone = response.clone();
+                            clone.text().then(body => {
+                                if (body && (body.includes('recaptcha_score_too_low') || body.includes('score_too_low'))) {
+                                    window.__lastApiRecaptchaError = true;
+                                }
+                            }).catch(() => {});
+                        } catch {}
+                        return response;
+                    };
+                }
+
+                // Hook XMLHttpRequest to detect API error payload
+                if (!window.__origXhrOpen) {
+                    window.__origXhrOpen = XMLHttpRequest.prototype.open;
+                    window.__origXhrSend = XMLHttpRequest.prototype.send;
+                    XMLHttpRequest.prototype.send = function(...args) {
+                        this.addEventListener('load', function() {
+                            try {
+                                const body = this.responseText;
+                                if (body && (body.includes('recaptcha_score_too_low') || body.includes('score_too_low'))) {
+                                    window.__lastApiRecaptchaError = true;
+                                }
+                            } catch {}
+                        });
+                        return window.__origXhrSend.apply(this, args);
+                    };
+                }
+
                 window.__hasRecaptchaScoreError = () => {
-                    const errorKeywords = ['recaptcha_score_too_low', 'score_too_low', 'recaptcha puanı', 'güvenlik doğrulaması başarısız'];
-                    const toasts = document.querySelectorAll('.toast, .notification, .alert, [role="alert"], .Toastify, [class*="toast"], [class*="snackbar"]');
+                    if (window.__lastApiRecaptchaError) return true;
+                    const errorKeywords = ['recaptcha_score_too_low', 'score_too_low', 'recaptcha puanı', 'güvenlik doğrulaması başarısız', 'güvenlik kontrolü'];
+                    const toasts = document.querySelectorAll('.toast, .notification, .alert, [role="alert"], .Toastify, [class*="toast"], [class*="snackbar"], [class*="modal"], [class*="error"]');
                     for (const el of toasts) {
                         const txt = (el.textContent || '').toLowerCase();
                         if (errorKeywords.some(k => txt.includes(k))) return true;
                     }
-                    // URL'de hata parametresi kontrolü
                     if (location.search.includes('recaptcha') || location.hash.includes('recaptcha')) return true;
                     return false;
                 };
@@ -73,14 +135,8 @@ public sealed partial class BAService
         await InjectStealthAndHumanMouseScriptAsync();
         await WaitForInitialPopupAndCloseAsync(TimeSpan.FromSeconds(3));
 
-        // Warm up reCAPTCHA v3 score with human mouse movements on home page
-        for (int i = 0; i < 3; i++)
-        {
-            var rx = Random.Shared.Next(100, 600);
-            var ry = Random.Shared.Next(100, 400);
-            await EvaluateScriptAsync($"window.__dispatchHumanMousePath ? window.__dispatchHumanMousePath({rx}, {ry}) : null;");
-            await Task.Delay(400);
-        }
+        // Warm up reCAPTCHA v3 score with human movements on home page
+        await SimulateHumanWarmupAsync(steps: 3, baseDelayMs: 350);
 
         Report("Organik olarak 'Giriş Yap' butonuna tıklanıyor...");
         var headerLoginClicked = await EvaluateScriptAsync(
@@ -163,19 +219,32 @@ public sealed partial class BAService
 
         // Type phone number chunk by chunk (e.g. 538, 523, 28, 69) with human pauses
         var phoneChunks = SplitPhoneNumber(normalizedPhone);
+        var typedPhone = string.Empty;
         foreach (var chunk in phoneChunks)
         {
             foreach (var ch in chunk)
             {
                 var charJson = JsonSerializer.Serialize(ch.ToString());
+                typedPhone += ch;
+                var typedPhoneJson = JsonSerializer.Serialize(typedPhone);
                 await EvaluateScriptAsync(
                     $$"""
                     (() => {
                         const input = document.querySelector('#phn-input') || document.querySelector('input[type="tel"]');
                         if (!input) return false;
                         const char = {{charJson}};
+                        const value = {{typedPhoneJson}};
+                        const descriptor = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+                        const setValue = nextValue => {
+                            if (descriptor?.set) {
+                                descriptor.set.call(input, nextValue);
+                            } else {
+                                input.value = nextValue;
+                            }
+                        };
+
                         input.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: char }));
-                        input.value = (input.value || '') + char;
+                        setValue(value);
                         input.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: char }));
                         input.dispatchEvent(new Event('input', { bubbles: true }));
                         input.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true, key: char }));
@@ -186,6 +255,10 @@ public sealed partial class BAService
             }
             await Task.Delay(Random.Shared.Next(180, 320));
         }
+
+        var phoneApplied = await WaitForPhoneInputValueAsync(normalizedPhone, TimeSpan.FromSeconds(3));
+        if (!phoneApplied)
+            throw new InvalidOperationException("Telefon numarası inputa doğru yazılamadı.");
 
         await EvaluateScriptAsync(
             """
@@ -205,75 +278,46 @@ public sealed partial class BAService
             })();
             """);
 
-        Report("Telefon numarası girildi, reCAPTCHA v3 güven puanı oluşturuluyor...");
-        for (int i = 0; i < 4; i++)
+        const int maxSubmitAttempts = 3;
+        bool smsScreenReached = false;
+
+        for (int attempt = 1; attempt <= maxSubmitAttempts; attempt++)
         {
-            var rx = Random.Shared.Next(100, 500);
-            var ry = Random.Shared.Next(100, 400);
-            await EvaluateScriptAsync($"window.__dispatchHumanMousePath ? window.__dispatchHumanMousePath({rx}, {ry}) : null;");
-            await Task.Delay(500);
-        }
-
-        Report("Google reCAPTCHA v3 servisinin hazır olması bekleniyor...");
-        await WaitForScriptTrueOrTimeoutAsync(
-            """
-            (() => typeof window.grecaptcha !== 'undefined' && typeof window.grecaptcha.execute === 'function')();
-            """,
-            TimeSpan.FromSeconds(5));
-
-        Report("'Devam Et' butonuna insansı şekilde tıklanıyor...");
-        var continueClicked = await EvaluateScriptAsync(
-            """
-            (() => {
-                const btn = Array.from(document.querySelectorAll('button, input[type="submit"], [role="button"]'))
-                    .find(b => {
-                        const txt = (b.textContent || b.value || b.getAttribute('aria-label') || '').trim().toLowerCase();
-                        return txt.includes('devam');
-                    });
-                if (!btn) return false;
-
-                btn.disabled = false;
-                btn.removeAttribute('disabled');
-                btn.classList.remove('disabled');
-
-                if (window.__ba && window.__ba.clickLikeUser) {
-                    window.__ba.clickLikeUser(btn);
-                } else {
-                    btn.click();
-                }
-
-                const form = btn.closest('form');
-                if (form) {
-                    try { form.requestSubmit(); } catch { try { form.submit(); } catch {} }
-                }
-
-                return true;
-            })();
-            """);
-
-        if (!IsScriptTrue(continueClicked))
-            throw new InvalidOperationException("Gömülü tarayıcıda 'Devam Et' butonu tıklanamadı.");
-
-        var hasRecaptchaError = await WaitForSmsScreenOrRecaptchaErrorAsync(TimeSpan.FromSeconds(8));
-        if (hasRecaptchaError)
-        {
-            Report("reCAPTCHA puan uyarısı algılandı (recaptcha_score_too_low). Insansı sayfa hareketleri artırılarak tekrar deneniyor...");
-            for (int i = 0; i < 5; i++)
+            if (attempt == 1)
             {
-                var rx = Random.Shared.Next(100, 500);
-                var ry = Random.Shared.Next(100, 400);
-                await EvaluateScriptAsync($"window.__dispatchHumanMousePath ? window.__dispatchHumanMousePath({rx}, {ry}) : null;");
-                await Task.Delay(500);
+                Report("Telefon numarası girildi, reCAPTCHA v3 güven puanı oluşturuluyor...");
+                await SimulateHumanWarmupAsync(steps: 4, baseDelayMs: 400);
+            }
+            else
+            {
+                // Exponential backoff: attempt 2 -> ~6-8s, attempt 3 -> ~12-15s
+                var backoffBaseMs = (int)Math.Pow(2, attempt) * 1500;
+                var jitterMs = Random.Shared.Next(500, 2000);
+                var totalBackoffMs = backoffBaseMs + jitterMs;
+                var warmupSteps = 6 + (attempt * 3);
+                var stepDelay = totalBackoffMs / warmupSteps;
+
+                Report($"reCAPTCHA puan uyarısı algılandı (recaptcha_score_too_low). {attempt}. deneme için {totalBackoffMs / 1000.0:F1}s insansı ısınma ve soğuma (backoff) uygulanıyor...");
+                await SimulateHumanWarmupAsync(steps: warmupSteps, baseDelayMs: stepDelay);
             }
 
+            Report("Google reCAPTCHA v3 servisinin hazır olması bekleniyor...");
             await WaitForScriptTrueOrTimeoutAsync(
                 """
                 (() => typeof window.grecaptcha !== 'undefined' && typeof window.grecaptcha.execute === 'function')();
                 """,
-                TimeSpan.FromSeconds(3));
+                TimeSpan.FromSeconds(5));
 
-            Report("'Devam Et' butonuna 2. deneme tıklaması yapılıyor...");
-            await EvaluateScriptAsync(
+            await PrewarmAndInjectRecaptchaTokenAsync();
+
+            Report(attempt == 1 
+                ? "'Devam Et' butonuna insansı şekilde tıklanıyor..." 
+                : $"'Devam Et' butonuna {attempt}. deneme tıklaması yapılıyor...");
+
+            // Önceki denemeden kalan hata bayraklarını temizle
+            await EvaluateScriptAsync("window.__clearRecaptchaError ? window.__clearRecaptchaError() : null;");
+
+            var continueClicked = await EvaluateScriptAsync(
                 """
                 (() => {
                     const btn = Array.from(document.querySelectorAll('button, input[type="submit"], [role="button"]'))
@@ -301,7 +345,21 @@ public sealed partial class BAService
                     return true;
                 })();
                 """);
-            await WaitForSmsScreenOrRecaptchaErrorAsync(TimeSpan.FromSeconds(8));
+
+            if (!IsScriptTrue(continueClicked))
+                throw new InvalidOperationException("Gömülü tarayıcıda 'Devam Et' butonu tıklanamadı.");
+
+            var hasRecaptchaError = await WaitForSmsScreenOrRecaptchaErrorAsync(TimeSpan.FromSeconds(8));
+            if (!hasRecaptchaError)
+            {
+                smsScreenReached = true;
+                break;
+            }
+        }
+
+        if (!smsScreenReached)
+        {
+            throw new InvalidOperationException("reCAPTCHA güvenlik doğrulaması aşılamadı (tüm denemeler tükendi). Lütfen birkaç dakika sonra tekrar deneyin.");
         }
 
         Report("SMS doğrulama ekranı bekleniyor...");
@@ -345,6 +403,25 @@ public sealed partial class BAService
             TimeSpan.FromSeconds(5));
     }
 
+    private Task<bool> WaitForPhoneInputValueAsync(string expectedPhone, TimeSpan timeout)
+    {
+        var expectedPhoneJson = JsonSerializer.Serialize(expectedPhone);
+
+        return WaitForScriptTrueOrTimeoutAsync(
+            $$"""
+            (() => {
+                const input = document.querySelector('#phn-input, input[type="tel"]');
+                if (!input) return false;
+
+                const expected = {{expectedPhoneJson}};
+                const actualDigits = (input.value || '').replace(/\D/g, '');
+                return actualDigits.endsWith(expected);
+            })();
+            """,
+            timeout,
+            TimeSpan.FromMilliseconds(250));
+    }
+
     private async Task<bool> WaitForSmsScreenOrRecaptchaErrorAsync(TimeSpan timeout)
     {
         string lastState = "waiting";
@@ -380,8 +457,100 @@ public sealed partial class BAService
         if (string.Equals(lastState, "sms", StringComparison.OrdinalIgnoreCase))
             return false;
 
-        var hasRecaptchaError = await EvaluateScriptAsync("window.__hasRecaptchaScoreError ? window.__hasRecaptchaScoreError() : false");
-        return IsScriptTrue(hasRecaptchaError);
+        // Zaman aşımı durumunda son durumu kontrol et
+        var screenCheck = await EvaluateScriptAsync(
+            """
+            (() => {
+                const smsInput = document.querySelector('#sms_input');
+                if (smsInput && window.__ba?.isVisible(smsInput)) return 'sms';
+
+                const text = (document.body.innerText || '').toLocaleLowerCase('tr-TR');
+                const hasSmsText = text.includes('doğrulama') || text.includes('sms') || text.includes('gönderilen') || text.includes('tek kullanımlık');
+                if (hasSmsText && !document.querySelector('#phn-input')) return 'sms';
+
+                if (window.__hasRecaptchaScoreError && window.__hasRecaptchaScoreError()) return 'recaptcha';
+
+                // SMS inputu yok ve telefon kutusu hala ekrandaysa hata/tekrar deneme gereklidir
+                const phnInput = document.querySelector('#phn-input, input[type="tel"]');
+                if (phnInput && window.__ba?.isVisible(phnInput)) return 'recaptcha';
+
+                return 'unknown';
+            })();
+            """);
+
+        var finalState = (screenCheck ?? string.Empty).Trim().Trim('"');
+        if (string.Equals(finalState, "sms", StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        // SMS gelmediyse kesinlikle retry tetikle
+        return true;
+    }
+
+    private async Task PrewarmAndInjectRecaptchaTokenAsync()
+    {
+        const string siteKey = "6LdSrcgqAAAAAMP-0Z98kPozm5Mqdo-kjhGnsSHI";
+        const string action = "request_phone_auth_code";
+
+        Report("reCAPTCHA v3 token ön-üretimi başlatılıyor...");
+
+        // Adım 1: Orijinal execute'u kaydet ve token üret
+        await EvaluateScriptAsync(
+            $$"""
+            (() => {
+                if (typeof window.grecaptcha === 'undefined' || typeof window.grecaptcha.execute !== 'function') return;
+                if (!window.__recaptchaOriginalExecute) {
+                    window.__recaptchaOriginalExecute = window.grecaptcha.execute.bind(window.grecaptcha);
+                }
+                window.__prewarmedRecaptchaToken = null;
+                window.__recaptchaOriginalExecute(
+                    '{{siteKey}}',
+                    { action: '{{action}}' }
+                ).then(token => {
+                    window.__prewarmedRecaptchaToken = token || 'empty';
+                }).catch(() => {
+                    window.__prewarmedRecaptchaToken = 'error';
+                });
+            })();
+            """);
+
+        // Adım 2: Token'ın üretilmesini bekle
+        var tokenReady = await WaitForScriptTrueOrTimeoutAsync(
+            """
+            (() => !!window.__prewarmedRecaptchaToken)();
+            """,
+            TimeSpan.FromSeconds(5));
+
+        if (!tokenReady)
+        {
+            Report("reCAPTCHA token ön-üretimi zaman aşımına uğradı, site kendi token'ını üretecek.");
+            return;
+        }
+
+        // Adım 3: grecaptcha.execute'u one-shot override et
+        var overrideResult = await EvaluateScriptAsync(
+            """
+            (() => {
+                const token = window.__prewarmedRecaptchaToken;
+                if (!token || token === 'error' || token === 'empty') return 'skip';
+
+                window.grecaptcha.execute = function(siteKey, options) {
+                    const prewarmed = window.__prewarmedRecaptchaToken;
+                    if (prewarmed && prewarmed !== 'error' && prewarmed !== 'empty') {
+                        window.__prewarmedRecaptchaToken = null;
+                        window.grecaptcha.execute = window.__recaptchaOriginalExecute;
+                        return Promise.resolve(prewarmed);
+                    }
+                    return window.__recaptchaOriginalExecute(siteKey, options);
+                };
+
+                return 'injected';
+            })();
+            """);
+
+        var result = (overrideResult ?? string.Empty).Trim().Trim('"');
+        Report(result == "injected"
+            ? "reCAPTCHA v3 ön-üretilmiş token enjekte edildi. Site bu token'ı kullanacak."
+            : $"reCAPTCHA token enjeksiyonu atlandı ({result}), site kendi token'ını üretecek.");
     }
 
     private Task WaitForSmsCodeInputReadyAsync()
@@ -525,6 +694,31 @@ public sealed partial class BAService
         Report(completed
             ? "Giriş başarıyla tamamlandı."
             : "Giriş tamamlanma kontrolü zaman aşımına uğradı, ancak devam ediliyor.");
+    }
+
+    private async Task SimulateHumanWarmupAsync(int steps, int baseDelayMs)
+    {
+        for (int i = 0; i < steps; i++)
+        {
+            var rx = Random.Shared.Next(120, 750);
+            var ry = Random.Shared.Next(150, 550);
+            
+            await EvaluateScriptAsync(
+                $$"""
+                (() => {
+                    if (window.__dispatchHumanMousePath) {
+                        window.__dispatchHumanMousePath({{rx}}, {{ry}});
+                    }
+                    if ({{(i % 2 == 0 ? "true" : "false")}}) {
+                        const deltaY = (Math.random() * 40) - 20;
+                        try { window.scrollBy({ top: deltaY, behavior: 'smooth' }); } catch { try { window.scrollBy(0, deltaY); } catch {} }
+                    }
+                })();
+                """);
+
+            var delay = Random.Shared.Next(Math.Max(150, baseDelayMs - 100), baseDelayMs + 200);
+            await Task.Delay(delay);
+        }
     }
 
     private static string NormalizePhoneNumber(string raw)

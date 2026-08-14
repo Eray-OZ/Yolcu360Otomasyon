@@ -21,8 +21,18 @@ public sealed partial class BAService
                     : '';
 
             if (scopedLabelSelector) {
-                const scopedLabel = document.querySelector(scopedLabelSelector);
-                const scopedInput = scopedLabel?.querySelector(selector);
+                const scopedLabels = Array
+                    .from(document.querySelectorAll(scopedLabelSelector))
+                    .filter(isVisible);
+
+                const scopedInput = scopedLabels
+                    .map(label => label.querySelector(selector))
+                    .find(input =>
+                        input &&
+                        isVisible(input) &&
+                        !input.disabled &&
+                        input.getAttribute('readonly') === null);
+
                 if (scopedInput &&
                     isVisible(scopedInput) &&
                     !scopedInput.disabled &&
@@ -34,9 +44,21 @@ public sealed partial class BAService
             const looksLikeLocationInput = input => {
                 if (!input) return false;
                 const attrs = `${input.id || ''} ${input.name || ''} ${input.placeholder || ''} ${input.getAttribute('data-cms-key') || ''} ${input.className || ''}`.toLocaleLowerCase('tr-TR');
-                return attrs.includes('pickup') ||
-                    attrs.includes('dropoff') ||
-                    attrs.includes('location') ||
+                if (selector === '#inputPickUpLocation') {
+                    return attrs.includes('pickup') ||
+                        attrs.includes('from') ||
+                        attrs.includes('kalkış') ||
+                        attrs.includes('nereden');
+                }
+
+                if (selector === '#inputDropOffLocation') {
+                    return attrs.includes('dropoff') ||
+                        attrs.includes('to') ||
+                        attrs.includes('varış') ||
+                        attrs.includes('nereye');
+                }
+
+                return attrs.includes('location') ||
                     attrs.includes('airport') ||
                     attrs.includes('havalimanı') ||
                     attrs.includes('şehir') ||
@@ -355,25 +377,12 @@ public sealed partial class BAService
                     });
                 }
 
-                selected.scrollIntoView({ block: 'center', inline: 'nearest' });
-                const rect = selected.getBoundingClientRect();
-                const x = rect.left + rect.width / 2;
-                const y = rect.top + rect.height / 2;
-                const pointTarget = document.elementFromPoint(x, y);
-                const targetElement = pointTarget?.closest?.({{suggestionSelectorJson}}) || pointTarget || selected;
-
-                const opts = { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y };
-                selected.dispatchEvent(new MouseEvent('mouseover', opts));
-                selected.dispatchEvent(new MouseEvent('mousemove', opts));
-                selected.dispatchEvent(new MouseEvent('mousedown', { ...opts, buttons: 1 }));
-                selected.dispatchEvent(new MouseEvent('mouseup', opts));
-                selected.dispatchEvent(new MouseEvent('click', opts));
-                if (typeof selected.click === 'function') selected.click();
-
-                const clickResult = {
-                    clicked: true,
-                    pointTargetText: (targetElement?.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 120)
-                };
+                const clickResult = window.__ba?.clickLikeUser
+                    ? window.__ba.clickLikeUser(selected, {{suggestionSelectorJson}})
+                    : (() => {
+                        selected.click();
+                        return { clicked: true, pointTargetText: '' };
+                    })();
 
                 return JSON.stringify({
                     clicked: !!clickResult.clicked,
