@@ -13,6 +13,7 @@ public partial class MainWindow : Window
         if (_suppressFlightFromSuggestionLookup)
             return;
 
+        _selectedFlightFromSuggestion = null;
         await LoadFlightLocationSuggestionsAsync(
             FlightFromTextBox,
             FlightFromSuggestionsPanel,
@@ -26,6 +27,7 @@ public partial class MainWindow : Window
         if (_suppressFlightToSuggestionLookup)
             return;
 
+        _selectedFlightToSuggestion = null;
         await LoadFlightLocationSuggestionsAsync(
             FlightToTextBox,
             FlightToSuggestionsPanel,
@@ -42,6 +44,7 @@ public partial class MainWindow : Window
         _flightFromSuggestionRequestVersion++;
         CancelPickupLocationSuggestionRequest(_flightFromSuggestionCts);
         _flightFromSuggestionCts = null;
+        _selectedFlightFromSuggestion = suggestion;
         _suppressFlightFromSuggestionLookup = true;
         FlightFromTextBox.Text = GetFlightSuggestionText(suggestion);
 
@@ -57,6 +60,7 @@ public partial class MainWindow : Window
         _flightToSuggestionRequestVersion++;
         CancelPickupLocationSuggestionRequest(_flightToSuggestionCts);
         _flightToSuggestionCts = null;
+        _selectedFlightToSuggestion = suggestion;
         _suppressFlightToSuggestionLookup = true;
         FlightToTextBox.Text = GetFlightSuggestionText(suggestion);
 
@@ -93,7 +97,7 @@ public partial class MainWindow : Window
 
         try
         {
-            var suggestions = await _locationSuggestionService.GetSuggestionsAsync(input, cts.Token);
+            var suggestions = await _flightLocationSuggestionService.GetSuggestionsAsync(input, cts.Token);
             if (cts.IsCancellationRequested || !IsFlightSuggestionRequestCurrent(isFrom, requestVersion))
                 return;
 
@@ -208,6 +212,26 @@ public partial class MainWindow : Window
                 return;
             }
 
+            var fromSuggestion = _selectedFlightFromSuggestion ??
+                await _flightLocationSuggestionService.ResolveBestSuggestionAsync(filter.FromLocation);
+            var toSuggestion = _selectedFlightToSuggestion ??
+                await _flightLocationSuggestionService.ResolveBestSuggestionAsync(filter.ToLocation);
+
+            if (fromSuggestion is null || toSuggestion is null)
+            {
+                FlightStatusTextBlock.Text = "Uçuş için nereden/nereye önerilerinden seçim yapılmalı.";
+                return;
+            }
+
+            filter.FromLocation = fromSuggestion.MainText;
+            filter.FromPlaceCode = fromSuggestion.PlaceCode;
+            filter.FromPlaceId = fromSuggestion.PlaceId;
+            filter.FromPlaceType = fromSuggestion.Type;
+            filter.ToLocation = toSuggestion.MainText;
+            filter.ToPlaceCode = toSuggestion.PlaceCode;
+            filter.ToPlaceId = toSuggestion.PlaceId;
+            filter.ToPlaceType = toSuggestion.Type;
+
             if (_activeUser is null)
             {
                 FlightStatusTextBlock.Text = "Önce giriş yapılmalı.";
@@ -227,6 +251,12 @@ public partial class MainWindow : Window
 
             FlightStatusTextBlock.Text = "Uçuş sonuçları okunuyor...";
             _latestFlightResults = await baService.ReadFlightResultsAsync();
+            foreach (var flightResult in _latestFlightResults)
+            {
+                flightResult.FromLocation = filter.FromLocation;
+                flightResult.ToLocation = filter.ToLocation;
+                flightResult.Route = $"{filter.FromLocation} → {filter.ToLocation}";
+            }
 
             await Dispatcher.UIThread.InvokeAsync(() =>
             {

@@ -14,6 +14,7 @@ public partial class MainWindow : Window
     // Extra - Dynamic Collections END
     // Extra - Location Suggestion START
     private readonly LocationSuggestionService _locationSuggestionService = new();
+    private readonly FlightLocationSuggestionService _flightLocationSuggestionService = new();
     // Extra - Location Suggestion END
     private readonly SmsReceiverService _smsReceiverService = new(5001);
     private readonly IyzicoCallbackService _iyzicoCallbackService = new();
@@ -44,6 +45,8 @@ public partial class MainWindow : Window
     private int _flightToSuggestionRequestVersion;
     private bool _suppressFlightFromSuggestionLookup;
     private bool _suppressFlightToSuggestionLookup;
+    private LocationSuggestionItem? _selectedFlightFromSuggestion;
+    private LocationSuggestionItem? _selectedFlightToSuggestion;
     // Extra - Location Suggestion END
     private bool _isAuthenticating;
 
@@ -65,6 +68,8 @@ public partial class MainWindow : Window
         ConfigureFlightResultsGrid();
         ConfigureCollectionsGrid();
         ConfigurePaymentsGrid();
+        FlightDepartureDateTextBox.Text = DateTime.Today.AddDays(7).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+        FlightReturnDateTextBox.Text = string.Empty;
         _smsReceiverService.SmsReceived += SmsReceiverService_SmsReceived;
         _ = _databaseService.EnsureDatabaseAsync();
         InitializeSmsReceiver();

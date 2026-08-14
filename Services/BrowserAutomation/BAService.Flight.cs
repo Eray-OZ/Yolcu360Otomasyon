@@ -183,7 +183,7 @@ public sealed partial class BAService
         var selected = false;
         for (var attempt = 1; attempt <= 3 && !selected; attempt++)
         {
-            var selectionResult = await ClickFlightLocationSuggestionAsync(selector, location);
+            await ClickFlightLocationSuggestionAsync(selector, location);
             selected = await WaitForFlightLocationSelectionAppliedAsync(selector, TimeSpan.FromSeconds(3));
         }
 
@@ -493,12 +493,28 @@ public sealed partial class BAService
                     (() => {
                         const isVisible = window.__ba?.isVisible || (() => false);
                         const normalize = window.__ba?.normalizeTr || (value => (value || '').toLocaleLowerCase('tr-TR').replace(/\s+/g, ' ').trim());
+                        const compact = window.__ba?.compactTr || (value => normalize(value).replace(/\s/g, ''));
+                        const tokenize = value => normalize(value)
+                            .replace(/[()]/g, ' ')
+                            .split(/[\s,/-]+/)
+                            .map(token => token.trim())
+                            .filter(token => token.length >= 3 && !['airport', 'havalimanı', 'uluslararası', 'international', 'türkiye', 'turkey'].includes(token));
                         const target = normalize({{locationJson}});
+                        const targetTokens = tokenize({{locationJson}});
                         const suggestions = Array.from(document.querySelectorAll({{suggestionSelectorJson}}));
                         const visibleSuggestions = suggestions.filter(isVisible);
                         const matchingSuggestions = visibleSuggestions.filter(item => {
                             const text = normalize(item.textContent || '');
-                            return text.includes(target) || target.includes(text);
+                            const compactText = compact(item.textContent || '');
+                            const compactTarget = compact({{locationJson}});
+                            const itemTokens = tokenize(item.textContent || '');
+                            const commonTokenCount = itemTokens.filter(token => targetTokens.includes(token)).length;
+
+                            return text.includes(target) ||
+                                target.includes(text) ||
+                                compactText.includes(compactTarget) ||
+                                compactTarget.includes(compactText) ||
+                                commonTokenCount >= 2;
                         });
 
                         return JSON.stringify({
@@ -515,9 +531,6 @@ public sealed partial class BAService
                 var summary = (lastResult ?? string.Empty).Trim('"');
                 var hasVisibleSuggestion = summary.Contains("\"visible\":", StringComparison.OrdinalIgnoreCase) &&
                     !summary.Contains("\"visible\":0", StringComparison.OrdinalIgnoreCase);
-
-                if (hasVisibleSuggestion)
-                    Report($"{fieldName} önerileri bulundu: {summary}");
 
                 return hasVisibleSuggestion;
             },
@@ -632,6 +645,8 @@ public sealed partial class BAService
                         return {
                             airline,
                             route: [departureAirport, arrivalAirport].filter(Boolean).join(' → '),
+                            fromLocation: departureAirport,
+                            toLocation: arrivalAirport,
                             departureTime: normalize(departureInfo?.querySelector('#departuretime')?.textContent),
                             arrivalTime: normalize(arrivalInfo?.querySelector('#arrivaltime')?.textContent),
                             duration,
@@ -742,4 +757,5 @@ public sealed partial class BAService
             .Replace("International Airport", "Airport", StringComparison.OrdinalIgnoreCase)
             .Trim();
     }
+
 }

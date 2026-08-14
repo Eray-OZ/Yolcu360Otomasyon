@@ -149,7 +149,21 @@ public partial class MainWindow : Window
         {
             Header = "Rota",
             Binding = new Binding(nameof(FlightResultItem.Route)),
-            Width = new DataGridLength(2, DataGridLengthUnitType.Star)
+            Width = new DataGridLength(1.4, DataGridLengthUnitType.Star)
+        });
+
+        FlightResultsDataGrid.Columns.Add(new DataGridTextColumn
+        {
+            Header = "Nereden",
+            Binding = new Binding(nameof(FlightResultItem.FromLocation)),
+            Width = new DataGridLength(1.5, DataGridLengthUnitType.Star)
+        });
+
+        FlightResultsDataGrid.Columns.Add(new DataGridTextColumn
+        {
+            Header = "Nereye",
+            Binding = new Binding(nameof(FlightResultItem.ToLocation)),
+            Width = new DataGridLength(1.5, DataGridLengthUnitType.Star)
         });
 
         FlightResultsDataGrid.Columns.Add(new DataGridTextColumn

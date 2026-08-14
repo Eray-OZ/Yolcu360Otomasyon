@@ -10,6 +10,12 @@ public sealed class FlightResultItem
     [JsonPropertyName("route")]
     public string Route { get; set; } = string.Empty;
 
+    [JsonPropertyName("fromLocation")]
+    public string FromLocation { get; set; } = string.Empty;
+
+    [JsonPropertyName("toLocation")]
+    public string ToLocation { get; set; } = string.Empty;
+
     [JsonPropertyName("departureTime")]
     public string DepartureTime { get; set; } = string.Empty;
 
