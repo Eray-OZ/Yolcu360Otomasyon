@@ -10,6 +10,12 @@ public sealed partial class BAService
         "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"
     };
 
+    private static readonly string[] TurkishMonthShortNames =
+    {
+        "Oca", "Şub", "Mar", "Nis", "May", "Haz",
+        "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"
+    };
+
     public async Task FillPickupLocationAsync(string location)
     {
         if (string.IsNullOrWhiteSpace(location))
@@ -395,14 +401,18 @@ public sealed partial class BAService
     private async Task<bool> ClickCalendarDayAsync(DateTime date)
     {
         var dayJson = JsonSerializer.Serialize(date.Day);
-        var monthJson = JsonSerializer.Serialize(TurkishMonthNames[date.Month - 1]);
+        var monthNamesJson = JsonSerializer.Serialize(new[]
+        {
+            TurkishMonthNames[date.Month - 1],
+            TurkishMonthShortNames[date.Month - 1]
+        });
         var yearJson = JsonSerializer.Serialize(date.Year.ToString());
 
         var result = await EvaluateScriptAsync(
             $$"""
             (() => {
                 const dayTarget = {{dayJson}};
-                const monthTarget = {{monthJson}};
+                const monthTargets = {{monthNamesJson}};
                 const yearTarget = {{yearJson}};
                 const isVisible = window.__ba?.isVisible || (() => false);
                 const normalize = window.__ba?.normalizeTr || (value => (value || '').toLocaleLowerCase('tr-TR').replace(/\s+/g, ' ').trim());
@@ -418,7 +428,11 @@ public sealed partial class BAService
                     .from(calendar.querySelectorAll('.dp__month_year_select'))
                     .map(element => normalize(element.textContent || ''));
 
-                if (!headerValues.includes(normalize(monthTarget)) ||
+                const hasTargetMonth = monthTargets
+                    .map(normalize)
+                    .some(month => headerValues.includes(month));
+
+                if (!hasTargetMonth ||
                     !headerValues.includes(normalize(yearTarget))) {
                     return false;
                 }
@@ -600,9 +614,11 @@ public sealed partial class BAService
             return false;
 
         var monthName = TurkishMonthNames[target.Month - 1];
+        var shortMonthName = TurkishMonthShortNames[target.Month - 1];
         var yearStr = target.Year.ToString();
 
-        return headerText.Contains(monthName, StringComparison.OrdinalIgnoreCase)
+        return (headerText.Contains(monthName, StringComparison.OrdinalIgnoreCase) ||
+                headerText.Contains(shortMonthName, StringComparison.OrdinalIgnoreCase))
             && headerText.Contains(yearStr);
     }
 
@@ -623,7 +639,8 @@ public sealed partial class BAService
 
         for (var i = 0; i < TurkishMonthNames.Length; i++)
         {
-            if (headerText.Contains(TurkishMonthNames[i], StringComparison.OrdinalIgnoreCase))
+            if (headerText.Contains(TurkishMonthNames[i], StringComparison.OrdinalIgnoreCase) ||
+                headerText.Contains(TurkishMonthShortNames[i], StringComparison.OrdinalIgnoreCase))
                 return (i + 1) > target.Month;
         }
 
@@ -707,14 +724,18 @@ public sealed partial class BAService
     private Task<bool> WaitForCalendarSelectionStateAsync(DateTime date, TimeSpan timeout)
     {
         var dayJson = JsonSerializer.Serialize(date.Day);
-        var monthJson = JsonSerializer.Serialize(TurkishMonthNames[date.Month - 1]);
+        var monthNamesJson = JsonSerializer.Serialize(new[]
+        {
+            TurkishMonthNames[date.Month - 1],
+            TurkishMonthShortNames[date.Month - 1]
+        });
         var yearJson = JsonSerializer.Serialize(date.Year.ToString());
 
         return WaitForScriptTrueOrTimeoutAsync(
             $$"""
             (() => {
                 const dayTarget = {{dayJson}};
-                const monthTarget = {{monthJson}};
+                const monthTargets = {{monthNamesJson}};
                 const yearTarget = {{yearJson}};
                 const isVisible = window.__ba?.isVisible || (() => false);
                 const normalize = window.__ba?.normalizeTr || (value => (value || '').toLocaleLowerCase('tr-TR').replace(/\s+/g, ' ').trim());
@@ -730,7 +751,11 @@ public sealed partial class BAService
                     .from(calendar.querySelectorAll('.dp__month_year_select'))
                     .map(element => normalize(element.textContent || ''));
 
-                if (!headerValues.includes(normalize(monthTarget)) ||
+                const hasTargetMonth = monthTargets
+                    .map(normalize)
+                    .some(month => headerValues.includes(month));
+
+                if (!hasTargetMonth ||
                     !headerValues.includes(normalize(yearTarget))) {
                     return false;
                 }

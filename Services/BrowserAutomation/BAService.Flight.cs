@@ -148,6 +148,7 @@ public sealed partial class BAService
     {
         var selectorJson = JsonSerializer.Serialize(selector);
         var locationJson = JsonSerializer.Serialize(location.Trim());
+        var searchTextJson = JsonSerializer.Serialize(BuildFlightLocationSearchText(location));
 
         await OpenFlightLocationFieldAsync(selector, fieldName);
 
@@ -164,13 +165,41 @@ public sealed partial class BAService
             """,
             TimeSpan.FromSeconds(20));
 
-        Report($"{fieldName} yazılıyor: {location}");
-        var fillResult = await EvaluateScriptAsync(
+        var searchText = BuildFlightLocationSearchText(location);
+        var valueApplied = false;
+        for (var writeAttempt = 1; writeAttempt <= 2 && !valueApplied; writeAttempt++)
+        {
+            if (writeAttempt > 1)
+                await OpenFlightLocationFieldAsync(selector, fieldName);
+
+            await FillFlightLocationInputAsync(selectorJson, searchTextJson);
+            valueApplied = await WaitForFlightInputValueAsync(selector, searchText, TimeSpan.FromSeconds(3));
+        }
+
+        if (!valueApplied)
+            throw new InvalidOperationException($"{fieldName} inputuna değer yazılamadı.");
+
+        await WaitForFlightLocationSuggestionsAsync(fieldName, location, TimeSpan.FromSeconds(12));
+
+        var selected = false;
+        for (var attempt = 1; attempt <= 3 && !selected; attempt++)
+        {
+            var selectionResult = await ClickFlightLocationSuggestionAsync(selector, location);
+            selected = await WaitForFlightLocationSelectionAppliedAsync(selector, TimeSpan.FromSeconds(3));
+        }
+
+        if (!selected)
+            throw new InvalidOperationException($"{fieldName} önerisi seçilemedi.");
+    }
+
+    private async Task FillFlightLocationInputAsync(string selectorJson, string searchTextJson)
+    {
+        await EvaluateScriptAsync(
             $$"""
             (() => {
                 {{FlightInputResolverScript}}
                 const input = resolveFlightInput({{selectorJson}});
-                const text = {{locationJson}};
+                const text = {{searchTextJson}};
                 if (!input) {
                     return JSON.stringify({
                         success: false,
@@ -225,26 +254,6 @@ public sealed partial class BAService
                 });
             })();
             """);
-
-        Report($"{fieldName} yazma sonucu: {fillResult}");
-
-        var valueApplied = await WaitForFlightInputValueAsync(selector, location, TimeSpan.FromSeconds(3));
-        if (!valueApplied)
-            throw new InvalidOperationException($"{fieldName} inputuna değer yazılamadı.");
-
-        await WaitForFlightLocationSuggestionsAsync(fieldName, location, TimeSpan.FromSeconds(12));
-
-        var selected = false;
-        for (var attempt = 1; attempt <= 3 && !selected; attempt++)
-        {
-            Report($"{fieldName} önerisi seçiliyor. Deneme: {attempt}");
-            var selectionResult = await ClickFlightLocationSuggestionAsync(selector, location);
-            Report($"{fieldName} öneri seçim sonucu: {selectionResult}");
-            selected = await WaitForFlightLocationSelectionAppliedAsync(selector, TimeSpan.FromSeconds(3));
-        }
-
-        if (!selected)
-            throw new InvalidOperationException($"{fieldName} önerisi seçilemedi.");
     }
 
     private async Task OpenFlightLocationFieldAsync(string selector, string fieldName)
@@ -314,7 +323,13 @@ public sealed partial class BAService
                 const normalize = window.__ba?.normalizeTr || (value => (value || '').toLocaleLowerCase('tr-TR').replace(/\s+/g, ' ').trim());
                 const compact = window.__ba?.compactTr || (value => normalize(value).replace(/\s/g, ''));
                 const isVisible = window.__ba?.isVisible || (() => false);
+                const tokenize = value => normalize(value)
+                    .replace(/[()]/g, ' ')
+                    .split(/[\s,/-]+/)
+                    .map(token => token.trim())
+                    .filter(token => token.length >= 3 && !['airport', 'havalimanı', 'uluslararası', 'international', 'türkiye', 'turkey'].includes(token));
                 const target = normalize(targetText);
+                const targetTokens = tokenize(targetText);
 
                 const getMainText = item => normalize(
                     item.querySelector('strong, div > div:first-child, span:first-child')?.textContent || ''
@@ -324,19 +339,37 @@ public sealed partial class BAService
                     const fullText = normalize(item.textContent || '');
                     const mainText = getMainText(item);
                     const compactText = compact(item.textContent || '');
+                    const itemTokens = tokenize(item.textContent || '');
+                    const commonTokenCount = itemTokens.filter(token => targetTokens.includes(token)).length;
 
                     if (mainText === target) return 0;
                     if (compactText === compact(targetText)) return 1;
                     if (fullText === target) return 2;
                     if (mainText.startsWith(target)) return 3;
                     if (fullText.startsWith(target)) return 4;
-                    if (mainText.includes(target)) return 5;
-                    if (fullText.includes(target)) return 6;
+                    if (targetTokens.length > 0 && commonTokenCount === targetTokens.length) return 5;
+                    if (commonTokenCount >= 2) return 6;
+                    if (mainText.includes(target) || target.includes(mainText)) return 7;
+                    if (fullText.includes(target) || target.includes(fullText)) return 8;
                     return 7;
                 };
 
+                const visibleContainers = Array
+                    .from(document.querySelectorAll('.search-autocomplete'))
+                    .filter(isVisible)
+                    .sort((a, b) => {
+                        if (!input) return 0;
+                        const inputRect = input.getBoundingClientRect();
+                        const ar = a.getBoundingClientRect();
+                        const br = b.getBoundingClientRect();
+                        const aDistance = Math.abs(ar.left - inputRect.left) + Math.abs(ar.top - inputRect.bottom);
+                        const bDistance = Math.abs(br.left - inputRect.left) + Math.abs(br.top - inputRect.bottom);
+                        return aDistance - bDistance;
+                    });
+
+                const sourceRoot = visibleContainers[0] || document;
                 const visibleItems = Array
-                    .from(document.querySelectorAll({{suggestionSelectorJson}}))
+                    .from(sourceRoot.querySelectorAll({{suggestionSelectorJson}}))
                     .filter(item => {
                         if (!isVisible(item) || (input && (item === input || item.contains(input)))) {
                             return false;
@@ -350,13 +383,16 @@ public sealed partial class BAService
                     const mainText = getMainText(item);
                     const compactText = compact(item.textContent || '');
                     const compactTarget = compact(targetText);
+                    const itemTokens = tokenize(item.textContent || '');
+                    const commonTokenCount = itemTokens.filter(token => targetTokens.includes(token)).length;
 
                     return fullText.includes(target) ||
                         target.includes(fullText) ||
                         mainText.includes(target) ||
                         target.includes(mainText) ||
                         compactText.includes(compactTarget) ||
-                        compactTarget.includes(compactText);
+                        compactTarget.includes(compactText) ||
+                        commonTokenCount >= 2;
                 });
 
                 const selected = (matchingItems.length > 0 ? matchingItems : visibleItems)
@@ -584,5 +620,30 @@ public sealed partial class BAService
         };
 
         return months[month - 1];
+    }
+
+    private static string BuildFlightLocationSearchText(string location)
+    {
+        var text = (location ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(text))
+            return string.Empty;
+
+        var openParenIndex = text.LastIndexOf('(');
+        var closeParenIndex = text.LastIndexOf(')');
+        if (openParenIndex >= 0 && closeParenIndex > openParenIndex)
+        {
+            var airportCode = text[(openParenIndex + 1)..closeParenIndex].Trim();
+            if (airportCode.Length == 3 && airportCode.All(char.IsLetter))
+                return airportCode.ToUpperInvariant();
+        }
+
+        var commaIndex = text.IndexOf(',');
+        if (commaIndex > 0)
+            text = text[..commaIndex].Trim();
+
+        return text
+            .Replace("Uluslararası Havalimanı", "Havalimanı", StringComparison.OrdinalIgnoreCase)
+            .Replace("International Airport", "Airport", StringComparison.OrdinalIgnoreCase)
+            .Trim();
     }
 }
