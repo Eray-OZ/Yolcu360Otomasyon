@@ -782,25 +782,26 @@
                             BorderThickness="1"
                             CornerRadius="10"
                             Padding="22">
-                        <StackPanel Spacing="18">
-                            <StackPanel Spacing="4">
-                                <TextBlock Text="Uçak Bileti Arama"
-                                           FontSize="22"
-                                           FontWeight="Bold"
-                                           Foreground="#122033" />
-                                <TextBlock Text="Uçuş araması ayrı Flight akışıyla gömülü tarayıcıda çalıştırılır."
-                                           Foreground="#5F7187" />
-                            </StackPanel>
+                        <Grid ColumnDefinitions="0.9*,1.1*"
+                              ColumnSpacing="22">
+                            <StackPanel Spacing="18">
+                                <StackPanel Spacing="4">
+                                    <TextBlock Text="Uçak Bileti Arama"
+                                               FontSize="22"
+                                               FontWeight="Bold"
+                                               Foreground="#122033" />
+                                    <TextBlock Text="Uçuş araması gömülü tarayıcıda yapılır, sonuçlar sağda listelenir."
+                                               Foreground="#5F7187"
+                                               TextWrapping="Wrap" />
+                                </StackPanel>
 
-                            <TextBlock x:Name="FlightStatusTextBlock"
-                                       Text=""
-                                       VerticalAlignment="Center"
-                                       TextWrapping="Wrap"
-                                       Foreground="#132235"
-                                       FontWeight="SemiBold" />
+                                <TextBlock x:Name="FlightStatusTextBlock"
+                                           Text=""
+                                           VerticalAlignment="Center"
+                                           TextWrapping="Wrap"
+                                           Foreground="#132235"
+                                           FontWeight="SemiBold" />
 
-                            <Grid ColumnDefinitions="*,*"
-                                  ColumnSpacing="14">
                                 <StackPanel Spacing="6">
                                     <TextBlock Text="Nereden?"
                                                Foreground="#243446"
@@ -837,8 +838,7 @@
                                     </Border>
                                 </StackPanel>
 
-                                <StackPanel Grid.Column="1"
-                                            Spacing="6">
+                                <StackPanel Spacing="6">
                                     <TextBlock Text="Nereye?"
                                                Foreground="#243446"
                                                FontWeight="SemiBold" />
@@ -873,42 +873,89 @@
                                         </ListBox>
                                     </Border>
                                 </StackPanel>
-                            </Grid>
 
-                            <Grid ColumnDefinitions="*,*"
-                                  ColumnSpacing="14">
-                                <StackPanel Spacing="6">
-                                    <TextBlock Text="Gidiş tarihi"
-                                               Foreground="#243446"
-                                               FontWeight="SemiBold" />
-                                    <TextBox x:Name="FlightDepartureDateTextBox"
-                                             PlaceholderText="2026-08-20" />
+                                <Grid ColumnDefinitions="*,*"
+                                      ColumnSpacing="14">
+                                    <StackPanel Spacing="6">
+                                        <TextBlock Text="Gidiş tarihi"
+                                                   Foreground="#243446"
+                                                   FontWeight="SemiBold" />
+                                        <TextBox x:Name="FlightDepartureDateTextBox"
+                                                 PlaceholderText="2026-08-20" />
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Column="1"
+                                                Spacing="6">
+                                        <TextBlock Text="Dönüş tarihi"
+                                                   Foreground="#243446"
+                                                   FontWeight="SemiBold" />
+                                        <TextBox x:Name="FlightReturnDateTextBox"
+                                                 PlaceholderText="Tek yön için boş bırakın" />
+                                    </StackPanel>
+                                </Grid>
+
+                                <StackPanel Orientation="Horizontal"
+                                            Spacing="16">
+                                    <CheckBox x:Name="FlightRoundTripCheckBox"
+                                              Content="Gidiş-Dönüş" />
+                                    <CheckBox x:Name="FlightOnlyNonStopCheckBox"
+                                              Content="Sadece aktarmasız uçuşlar" />
                                 </StackPanel>
 
-                                <StackPanel Grid.Column="1"
-                                            Spacing="6">
-                                    <TextBlock Text="Dönüş tarihi"
-                                               Foreground="#243446"
-                                               FontWeight="SemiBold" />
-                                    <TextBox x:Name="FlightReturnDateTextBox"
-                                             PlaceholderText="Tek yön için boş bırakın" />
-                                </StackPanel>
-                            </Grid>
-
-                            <StackPanel Orientation="Horizontal"
-                                        Spacing="16">
-                                <CheckBox x:Name="FlightRoundTripCheckBox"
-                                          Content="Gidiş-Dönüş" />
-                                <CheckBox x:Name="FlightOnlyNonStopCheckBox"
-                                          Content="Sadece aktarmasız uçuşlar" />
+                                <Button x:Name="FlightSearchButton"
+                                        Classes="primary"
+                                        Content="Uçuş Ara"
+                                        Click="FlightSearchButton_Click"
+                                        Width="160" />
                             </StackPanel>
 
-                            <Button x:Name="FlightSearchButton"
-                                    Classes="primary"
-                                    Content="Uçuş Ara"
-                                    Click="FlightSearchButton_Click"
-                                    Width="160" />
-                        </StackPanel>
+                            <Border Grid.Column="1"
+                                    Background="White"
+                                    BorderBrush="#D9E2EC"
+                                    BorderThickness="1"
+                                    CornerRadius="10"
+                                    Padding="18">
+                                <Grid RowDefinitions="Auto,*"
+                                      RowSpacing="14">
+                                    <StackPanel Spacing="4">
+                                        <TextBlock Text="Uçuş Sonuçları"
+                                                   FontSize="20"
+                                                   FontWeight="Bold"
+                                                   Foreground="#122033" />
+                                        <TextBlock Text="Liste doğrudan tarayıcıdan okunan uçuşlarla güncellenir."
+                                                   Foreground="#5F7187"
+                                                   TextWrapping="Wrap" />
+                                    </StackPanel>
+
+                                    <Border Grid.Row="1"
+                                            Background="#FBFDFF"
+                                            BorderBrush="#E2EAF2"
+                                            BorderThickness="1"
+                                            CornerRadius="10"
+                                            Padding="0">
+                                        <Grid>
+                                            <DataGrid x:Name="FlightResultsDataGrid"
+                                                      AutoGenerateColumns="False"
+                                                      IsReadOnly="True"
+                                                      CanUserResizeColumns="True"
+                                                      CanUserSortColumns="True"
+                                                      VerticalAlignment="Stretch"
+                                                      HorizontalAlignment="Stretch"
+                                                      Height="520" />
+                                            <TextBlock x:Name="FlightResultsEmptyTextBlock"
+                                                       Text="Uçuş sonuçlarını görmek için arama yapın."
+                                                       IsVisible="True"
+                                                       HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center"
+                                                       TextAlignment="Center"
+                                                       TextWrapping="Wrap"
+                                                       Foreground="#5F7187"
+                                                       FontWeight="SemiBold" />
+                                        </Grid>
+                                    </Border>
+                                </Grid>
+                            </Border>
+                        </Grid>
                     </Border>
 
                     <Border Grid.Row="1"

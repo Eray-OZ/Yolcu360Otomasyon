@@ -147,7 +147,6 @@ public sealed partial class BAService
     private async Task FillFlightLocationAsync(string selector, string location, string fieldName)
     {
         var selectorJson = JsonSerializer.Serialize(selector);
-        var locationJson = JsonSerializer.Serialize(location.Trim());
         var searchTextJson = JsonSerializer.Serialize(BuildFlightLocationSearchText(location));
 
         await OpenFlightLocationFieldAsync(selector, fieldName);
@@ -564,6 +563,103 @@ public sealed partial class BAService
 
         await WaitForCalendarSelectionStateAsync(date, TimeSpan.FromSeconds(2));
         await WaitForDatePickerClosedAsync(TimeSpan.FromSeconds(4));
+    }
+
+    public async Task WaitForFlightResultsAsync(TimeSpan? timeout = null)
+    {
+        var isReady = await WaitForScriptTrueOrTimeoutAsync(
+            """
+            (() => {
+                const isVisible = window.__ba?.isVisible || (() => false);
+                const bodyText = (document.body?.innerText || '').toLocaleLowerCase('tr-TR');
+                const hasNoResultText = bodyText.includes('sonuç bulunamadı') ||
+                    bodyText.includes('uygun uçuş bulunamadı') ||
+                    bodyText.includes('uçuş bulunamadı');
+
+                if (hasNoResultText) {
+                    return true;
+                }
+
+                return Array
+                    .from(document.querySelectorAll('#flight_card_list .flight-card'))
+                    .some(card =>
+                        isVisible(card) &&
+                        card.querySelector('#departuretime') &&
+                        card.querySelector('#arrivaltime') &&
+                        card.querySelector('[data-cms-key="flight_total_price"]')
+                    );
+            })();
+            """,
+            timeout ?? TimeSpan.FromSeconds(35),
+            TimeSpan.FromMilliseconds(500));
+
+        if (!isReady)
+            throw new TimeoutException("Uçuş sonuçları zaman aşımı süresinde görünmedi.");
+    }
+
+    public async Task<List<FlightResultItem>> ReadFlightResultsAsync()
+    {
+        try
+        {
+            var items = await EvaluateJsonScriptAsync<List<FlightResultItem>>(
+                """
+                (() => {
+                    const normalize = window.__ba?.normalizeText || (value => (value || '').replace(/\s+/g, ' ').trim());
+                    const isVisible = window.__ba?.isVisible || (() => false);
+                    const directFlightText = 'Aktarmasız';
+
+                    const cards = Array
+                        .from(document.querySelectorAll('#flight_card_list .flight-card'))
+                        .filter(isVisible);
+
+                    const items = cards.map(card => {
+                        const departureInfo = card.querySelector('.flight_info__left');
+                        const arrivalInfo = card.querySelector('.flight_info__right');
+                        const middleInfo = card.querySelector('.flight_info__middle');
+                        const priceText = normalize(card.querySelector('[data-cms-key="flight_total_price"]')?.textContent)
+                            .replace(/^Toplam\s*:\s*/i, '');
+                        const rawAirline = normalize(card.querySelector('figure img[alt]')?.getAttribute('alt'));
+                        const airline = rawAirline.toUpperCase();
+                        const departureAirport = normalize(departureInfo?.querySelector('p')?.textContent);
+                        const arrivalAirport = normalize(arrivalInfo?.querySelector('p')?.textContent);
+                        const transferText = normalize(middleInfo?.querySelector('[data-cms-key="flight_transfer"]')?.textContent);
+                        const duration = normalize(
+                            middleInfo
+                                ?.querySelector('.transfer_wrapper > span:not([data-cms-key="flight_transfer"])')
+                                ?.textContent
+                        );
+
+                        return {
+                            airline,
+                            route: [departureAirport, arrivalAirport].filter(Boolean).join(' → '),
+                            departureTime: normalize(departureInfo?.querySelector('#departuretime')?.textContent),
+                            arrivalTime: normalize(arrivalInfo?.querySelector('#arrivaltime')?.textContent),
+                            duration,
+                            price: priceText,
+                            detail: transferText || directFlightText
+                        };
+                    }).filter(item => item.price || item.departureTime || item.route);
+
+                    const uniqueItems = [];
+                    const seen = new Set();
+                    for (const item of items) {
+                        const key = `${item.airline}|${item.route}|${item.departureTime}|${item.arrivalTime}|${item.price}`;
+                        if (seen.has(key)) continue;
+
+                        seen.add(key);
+                        uniqueItems.push(item);
+                    }
+
+                    return JSON.stringify(uniqueItems);
+                })();
+                """);
+
+            return items ?? new List<FlightResultItem>();
+        }
+        catch
+        {
+            return new List<FlightResultItem>();
+        }
     }
 
     private async Task ToggleFlightOnlyNonStopAsync()

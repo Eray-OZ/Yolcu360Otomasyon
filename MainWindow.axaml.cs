@@ -20,6 +20,7 @@ public partial class MainWindow : Window
     private readonly IyzicoPaymentService _iyzicoPaymentService;
     private AppUser? _activeUser;
     private List<SearchResultItem> _latestResults = new();
+    private List<FlightResultItem> _latestFlightResults = new();
     private List<SearchResultItem> _selectedCollectionVehicles = new();
     private SearchResultItem? _selectedVehicle;
     private KoleksiyonListItem? _selectedCollection;
@@ -61,6 +62,7 @@ public partial class MainWindow : Window
         InitializeTimeComboBox(PickupTimeComboBox, "10:00");
         InitializeTimeComboBox(ReturnTimeComboBox, "18:00");
         ConfigureResultsGrid();
+        ConfigureFlightResultsGrid();
         ConfigureCollectionsGrid();
         ConfigurePaymentsGrid();
         _smsReceiverService.SmsReceived += SmsReceiverService_SmsReceived;

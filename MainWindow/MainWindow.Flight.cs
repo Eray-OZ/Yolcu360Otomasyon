@@ -158,6 +158,8 @@ public partial class MainWindow : Window
     {
         FlightSearchButton.IsEnabled = false;
         FlightStatusTextBlock.Text = "Uçuş araması hazırlanıyor...";
+        FlightResultsDataGrid.ItemsSource = null;
+        SetFlightResultsPlaceholder("Uçuşlar aranıyor, bekleyiniz...");
 
         try
         {
@@ -220,15 +222,32 @@ public partial class MainWindow : Window
                 await baService.RestoreSessionAsync(_activeUser.SessionStatePath);
 
             await baService.SearchFlightTicketsAsync(filter);
-            FlightStatusTextBlock.Text = "Uçuş araması başlatıldı. Sonuç HTML'i geldikten sonra okuma kısmı ayrı Flight koduyla eklenecek.";
+            FlightStatusTextBlock.Text = "Uçuş sonuçları bekleniyor...";
+            await baService.WaitForFlightResultsAsync();
+
+            FlightStatusTextBlock.Text = "Uçuş sonuçları okunuyor...";
+            _latestFlightResults = await baService.ReadFlightResultsAsync();
+
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                FlightResultsDataGrid.ItemsSource = null;
+                FlightResultsDataGrid.ItemsSource = _latestFlightResults;
+                SetFlightResultsPlaceholder(_latestFlightResults.Count == 0 ? "Uçuş sonucu bulunamadı." : null);
+            });
+
+            FlightStatusTextBlock.Text = _latestFlightResults.Count == 0
+                ? "Uçuş araması tamamlandı, sonuç bulunamadı."
+                : $"{_latestFlightResults.Count} uçuş sonucu listelendi.";
         }
         catch (Exception ex)
         {
             FlightStatusTextBlock.Text = $"Uçuş arama hatası: {ex.Message}";
+            SetFlightResultsPlaceholder("Uçuş araması sırasında hata oluştu.");
         }
         finally
         {
             FlightSearchButton.IsEnabled = true;
+            ShowFlightSection();
         }
     }
 }

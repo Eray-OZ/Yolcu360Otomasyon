@@ -133,6 +133,69 @@ public partial class MainWindow : Window
         PaymentsTabButton.Classes.Set("primary", false);
     }
 
+    private void ConfigureFlightResultsGrid()
+    {
+        FlightResultsDataGrid.AutoGenerateColumns = false;
+        FlightResultsDataGrid.Columns.Clear();
+
+        FlightResultsDataGrid.Columns.Add(new DataGridTextColumn
+        {
+            Header = "Firma",
+            Binding = new Binding(nameof(FlightResultItem.Airline)),
+            Width = new DataGridLength(1.4, DataGridLengthUnitType.Star)
+        });
+
+        FlightResultsDataGrid.Columns.Add(new DataGridTextColumn
+        {
+            Header = "Rota",
+            Binding = new Binding(nameof(FlightResultItem.Route)),
+            Width = new DataGridLength(2, DataGridLengthUnitType.Star)
+        });
+
+        FlightResultsDataGrid.Columns.Add(new DataGridTextColumn
+        {
+            Header = "Kalkış",
+            Binding = new Binding(nameof(FlightResultItem.DepartureTime)),
+            Width = new DataGridLength(0.9, DataGridLengthUnitType.Star)
+        });
+
+        FlightResultsDataGrid.Columns.Add(new DataGridTextColumn
+        {
+            Header = "Varış",
+            Binding = new Binding(nameof(FlightResultItem.ArrivalTime)),
+            Width = new DataGridLength(0.9, DataGridLengthUnitType.Star)
+        });
+
+        FlightResultsDataGrid.Columns.Add(new DataGridTextColumn
+        {
+            Header = "Süre",
+            Binding = new Binding(nameof(FlightResultItem.Duration)),
+            Width = new DataGridLength(1, DataGridLengthUnitType.Star)
+        });
+
+        FlightResultsDataGrid.Columns.Add(new DataGridTextColumn
+        {
+            Header = "Aktarma",
+            Binding = new Binding(nameof(FlightResultItem.Detail)),
+            Width = new DataGridLength(1.3, DataGridLengthUnitType.Star)
+        });
+
+        FlightResultsDataGrid.Columns.Add(new DataGridTextColumn
+        {
+            Header = "Fiyat",
+            Binding = new Binding(nameof(FlightResultItem.Price)),
+            Width = new DataGridLength(1, DataGridLengthUnitType.Star)
+        });
+    }
+
+    private void SetFlightResultsPlaceholder(string? message)
+    {
+        var hasMessage = !string.IsNullOrWhiteSpace(message);
+        FlightResultsEmptyTextBlock.Text = message ?? string.Empty;
+        FlightResultsEmptyTextBlock.IsVisible = hasMessage;
+        FlightResultsDataGrid.IsVisible = !hasMessage;
+    }
+
     private void ConfigureResultsGrid()
     {
         ResultsDataGrid.AutoGenerateColumns = false;
