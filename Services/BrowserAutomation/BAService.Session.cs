@@ -17,6 +17,7 @@ public sealed partial class BAService
                 """
                 (() => {
                     try {
+                        const keepPrefixes = ['_ga', '_gid', '_gat', '_gcl', '_gac', 'gtm', '__gfp'];
                         const domains = ['', '.yolcu360.com', 'www.yolcu360.com', 'yolcu360.com'];
                         const paths = ['/', '/login', '/api'];
                         const cookies = document.cookie.split(";");
@@ -24,6 +25,10 @@ public sealed partial class BAService
                             const cookie = cookies[i];
                             const eqPos = cookie.indexOf("=");
                             const name = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim();
+                            if (!name) continue;
+                            const isGoogleTrust = keepPrefixes.some(p => name.toLowerCase().startsWith(p));
+                            if (isGoogleTrust) continue; // Google Analytics ve güven çerezlerini koru
+
                             for (const d of domains) {
                                 for (const p of paths) {
                                     document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=${p}${d ? `; domain=${d}` : ''}`;
@@ -31,7 +36,14 @@ public sealed partial class BAService
                             }
                         }
                     } catch {}
-                    try { localStorage.clear(); } catch {}
+                    try {
+                        for (let i = localStorage.length - 1; i >= 0; i--) {
+                            const key = localStorage.key(i);
+                            if (key && !key.toLowerCase().startsWith('_ga') && !key.toLowerCase().startsWith('gtm')) {
+                                localStorage.removeItem(key);
+                            }
+                        }
+                    } catch {}
                     try { sessionStorage.clear(); } catch {}
                     try {
                         if (window.indexedDB && window.indexedDB.databases) {
@@ -49,7 +61,14 @@ public sealed partial class BAService
                 """
                 (() => {
                     try {
-                        return localStorage.length === 0 && sessionStorage.length === 0;
+                        const keepPrefixes = ['_ga', '_gid', '_gat', '_gcl', '_gac', 'gtm', '__gfp'];
+                        for (let i = 0; i < localStorage.length; i++) {
+                            const key = localStorage.key(i);
+                            if (key && !keepPrefixes.some(p => key.toLowerCase().startsWith(p))) {
+                                return false; // Silinmemiş korunmayan anahtar var
+                            }
+                        }
+                        return sessionStorage.length === 0;
                     } catch {
                         return true;
                     }

@@ -45,15 +45,15 @@ public sealed partial class BAService
                 };
 
                 window.__hasRecaptchaScoreError = () => {
-                    const bodyText = (document.body.innerText || '').toLowerCase();
-                    if (bodyText.includes('recaptcha_score_too_low') || bodyText.includes('recaptcha') || bodyText.includes('skor')) {
-                        return true;
-                    }
-                    const toasts = Array.from(document.querySelectorAll('.toast, .notification, .alert, [role="alert"], div'));
-                    return toasts.some(el => {
+                    const errorKeywords = ['recaptcha_score_too_low', 'score_too_low', 'recaptcha puanı', 'güvenlik doğrulaması başarısız'];
+                    const toasts = document.querySelectorAll('.toast, .notification, .alert, [role="alert"], .Toastify, [class*="toast"], [class*="snackbar"]');
+                    for (const el of toasts) {
                         const txt = (el.textContent || '').toLowerCase();
-                        return txt.includes('recaptcha') || txt.includes('score_too_low') || txt.includes('düşük');
-                    });
+                        if (errorKeywords.some(k => txt.includes(k))) return true;
+                    }
+                    // URL'de hata parametresi kontrolü
+                    if (location.search.includes('recaptcha') || location.hash.includes('recaptcha')) return true;
+                    return false;
                 };
 
                 return true;
@@ -66,12 +66,65 @@ public sealed partial class BAService
         if (string.IsNullOrWhiteSpace(phoneNumber))
             throw new InvalidOperationException("Telefon numarası boş bırakılamaz.");
 
-        Report("Gömülü tarayıcıda Yolcu360 login sayfası açılıyor...");
-        await NavigateAsync("https://www.yolcu360.com/login?redirect=%2F");
+        Report("Gömülü tarayıcıda Yolcu360 ana sayfası açılıyor (reCAPTCHA güven puanı ısındırılıyor)...");
+        await NavigateAsync("https://www.yolcu360.com/");
         await WaitForDocumentReadyAsync();
         await EnsureJavaScriptHelpersAsync();
         await InjectStealthAndHumanMouseScriptAsync();
-        await WaitForInitialPopupAndCloseAsync(TimeSpan.FromSeconds(5));
+        await WaitForInitialPopupAndCloseAsync(TimeSpan.FromSeconds(3));
+
+        // Warm up reCAPTCHA v3 score with human mouse movements on home page
+        for (int i = 0; i < 3; i++)
+        {
+            var rx = Random.Shared.Next(100, 600);
+            var ry = Random.Shared.Next(100, 400);
+            await EvaluateScriptAsync($"window.__dispatchHumanMousePath ? window.__dispatchHumanMousePath({rx}, {ry}) : null;");
+            await Task.Delay(400);
+        }
+
+        Report("Organik olarak 'Giriş Yap' butonuna tıklanıyor...");
+        var headerLoginClicked = await EvaluateScriptAsync(
+            """
+            (() => {
+                const links = Array.from(document.querySelectorAll('a, button, [role="button"]'));
+                const loginBtn = links.find(el => {
+                    const txt = (el.textContent || el.getAttribute('title') || '').trim().toLowerCase();
+                    const href = (el.getAttribute('href') || '').toLowerCase();
+                    return href.includes('/login') || txt === 'giriş yap' || txt.includes('giriş /') || txt.includes('üye ol');
+                });
+                if (!loginBtn) return false;
+                if (window.__ba && window.__ba.clickLikeUser) {
+                    window.__ba.clickLikeUser(loginBtn);
+                } else {
+                    loginBtn.click();
+                }
+                return true;
+            })();
+            """);
+
+        if (!IsScriptTrue(headerLoginClicked))
+        {
+            Report("Header giriş butonu bulunamadı, login sayfasına doğrudan yönlendiriliyor...");
+            await NavigateAsync("https://www.yolcu360.com/login?redirect=%2F");
+            await WaitForDocumentReadyAsync();
+        }
+        else
+        {
+            await WaitForScriptTrueAsync(
+                """
+                (() => {
+                    const phoneInput = document.querySelector('#phn-input, input[type="tel"]');
+                    const isLoginUrl = location.href.includes('/login');
+
+                    return document.readyState === 'complete' &&
+                        (isLoginUrl || !!phoneInput);
+                })();
+                """,
+                TimeSpan.FromSeconds(15));
+        }
+
+        await EnsureJavaScriptHelpersAsync();
+        await InjectStealthAndHumanMouseScriptAsync();
 
         Report("Telefon numarası inputu bekleniyor...");
         await WaitForScriptTrueAsync(
@@ -92,7 +145,12 @@ public sealed partial class BAService
             (() => {
                 const input = document.querySelector('#phn-input') || document.querySelector('input[type="tel"]');
                 if (!input) return false;
-                input.scrollIntoView({ block: 'center', inline: 'nearest' });
+                if (window.__ba?.microScroll) window.__ba.microScroll();
+                try {
+                    input.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+                } catch {
+                    try { input.scrollIntoView({ block: 'center', inline: 'nearest' }); } catch {}
+                }
                 input.focus();
                 input.click();
                 input.value = '';
@@ -156,6 +214,13 @@ public sealed partial class BAService
             await Task.Delay(500);
         }
 
+        Report("Google reCAPTCHA v3 servisinin hazır olması bekleniyor...");
+        await WaitForScriptTrueOrTimeoutAsync(
+            """
+            (() => typeof window.grecaptcha !== 'undefined' && typeof window.grecaptcha.execute === 'function')();
+            """,
+            TimeSpan.FromSeconds(5));
+
         Report("'Devam Et' butonuna insansı şekilde tıklanıyor...");
         var continueClicked = await EvaluateScriptAsync(
             """
@@ -167,12 +232,20 @@ public sealed partial class BAService
                     });
                 if (!btn) return false;
 
-                btn.scrollIntoView({ block: 'center', inline: 'nearest' });
                 btn.disabled = false;
                 btn.removeAttribute('disabled');
                 btn.classList.remove('disabled');
 
-                btn.click();
+                if (window.__ba && window.__ba.clickLikeUser) {
+                    window.__ba.clickLikeUser(btn);
+                } else {
+                    btn.click();
+                }
+
+                const form = btn.closest('form');
+                if (form) {
+                    try { form.requestSubmit(); } catch { try { form.submit(); } catch {} }
+                }
 
                 return true;
             })();
@@ -193,6 +266,12 @@ public sealed partial class BAService
                 await Task.Delay(500);
             }
 
+            await WaitForScriptTrueOrTimeoutAsync(
+                """
+                (() => typeof window.grecaptcha !== 'undefined' && typeof window.grecaptcha.execute === 'function')();
+                """,
+                TimeSpan.FromSeconds(3));
+
             Report("'Devam Et' butonuna 2. deneme tıklaması yapılıyor...");
             await EvaluateScriptAsync(
                 """
@@ -207,7 +286,17 @@ public sealed partial class BAService
                     btn.disabled = false;
                     btn.removeAttribute('disabled');
                     btn.classList.remove('disabled');
-                    btn.click();
+
+                    if (window.__ba && window.__ba.clickLikeUser) {
+                        window.__ba.clickLikeUser(btn);
+                    } else {
+                        btn.click();
+                    }
+
+                    const form = btn.closest('form');
+                    if (form) {
+                        try { form.requestSubmit(); } catch { try { form.submit(); } catch {} }
+                    }
 
                     return true;
                 })();
@@ -219,8 +308,12 @@ public sealed partial class BAService
         await WaitForScriptTrueAsync(
             """
             (() => {
-                const input = document.querySelector('#sms_input');
-                return !!window.__ba?.isVisible(input);
+                const smsInput = document.querySelector('#sms_input');
+                if (smsInput && window.__ba?.isVisible(smsInput)) return true;
+
+                const text = (document.body.innerText || '').toLocaleLowerCase('tr-TR');
+                const hasSmsText = text.includes('doğrulama') || text.includes('sms') || text.includes('gönderilen') || text.includes('şifre') || text.includes('tek kullanımlık');
+                return hasSmsText;
             })();
             """,
             TimeSpan.FromSeconds(30));
@@ -262,14 +355,18 @@ public sealed partial class BAService
                 var state = await EvaluateScriptAsync(
                 """
                 (() => {
+                    const smsInput = document.querySelector('#sms_input');
+                    if (smsInput && window.__ba?.isVisible(smsInput)) return 'sms';
+
+                    const text = (document.body.innerText || '').toLocaleLowerCase('tr-TR');
+                    const hasSmsText = text.includes('doğrulama') || text.includes('sms') || text.includes('gönderilen') || text.includes('tek kullanımlık');
+                    if (hasSmsText && !document.querySelector('#phn-input')) return 'sms';
+
                     if (window.__hasRecaptchaScoreError && window.__hasRecaptchaScoreError()) {
                         return 'recaptcha';
                     }
 
-                    const smsInput = document.querySelector('#sms_input');
-                    if (!smsInput) return 'waiting';
-
-                    return window.__ba?.isVisible(smsInput) ? 'sms' : 'waiting';
+                    return 'waiting';
                 })();
                 """);
 

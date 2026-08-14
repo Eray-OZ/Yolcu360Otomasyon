@@ -49,6 +49,8 @@ public sealed partial class BAService
             var succeeded = await completion.Task;
             if (!succeeded)
                 throw new InvalidOperationException($"Sayfa yüklenemedi: {url}");
+
+            await WaitForDocumentReadyAsync(timeout);
         }
         finally
         {
@@ -134,10 +136,21 @@ public sealed partial class BAService
                         style.visibility !== 'hidden';
                 };
 
+                window.__ba.microScroll = (customOffset) => {
+                    try {
+                        const offset = typeof customOffset === 'number' ? customOffset : Math.floor(Math.random() * 70) + 50;
+                        window.scrollBy({ top: offset, behavior: 'smooth' });
+                    } catch {}
+                };
+
                 window.__ba.clickLikeUser = (element, closestSelector) => {
                     if (!element) return false;
 
-                    element.scrollIntoView({ block: 'center', inline: 'nearest' });
+                    try {
+                        element.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+                    } catch {
+                        try { element.scrollIntoView({ block: 'center', inline: 'nearest' }); } catch {}
+                    }
 
                     const rect = element.getBoundingClientRect();
                     const x = rect.left + rect.width / 2;
@@ -146,7 +159,7 @@ public sealed partial class BAService
                     const eventTarget = closestSelector
                         ? (pointTarget?.closest?.(closestSelector) || pointTarget || element)
                         : (pointTarget || element);
-                    const eventOptions = { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y };
+                    const eventOptions = { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y, screenX: x + 50, screenY: y + 50 };
 
                     const dispatchPointer = (target, type, buttons = 0) => {
                         if (!target) return;
@@ -166,15 +179,26 @@ public sealed partial class BAService
                         target.dispatchEvent(new MouseEvent(type, { ...eventOptions, buttons }));
                     };
 
-                    for (const target of [eventTarget, element]) {
+                    const targets = Array.from(new Set([eventTarget, element].filter(Boolean)));
+                    for (const target of targets) {
+                        try { target.focus?.(); } catch {}
+
                         dispatchPointer(target, 'pointerover');
+                        dispatchPointer(target, 'pointerenter');
                         dispatchMouse(target, 'mouseover');
+                        dispatchMouse(target, 'mouseenter');
+
+                        dispatchPointer(target, 'pointermove');
                         dispatchMouse(target, 'mousemove');
+
                         dispatchPointer(target, 'pointerdown', 1);
                         dispatchMouse(target, 'mousedown', 1);
-                        dispatchPointer(target, 'pointerup');
-                        dispatchMouse(target, 'mouseup');
-                        dispatchMouse(target, 'click');
+
+                        dispatchPointer(target, 'pointerup', 0);
+                        dispatchMouse(target, 'mouseup', 0);
+
+                        dispatchMouse(target, 'click', 0);
+                        try { target.click?.(); } catch {}
                     }
 
                     return {
@@ -192,7 +216,7 @@ public sealed partial class BAService
         var ready = await WaitUntilAsync(
             async () =>
             {
-            var readyState = await EvaluateScriptAsync("document.readyState");
+                var readyState = await EvaluateScriptAsync("document.readyState");
                 return string.Equals(readyState?.Trim('"'), "complete", StringComparison.OrdinalIgnoreCase);
             },
             timeout ?? TimeSpan.FromSeconds(20));
