@@ -318,7 +318,7 @@ public sealed partial class BAService
             async () => IsScriptTrue(await EvaluateScriptAsync(
                 """
                 (() => {
-                    const menus = Array.from(document.querySelectorAll('.dp__menu, .dp__outer_menu_wrap, .dp__calendar, .cal-months'));
+                    const menus = Array.from(document.querySelectorAll('.cal-months'));
                     return menus.some(m => {
                         const rect = m.getBoundingClientRect();
                         const style = window.getComputedStyle(m);
@@ -329,7 +329,7 @@ public sealed partial class BAService
             timeout);
 
         if (!menuVisible)
-            throw new TimeoutException("Tarih seçici takvim menüsü (dp__menu) görünmedi.");
+            throw new TimeoutException("Tarih seçici takvim menüsü (cal-months) görünmedi.");
     }
 
     private async Task NavigateToMonthAsync(DateTime target)
@@ -359,29 +359,17 @@ public sealed partial class BAService
             (() => {
                 const isVisible = window.__ba?.isVisible || (() => false);
 
-                const customCalendar = Array
+                const calendarMonths = Array
                     .from(document.querySelectorAll('.cal-months'))
                     .find(isVisible);
 
-                if (customCalendar) {
-                    return Array
-                        .from(customCalendar.querySelectorAll('.cal-title'))
-                        .map(title => (title.textContent || '').trim())
-                        .filter(Boolean)
-                        .join(' ');
-                }
+                if (!calendarMonths) return '';
 
-                const calendar = Array
-                    .from(document.querySelectorAll('.dp__instance_calendar'))
-                    .find(isVisible);
-
-                if (!calendar) return '';
-
-                const selects = calendar.querySelectorAll('.dp__month_year_select');
-                const month = (selects[0]?.textContent || '').trim();
-                const year = (selects[1]?.textContent || '').trim();
-
-                return `${month} ${year}`.trim();
+                return Array
+                    .from(calendarMonths.querySelectorAll('.cal-title'))
+                    .map(title => (title.textContent || '').trim())
+                    .filter(Boolean)
+                    .join(' ');
             })();
             """);
 
@@ -391,8 +379,8 @@ public sealed partial class BAService
     private async Task<bool> ClickCalendarNavAsync(bool forward)
     {
         var buttonSelector = forward
-            ? ".cal-nav.right-4, button[aria-label='Next month']"
-            : ".cal-nav.left-4, button[aria-label='Previous month']";
+            ? ".cal-nav.right-4"
+            : ".cal-nav.left-4";
         var buttonSelectorJson = JsonSerializer.Serialize(buttonSelector);
 
         var result = await EvaluateScriptAsync(
@@ -418,77 +406,21 @@ public sealed partial class BAService
 
     private async Task<bool> ClickCalendarDayAsync(DateTime date)
     {
-        var dayJson = JsonSerializer.Serialize(date.Day);
         var dateJson = JsonSerializer.Serialize(date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
-        var monthNamesJson = JsonSerializer.Serialize(new[]
-        {
-            TurkishMonthNames[date.Month - 1],
-            TurkishMonthShortNames[date.Month - 1]
-        });
-        var yearJson = JsonSerializer.Serialize(date.Year.ToString());
 
         var result = await EvaluateScriptAsync(
             $$"""
             (() => {
-                const dayTarget = {{dayJson}};
                 const dateTarget = {{dateJson}};
-                const monthTargets = {{monthNamesJson}};
-                const yearTarget = {{yearJson}};
                 const isVisible = window.__ba?.isVisible || (() => false);
-                const normalize = window.__ba?.normalizeTr || (value => (value || '').toLocaleLowerCase('tr-TR').replace(/\s+/g, ' ').trim());
-                const customDayCell = document.querySelector(`td[data-day="${dateTarget}"]`);
+                const dayCell = document.querySelector(`td[data-day="${dateTarget}"]`);
 
-                if (customDayCell && isVisible(customDayCell) && !customDayCell.classList.contains('past')) {
-                    customDayCell.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-                    customDayCell.click();
-
-                    return true;
-                }
-
-                const calendar = Array
-                    .from(document.querySelectorAll('.dp__instance_calendar'))
-                    .find(isVisible);
-
-                if (!calendar) {
+                if (!dayCell || !isVisible(dayCell) || dayCell.classList.contains('past')) {
                     return false;
                 }
 
-                const headerValues = Array
-                    .from(calendar.querySelectorAll('.dp__month_year_select'))
-                    .map(element => normalize(element.textContent || ''));
-
-                const hasTargetMonth = monthTargets
-                    .map(normalize)
-                    .some(month => headerValues.includes(month));
-
-                if (!hasTargetMonth ||
-                    !headerValues.includes(normalize(yearTarget))) {
-                    return false;
-                }
-
-                const dayCell = Array
-                    .from(calendar.querySelectorAll('.dp__calendar_item[aria-disabled="false"]'))
-                    .find(cell => {
-                        const inner = cell.querySelector('.dp__cell_inner');
-
-                        return inner &&
-                            !inner.classList.contains('dp__cell_offset') &&
-                            parseInt(inner.textContent.trim(), 10) === dayTarget;
-                    });
-
-                if (!dayCell) {
-                    return false;
-                }
-
-                const target = dayCell.querySelector('.dp__cell_inner') || dayCell;
-                target.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-                target.click();
-                target.dispatchEvent(new MouseEvent('click', {
-                    bubbles: true,
-                    cancelable: true,
-                    view: window
-                }));
-
+                dayCell.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+                dayCell.click();
                 return true;
             })();
             """);
@@ -757,70 +689,28 @@ public sealed partial class BAService
 
     private Task<bool> WaitForCalendarSelectionStateAsync(DateTime date, bool isPickupDate, TimeSpan timeout)
     {
-        var dayJson = JsonSerializer.Serialize(date.Day);
         var dateJson = JsonSerializer.Serialize(date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
         var isPickupDateJson = JsonSerializer.Serialize(isPickupDate);
-        var monthNamesJson = JsonSerializer.Serialize(new[]
-        {
-            TurkishMonthNames[date.Month - 1],
-            TurkishMonthShortNames[date.Month - 1]
-        });
-        var yearJson = JsonSerializer.Serialize(date.Year.ToString());
 
         return WaitForScriptTrueOrTimeoutAsync(
             $$"""
             (() => {
-                const dayTarget = {{dayJson}};
                 const dateTarget = {{dateJson}};
                 const isPickupDate = {{isPickupDateJson}};
-                const monthTargets = {{monthNamesJson}};
-                const yearTarget = {{yearJson}};
                 const isVisible = window.__ba?.isVisible || (() => false);
-                const normalize = window.__ba?.normalizeTr || (value => (value || '').toLocaleLowerCase('tr-TR').replace(/\s+/g, ' ').trim());
-                const customDayCell = document.querySelector(`td[data-day="${dateTarget}"]`);
+                const dayCell = document.querySelector(`td[data-day="${dateTarget}"]`);
 
-                if (customDayCell && isVisible(customDayCell)) {
-                    if (isPickupDate) {
-                        return customDayCell.classList.contains('range-start-cap') ||
-                            (customDayCell.classList.contains('endpoint') && !customDayCell.classList.contains('range-end-cap'));
-                    }
-
-                    return customDayCell.classList.contains('range-end-cap') ||
-                        (customDayCell.classList.contains('endpoint') && !customDayCell.classList.contains('range-start-cap'));
-                }
-
-                const calendar = Array
-                    .from(document.querySelectorAll('.dp__instance_calendar'))
-                    .find(isVisible);
-
-                if (!calendar) {
+                if (!dayCell || !isVisible(dayCell)) {
                     return false;
                 }
 
-                const headerValues = Array
-                    .from(calendar.querySelectorAll('.dp__month_year_select'))
-                    .map(element => normalize(element.textContent || ''));
-
-                const hasTargetMonth = monthTargets
-                    .map(normalize)
-                    .some(month => headerValues.includes(month));
-
-                if (!hasTargetMonth ||
-                    !headerValues.includes(normalize(yearTarget))) {
-                    return false;
+                if (isPickupDate) {
+                    return dayCell.classList.contains('range-start-cap') ||
+                        (dayCell.classList.contains('endpoint') && !dayCell.classList.contains('range-end-cap'));
                 }
 
-                const dayCell = Array
-                    .from(calendar.querySelectorAll('.dp__calendar_item[aria-disabled="false"]'))
-                    .find(cell => {
-                        const inner = cell.querySelector('.dp__cell_inner');
-
-                        return inner &&
-                            !inner.classList.contains('dp__cell_offset') &&
-                            parseInt(inner.textContent.trim(), 10) === dayTarget;
-                    });
-
-                return dayCell?.getAttribute('aria-selected') === 'true';
+                return dayCell.classList.contains('range-end-cap') ||
+                    (dayCell.classList.contains('endpoint') && !dayCell.classList.contains('range-start-cap'));
             })();
             """,
             timeout);
@@ -834,7 +724,7 @@ public sealed partial class BAService
                 const isVisible = window.__ba?.isVisible || (() => false);
 
                 const visibleDatePickerMenus = Array
-                    .from(document.querySelectorAll('.dp__menu, .dp__outer_menu_wrap, .cal-months'))
+                    .from(document.querySelectorAll('.cal-months'))
                     .filter(isVisible);
 
                 return visibleDatePickerMenus.length === 0;
