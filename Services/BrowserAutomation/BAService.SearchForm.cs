@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 
 namespace Yolcu360Otomasyon.Services;
@@ -267,7 +268,9 @@ public sealed partial class BAService
         if (!pickupSelected)
             throw new InvalidOperationException($"Alış tarihi ({pickupDate:dd.MM.yyyy}) takvimde seçilemedi.");
 
-        await WaitForCalendarSelectionStateAsync(pickupDate, TimeSpan.FromSeconds(2));
+        var pickupApplied = await WaitForCalendarSelectionStateAsync(pickupDate, isPickupDate: true, TimeSpan.FromSeconds(2));
+        if (!pickupApplied)
+            throw new InvalidOperationException($"Alış tarihi ({pickupDate:dd.MM.yyyy}) seçimi takvimde uygulanmadı.");
 
         if (returnDate.Year != pickupDate.Year || returnDate.Month != pickupDate.Month)
         {
@@ -278,7 +281,9 @@ public sealed partial class BAService
         if (!returnSelected)
             throw new InvalidOperationException($"Bırakış tarihi ({returnDate:dd.MM.yyyy}) takvimde seçilemedi.");
 
-        await WaitForCalendarSelectionStateAsync(returnDate, TimeSpan.FromSeconds(2));
+        var returnApplied = await WaitForCalendarSelectionStateAsync(returnDate, isPickupDate: false, TimeSpan.FromSeconds(2));
+        if (!returnApplied)
+            throw new InvalidOperationException($"Bırakış tarihi ({returnDate:dd.MM.yyyy}) seçimi takvimde uygulanmadı.");
 
         await WaitForDatePickerClosedAsync(TimeSpan.FromSeconds(4));
     }
@@ -313,7 +318,7 @@ public sealed partial class BAService
             async () => IsScriptTrue(await EvaluateScriptAsync(
                 """
                 (() => {
-                    const menus = Array.from(document.querySelectorAll('.dp__menu, .dp__outer_menu_wrap, .dp__calendar'));
+                    const menus = Array.from(document.querySelectorAll('.dp__menu, .dp__outer_menu_wrap, .dp__calendar, .cal-months'));
                     return menus.some(m => {
                         const rect = m.getBoundingClientRect();
                         const style = window.getComputedStyle(m);
@@ -353,6 +358,19 @@ public sealed partial class BAService
             """
             (() => {
                 const isVisible = window.__ba?.isVisible || (() => false);
+
+                const customCalendar = Array
+                    .from(document.querySelectorAll('.cal-months'))
+                    .find(isVisible);
+
+                if (customCalendar) {
+                    return Array
+                        .from(customCalendar.querySelectorAll('.cal-title'))
+                        .map(title => (title.textContent || '').trim())
+                        .filter(Boolean)
+                        .join(' ');
+                }
+
                 const calendar = Array
                     .from(document.querySelectorAll('.dp__instance_calendar'))
                     .find(isVisible);
@@ -373,8 +391,8 @@ public sealed partial class BAService
     private async Task<bool> ClickCalendarNavAsync(bool forward)
     {
         var buttonSelector = forward
-            ? "button[aria-label='Next month']"
-            : "button[aria-label='Previous month']";
+            ? ".cal-nav.right-4, button[aria-label='Next month']"
+            : ".cal-nav.left-4, button[aria-label='Previous month']";
         var buttonSelectorJson = JsonSerializer.Serialize(buttonSelector);
 
         var result = await EvaluateScriptAsync(
@@ -401,6 +419,7 @@ public sealed partial class BAService
     private async Task<bool> ClickCalendarDayAsync(DateTime date)
     {
         var dayJson = JsonSerializer.Serialize(date.Day);
+        var dateJson = JsonSerializer.Serialize(date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
         var monthNamesJson = JsonSerializer.Serialize(new[]
         {
             TurkishMonthNames[date.Month - 1],
@@ -412,10 +431,20 @@ public sealed partial class BAService
             $$"""
             (() => {
                 const dayTarget = {{dayJson}};
+                const dateTarget = {{dateJson}};
                 const monthTargets = {{monthNamesJson}};
                 const yearTarget = {{yearJson}};
                 const isVisible = window.__ba?.isVisible || (() => false);
                 const normalize = window.__ba?.normalizeTr || (value => (value || '').toLocaleLowerCase('tr-TR').replace(/\s+/g, ' ').trim());
+                const customDayCell = document.querySelector(`td[data-day="${dateTarget}"]`);
+
+                if (customDayCell && isVisible(customDayCell) && !customDayCell.classList.contains('past')) {
+                    customDayCell.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+                    customDayCell.click();
+
+                    return true;
+                }
+
                 const calendar = Array
                     .from(document.querySelectorAll('.dp__instance_calendar'))
                     .find(isVisible);
@@ -723,7 +752,14 @@ public sealed partial class BAService
 
     private Task<bool> WaitForCalendarSelectionStateAsync(DateTime date, TimeSpan timeout)
     {
+        return WaitForCalendarSelectionStateAsync(date, isPickupDate: true, timeout);
+    }
+
+    private Task<bool> WaitForCalendarSelectionStateAsync(DateTime date, bool isPickupDate, TimeSpan timeout)
+    {
         var dayJson = JsonSerializer.Serialize(date.Day);
+        var dateJson = JsonSerializer.Serialize(date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
+        var isPickupDateJson = JsonSerializer.Serialize(isPickupDate);
         var monthNamesJson = JsonSerializer.Serialize(new[]
         {
             TurkishMonthNames[date.Month - 1],
@@ -735,10 +771,24 @@ public sealed partial class BAService
             $$"""
             (() => {
                 const dayTarget = {{dayJson}};
+                const dateTarget = {{dateJson}};
+                const isPickupDate = {{isPickupDateJson}};
                 const monthTargets = {{monthNamesJson}};
                 const yearTarget = {{yearJson}};
                 const isVisible = window.__ba?.isVisible || (() => false);
                 const normalize = window.__ba?.normalizeTr || (value => (value || '').toLocaleLowerCase('tr-TR').replace(/\s+/g, ' ').trim());
+                const customDayCell = document.querySelector(`td[data-day="${dateTarget}"]`);
+
+                if (customDayCell && isVisible(customDayCell)) {
+                    if (isPickupDate) {
+                        return customDayCell.classList.contains('range-start-cap') ||
+                            (customDayCell.classList.contains('endpoint') && !customDayCell.classList.contains('range-end-cap'));
+                    }
+
+                    return customDayCell.classList.contains('range-end-cap') ||
+                        (customDayCell.classList.contains('endpoint') && !customDayCell.classList.contains('range-start-cap'));
+                }
+
                 const calendar = Array
                     .from(document.querySelectorAll('.dp__instance_calendar'))
                     .find(isVisible);
@@ -784,7 +834,7 @@ public sealed partial class BAService
                 const isVisible = window.__ba?.isVisible || (() => false);
 
                 const visibleDatePickerMenus = Array
-                    .from(document.querySelectorAll('.dp__menu, .dp__outer_menu_wrap'))
+                    .from(document.querySelectorAll('.dp__menu, .dp__outer_menu_wrap, .cal-months'))
                     .filter(isVisible);
 
                 return visibleDatePickerMenus.length === 0;
