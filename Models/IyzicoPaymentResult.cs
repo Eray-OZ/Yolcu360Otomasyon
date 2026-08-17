@@ -11,4 +11,5 @@ public sealed class IyzicoPaymentResult
     public string? CardAssociation { get; init; }
     public string? LastFourDigits { get; init; }
     public string? CardHolderName { get; init; }
+    public string? ErrorMessage { get; init; }
 }

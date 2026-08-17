@@ -7,7 +7,7 @@ public sealed partial class BAService
 {
     public async Task ClearBrowserSessionAsync()
     {
-        Report("Gömülü tarayıcı oturumu ve çerezleri temizleniyor...");
+        Report("Gömülü tarayıcıda Yolcu360 oturumu yumuşak şekilde temizleniyor (reCAPTCHA güven çerezleri korunuyor)...");
         try
         {
             await NavigateAsync("https://www.yolcu360.com/logout");
@@ -17,14 +17,26 @@ public sealed partial class BAService
                 """
                 (() => {
                     try {
-                        const domains = ['', '.yolcu360.com', 'www.yolcu360.com', 'yolcu360.com', '.google.com', '.recaptcha.net'];
+                        // Sadece Yolcu360 alan adları temizlenir; Google ve reCAPTCHA alan adları korunur
+                        const domains = ['', '.yolcu360.com', 'www.yolcu360.com', 'yolcu360.com'];
                         const paths = ['/', '/login', '/api'];
                         const cookies = document.cookie.split(";");
+
                         for (let i = 0; i < cookies.length; i++) {
                             const cookie = cookies[i];
                             const eqPos = cookie.indexOf("=");
                             const name = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim();
                             if (!name) continue;
+
+                            const lowerName = name.toLowerCase();
+                            // Google reCAPTCHA güven çerezlerini ve analitik belirteçlerini koru
+                            if (lowerName.includes('recaptcha') ||
+                                lowerName.startsWith('_grecaptcha') ||
+                                lowerName === '_ga' ||
+                                lowerName.startsWith('_ga_') ||
+                                lowerName.startsWith('_gid')) {
+                                continue;
+                            }
 
                             for (const d of domains) {
                                 for (const p of paths) {
@@ -33,32 +45,33 @@ public sealed partial class BAService
                             }
                         }
                     } catch {}
-                    try { localStorage.clear(); } catch {}
-                    try { sessionStorage.clear(); } catch {}
+
+                    // LocalStorage ve SessionStorage'da reCAPTCHA harici Yolcu360 verilerini temizle
                     try {
-                        if (window.indexedDB && window.indexedDB.databases) {
-                            window.indexedDB.databases().then(dbs => {
-                                for (const db of dbs) {
-                                    if (db.name) window.indexedDB.deleteDatabase(db.name);
-                                }
-                            });
+                        const lsKeys = Object.keys(localStorage);
+                        for (const k of lsKeys) {
+                            const lowerK = k.toLowerCase();
+                            if (!lowerK.includes('recaptcha') && !lowerK.includes('google')) {
+                                localStorage.removeItem(k);
+                            }
                         }
                     } catch {}
+
+                    try {
+                        const ssKeys = Object.keys(sessionStorage);
+                        for (const k of ssKeys) {
+                            const lowerK = k.toLowerCase();
+                            if (!lowerK.includes('recaptcha') && !lowerK.includes('google')) {
+                                sessionStorage.removeItem(k);
+                            }
+                        }
+                    } catch {}
+
                     return true;
                 })();
                 """);
-            await WaitForScriptTrueOrTimeoutAsync(
-                """
-                (() => {
-                    try {
-                        return localStorage.length === 0 && sessionStorage.length === 0;
-                    } catch {
-                        return true;
-                    }
-                })();
-                """,
-                TimeSpan.FromSeconds(3));
-            Report("Gömülü tarayıcı çerezleri ve yerel depolama başarıyla temizlendi.");
+
+            Report("Yolcu360 oturumu başarıyla temizlendi (reCAPTCHA güven çerezleri korundu).");
         }
         catch (Exception ex)
         {

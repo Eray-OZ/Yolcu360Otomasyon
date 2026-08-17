@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Globalization;
 using Iyzipay;
 using Iyzipay.Model;
@@ -11,92 +10,55 @@ namespace Yolcu360Otomasyon.Services;
 public sealed class IyzicoPaymentService
 {
     private readonly IyzicoSettings _settings;
-    private readonly IyzicoCallbackService _callbackService;
 
-    public IyzicoPaymentService(IyzicoSettings settings, IyzicoCallbackService callbackService)
+    public IyzicoPaymentService(IyzicoSettings settings)
     {
         _settings = settings;
-        _callbackService = callbackService;
     }
 
-    public async Task<IyzicoCheckoutSession> InitializeCheckoutAsync(AppUser user, IReadOnlyCollection<OdemeHazirlikItem> items)
+    public async Task<IyzicoPaymentResult> CreateDirectPaymentAsync(
+        AppUser user,
+        IReadOnlyCollection<OdemeHazirlikItem> items,
+        SandboxPaymentCardInput cardInput)
     {
         if (items.Count == 0)
             throw new InvalidOperationException("Odeme icin secili kayit bulunamadi.");
 
-        await _callbackService.StartAsync();
+        ValidateSandboxCardInput(cardInput);
 
         var totalAmount = items.Sum(item => item.Tutar);
         var conversationId = Guid.NewGuid().ToString("N");
-        var request = new CreateCheckoutFormInitializeRequest
+        var request = new CreatePaymentRequest
         {
             Locale = Locale.TR.ToString(),
             ConversationId = conversationId,
             Price = FormatPrice(totalAmount),
             PaidPrice = FormatPrice(totalAmount),
             Currency = Currency.TRY.ToString(),
+            Installment = 1,
             BasketId = $"KOL-{user.Id}-{DateTime.UtcNow:yyyyMMddHHmmss}",
             PaymentGroup = PaymentGroup.PRODUCT.ToString(),
-            CallbackUrl = _callbackService.CallbackUrl,
-            EnabledInstallments = [1],
+            PaymentCard = BuildPaymentCard(cardInput),
             Buyer = BuildBuyer(user),
             ShippingAddress = BuildAddress(user),
             BillingAddress = BuildAddress(user),
             BasketItems = items.Select(BuildBasketItem).ToList()
         };
 
-        var result = await CheckoutFormInitialize.Create(request, BuildOptions());
-        if (!string.Equals(result.Status, "success", StringComparison.OrdinalIgnoreCase))
-            throw new InvalidOperationException(result.ErrorMessage ?? "iyzico checkout initialize başarısız.");
-
-        if (string.IsNullOrWhiteSpace(result.Token) || string.IsNullOrWhiteSpace(result.PaymentPageUrl))
-            throw new InvalidOperationException("iyzico ödeme sayfası oluşturulamadı.");
-
-        return new IyzicoCheckoutSession
-        {
-            ConversationId = conversationId,
-            Token = result.Token,
-            PaymentPageUrl = result.PaymentPageUrl,
-            TotalAmount = totalAmount
-        };
-    }
-
-    public void OpenCheckoutPage(string paymentPageUrl)
-    {
-        Process.Start(new ProcessStartInfo
-        {
-            FileName = paymentPageUrl,
-            UseShellExecute = true
-        });
-    }
-
-    public Task<IyzicoCallbackPayload> WaitForCallbackAsync(string token, TimeSpan timeout, CancellationToken cancellationToken = default)
-    {
-        return _callbackService.WaitForCallbackAsync(token, timeout, cancellationToken);
-    }
-
-    public async Task<IyzicoPaymentResult> RetrievePaymentResultAsync(string conversationId, string token)
-    {
-        var request = new RetrieveCheckoutFormRequest
-        {
-            Locale = Locale.TR.ToString(),
-            ConversationId = conversationId,
-            Token = token
-        };
-
-        var result = await CheckoutForm.Retrieve(request, BuildOptions());
+        var result = await Payment.Create(request, BuildOptions());
 
         return new IyzicoPaymentResult
         {
             ConversationId = conversationId,
-            Token = token,
-            ReferenceNo = result.PaymentId ?? token,
+            Token = result.PaymentId ?? conversationId,
+            ReferenceNo = result.PaymentId ?? conversationId,
             Status = result.Status ?? string.Empty,
             PaymentStatus = result.PaymentStatus ?? string.Empty,
             Provider = "iyzico-sandbox",
             CardAssociation = result.CardAssociation,
             LastFourDigits = result.LastFourDigits,
-            CardHolderName = null
+            CardHolderName = cardInput.CardHolderName,
+            ErrorMessage = result.ErrorMessage
         };
     }
 
@@ -161,6 +123,35 @@ public sealed class IyzicoPaymentService
         };
     }
 
+    private static PaymentCard BuildPaymentCard(SandboxPaymentCardInput cardInput)
+    {
+        return new PaymentCard
+        {
+            CardHolderName = cardInput.CardHolderName,
+            CardNumber = NormalizeDigits(cardInput.CardNumber),
+            ExpireMonth = NormalizeDigits(cardInput.ExpiryMonth),
+            ExpireYear = NormalizeDigits(cardInput.ExpiryYear),
+            Cvc = NormalizeDigits(cardInput.Cvc),
+            RegisterCard = 0
+        };
+    }
+
+    private static void ValidateSandboxCardInput(SandboxPaymentCardInput cardInput)
+    {
+        if (string.IsNullOrWhiteSpace(cardInput.CardHolderName))
+            throw new InvalidOperationException("Kart sahibi adı boş.");
+
+        if (NormalizeDigits(cardInput.CardNumber).Length < 15)
+            throw new InvalidOperationException("Kart numarası geçersiz.");
+
+        if (NormalizeDigits(cardInput.ExpiryMonth).Length != 2 || NormalizeDigits(cardInput.ExpiryYear).Length != 2)
+            throw new InvalidOperationException("Son kullanma tarihi MM/YY formatında olmalı.");
+
+        var cvcLength = NormalizeDigits(cardInput.Cvc).Length;
+        if (cvcLength is < 3 or > 4)
+            throw new InvalidOperationException("CVC geçersiz.");
+    }
+
     private static string FormatPrice(decimal value)
     {
         return value.ToString("0.00", CultureInfo.InvariantCulture);
@@ -176,5 +167,10 @@ public sealed class IyzicoPaymentService
             digits = digits[1..];
 
         return $"+90{digits}";
+    }
+
+    private static string NormalizeDigits(string value)
+    {
+        return new string((value ?? string.Empty).Where(char.IsDigit).ToArray());
     }
 }

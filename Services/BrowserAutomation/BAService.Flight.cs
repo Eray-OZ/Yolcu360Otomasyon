@@ -557,7 +557,7 @@ public sealed partial class BAService
 
                 if (!trigger) return false;
 
-                const clickable = trigger.querySelector('.dp__main, .flex.items-center, .icon-calendar') || trigger;
+                const clickable = trigger.querySelector('.flex.items-center, .icon-calendar') || trigger;
                 clickable.scrollIntoView({ block: 'center', inline: 'nearest' });
                 clickable.click();
                 return true;

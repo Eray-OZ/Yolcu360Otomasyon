@@ -17,7 +17,6 @@ public partial class MainWindow : Window
     private readonly FlightLocationSuggestionService _flightLocationSuggestionService = new();
     // Extra - Location Suggestion END
     private readonly SmsReceiverService _smsReceiverService = new(5001);
-    private readonly IyzicoCallbackService _iyzicoCallbackService = new();
     private readonly IyzicoPaymentService _iyzicoPaymentService;
     private AppUser? _activeUser;
     private List<SearchResultItem> _latestResults = new();
@@ -56,7 +55,7 @@ public partial class MainWindow : Window
         // Extra - Dynamic Collections START
         _dynamicCollectionService = new DynamicCollectionService(_databaseService);
         // Extra - Dynamic Collections END
-        _iyzicoPaymentService = new IyzicoPaymentService(AppSettings.GetIyzicoSettings(), _iyzicoCallbackService);
+        _iyzicoPaymentService = new IyzicoPaymentService(AppSettings.GetIyzicoSettings());
         PickupDatePicker.DisplayDateStart = DateTime.Today;
         ReturnDatePicker.DisplayDateStart = DateTime.Today;
         PickupDatePicker.SelectedDate = DateTime.Today;
@@ -128,7 +127,6 @@ public partial class MainWindow : Window
         _flightToSuggestionCts?.Dispose();
         // Extra - Location Suggestion END
         await _smsReceiverService.DisposeAsync();
-        await _iyzicoCallbackService.DisposeAsync();
 
         base.OnClosed(e);
     }

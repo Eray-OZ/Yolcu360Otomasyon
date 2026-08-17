@@ -81,26 +81,17 @@ public partial class MainWindow : Window
         try
         {
             var paymentCard = BuildSandboxPaymentCardInput();
-            CheckoutStatusTextBlock.Text = "Ödeme sayfası hazırlanıyor...";
+            CheckoutStatusTextBlock.Text = "iyzico sandbox ödeme isteği gönderiliyor...";
 
-            var session = await _iyzicoPaymentService.InitializeCheckoutAsync(_activeUser, _paymentPreviewItems);
+            var paymentResult = await _iyzicoPaymentService.CreateDirectPaymentAsync(
+                _activeUser,
+                _paymentPreviewItems,
+                paymentCard);
 
-            ShowBrowserSection();
-            CheckoutStatusTextBlock.Text = "Ödeme formu dolduruluyor...";
-
-            var baService = CreateBAService();
-            await baService.CompleteIyzicoSandboxPaymentAsync(session.PaymentPageUrl, paymentCard);
-
-            CheckoutStatusTextBlock.Text = "Ödeme onayı bekleniyor...";
-
-            await _iyzicoPaymentService.WaitForCallbackAsync(session.Token, TimeSpan.FromMinutes(5));
-            var paymentResult = await _iyzicoPaymentService.RetrievePaymentResultAsync(session.ConversationId, session.Token);
-
-            if (!string.Equals(paymentResult.Status, "success", StringComparison.OrdinalIgnoreCase) ||
-                !string.Equals(paymentResult.PaymentStatus, "SUCCESS", StringComparison.OrdinalIgnoreCase))
+            if (!string.Equals(paymentResult.Status, "success", StringComparison.OrdinalIgnoreCase))
             {
                 CheckoutStatusTextBlock.Text =
-                    $"Ödeme tamamlanmadı. Durum: {paymentResult.Status} / {paymentResult.PaymentStatus}";
+                    $"Ödeme tamamlanmadı. Durum: {paymentResult.Status} / {paymentResult.PaymentStatus}. {paymentResult.ErrorMessage}";
                 return;
             }
 
@@ -109,10 +100,10 @@ public partial class MainWindow : Window
                 _paymentPreviewItems,
                 paymentResult);
 
-            CheckoutStatusTextBlock.Text = "iyzico sandbox ödeme kaydı oluşturuldu.";
             ClearCheckoutForm();
             ShowPaymentsSection();
             await LoadPaymentsAsync();
+            PaymentsStatusTextBlock.Text = "iyzico sandbox ödeme kaydı oluşturuldu.";
         }
         catch (Exception ex)
         {
