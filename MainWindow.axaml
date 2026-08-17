@@ -361,6 +361,7 @@
                                Foreground="#243446"
                                FontWeight="SemiBold" />
                     <TextBox x:Name="LoginPasswordTextBox"
+                             PasswordChar="•"
                              PlaceholderText="Uygulama şifresi" />
                 </StackPanel>
 
@@ -416,6 +417,7 @@
                                Foreground="#243446"
                                FontWeight="SemiBold" />
                     <TextBox x:Name="RegisterPasswordTextBox"
+                             PasswordChar="•"
                              PlaceholderText="Uygulama şifresi" />
                 </StackPanel>
 

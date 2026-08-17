@@ -1,6 +1,5 @@
 using System.Net;
 using System.Text;
-using System.Text.Json;
 using System.Web;
 
 namespace Yolcu360Otomasyon.Services;
@@ -33,8 +32,7 @@ public sealed partial class SmsReceiverService
     {
         try
         {
-            var requestPath = context.Request.Url?.AbsolutePath?.TrimEnd('/') ?? string.Empty;
-            var (message, sender) = await ReadIncomingMessageAsync(context.Request);
+            var (message, sender) = ReadIncomingMessage(context.Request);
             var code = ExtractCode(message);
 
             SmsReceived?.Invoke(string.IsNullOrWhiteSpace(message)
@@ -53,18 +51,11 @@ public sealed partial class SmsReceiverService
             lock (_sync)
             {
                 _latestCode = code;
-
-                foreach (var waiter in _waiters.ToArray())
-                    waiter.TrySetResult(code);
+                _codeWaiter?.TrySetResult(code);
             }
 
             context.Response.StatusCode = 200;
             await WriteResponseAsync(context.Response, $$"""{"status":"ok","code":"{{code}}"}""");
-        }
-        catch (JsonException)
-        {
-            context.Response.StatusCode = 400;
-            await WriteResponseAsync(context.Response, """{"error":"Invalid JSON payload."}""");
         }
         catch
         {
@@ -76,57 +67,15 @@ public sealed partial class SmsReceiverService
         }
     }
 
-    private static async Task<(string Message, string Sender)> ReadIncomingMessageAsync(HttpListenerRequest request)
+    private static (string Message, string Sender) ReadIncomingMessage(HttpListenerRequest request)
     {
-        var sender = string.Empty;
-        var message = string.Empty;
+        if (request.Url is null)
+            return (string.Empty, string.Empty);
 
-        if (request.Url is not null)
-        {
-            var query = HttpUtility.ParseQueryString(request.Url.Query);
-            sender = ReadFirst(query, "sender", "sms_sender", "from", "phone") ?? string.Empty;
-            message = ReadFirst(query, "message", "sms_message", "text", "body", "sms", "msg", "message_text") ?? string.Empty;
-
-            if (string.IsNullOrWhiteSpace(message))
-            {
-                var localPath = HttpUtility.UrlDecode(request.Url.AbsolutePath)?.Trim('/') ?? string.Empty;
-                if (localPath.StartsWith("sms", StringComparison.OrdinalIgnoreCase))
-                {
-                    var pathRemainder = localPath["sms".Length..].Trim('/');
-                    if (!string.IsNullOrWhiteSpace(pathRemainder))
-                        message = pathRemainder;
-                }
-            }
-        }
-
-        if (!request.HasEntityBody)
-            return (message, sender);
-
-        using var reader = new StreamReader(request.InputStream, request.ContentEncoding ?? Encoding.UTF8);
-        var body = (await reader.ReadToEndAsync()).Trim();
-        if (string.IsNullOrWhiteSpace(body))
-            return (message, sender);
-
-        var contentType = request.ContentType ?? string.Empty;
-        if (contentType.Contains("application/json", StringComparison.OrdinalIgnoreCase))
-        {
-            using var document = JsonDocument.Parse(body);
-            var root = document.RootElement;
-
-            return (
-                ReadFirst(root, "message", "sms_message", "text", "body", "sms", "msg", "message_text") ?? message,
-                ReadFirst(root, "sender", "sms_sender", "from", "phone") ?? sender);
-        }
-
-        if (contentType.Contains("application/x-www-form-urlencoded", StringComparison.OrdinalIgnoreCase))
-        {
-            var form = HttpUtility.ParseQueryString(body);
-            return (
-                ReadFirst(form, "message", "sms_message", "text", "body", "sms", "msg", "message_text") ?? message,
-                ReadFirst(form, "sender", "sms_sender", "from", "phone") ?? sender);
-        }
-
-        return (body, sender);
+        var query = HttpUtility.ParseQueryString(request.Url.Query);
+        var message = ReadFirst(query, "message", "sms_message") ?? string.Empty;
+        var sender = ReadFirst(query, "sender", "sms_sender") ?? string.Empty;
+        return (message, sender);
     }
 
     private static async Task WriteResponseAsync(HttpListenerResponse response, string content)

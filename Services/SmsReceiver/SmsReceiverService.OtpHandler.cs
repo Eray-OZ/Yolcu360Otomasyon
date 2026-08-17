@@ -1,5 +1,3 @@
-using System.Text.Json;
-
 namespace Yolcu360Otomasyon.Services;
 
 public sealed partial class SmsReceiverService
@@ -20,7 +18,8 @@ public sealed partial class SmsReceiverService
 
         lock (_sync)
         {
-            _waiters.Add(waiter);
+            _codeWaiter?.TrySetCanceled();
+            _codeWaiter = waiter;
         }
 
         try
@@ -31,7 +30,8 @@ public sealed partial class SmsReceiverService
         {
             lock (_sync)
             {
-                _waiters.Remove(waiter);
+                if (ReferenceEquals(_codeWaiter, waiter))
+                    _codeWaiter = null;
             }
         }
     }
@@ -57,21 +57,6 @@ public sealed partial class SmsReceiverService
             var value = values[key]?.Trim();
             if (!string.IsNullOrWhiteSpace(value))
                 return value;
-        }
-
-        return null;
-    }
-
-    private static string? ReadFirst(JsonElement root, params string[] keys)
-    {
-        foreach (var key in keys)
-        {
-            if (root.TryGetProperty(key, out var value) && value.ValueKind == JsonValueKind.String)
-            {
-                var text = value.GetString()?.Trim();
-                if (!string.IsNullOrWhiteSpace(text))
-                    return text;
-            }
         }
 
         return null;

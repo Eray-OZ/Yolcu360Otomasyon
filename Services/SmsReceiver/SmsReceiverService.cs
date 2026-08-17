@@ -8,7 +8,7 @@ public sealed partial class SmsReceiverService : IAsyncDisposable
     private static readonly Regex OtpRegex = new(@"\b\d{4,8}\b", RegexOptions.Compiled);
 
     private readonly object _sync = new();
-    private readonly List<TaskCompletionSource<string>> _waiters = [];
+    private TaskCompletionSource<string>? _codeWaiter;
     private HttpListener? _listener;
     private CancellationTokenSource? _cts;
     private Task? _listenerTask;
