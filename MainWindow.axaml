@@ -238,6 +238,50 @@
             <Setter Property="Opacity" Value="1" />
         </Style>
 
+        <Style Selector="Button.danger">
+            <Setter Property="Background" Value="#DC2626" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="BorderBrush" Value="#DC2626" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Opacity" Value="1" />
+        </Style>
+
+        <Style Selector="Button.danger:pointerover">
+            <Setter Property="Background" Value="#B91C1C" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="BorderBrush" Value="#B91C1C" />
+            <Setter Property="Opacity" Value="1" />
+        </Style>
+
+        <Style Selector="Button.danger:pressed">
+            <Setter Property="Background" Value="#991B1B" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="BorderBrush" Value="#991B1B" />
+            <Setter Property="Opacity" Value="1" />
+        </Style>
+
+        <Style Selector="Button.danger /template/ ContentPresenter">
+            <Setter Property="TextElement.Foreground" Value="White" />
+        </Style>
+
+        <Style Selector="Button.danger /template/ Border">
+            <Setter Property="Background" Value="#DC2626" />
+            <Setter Property="BorderBrush" Value="#DC2626" />
+            <Setter Property="Opacity" Value="1" />
+        </Style>
+
+        <Style Selector="Button.danger:pointerover /template/ Border">
+            <Setter Property="Background" Value="#B91C1C" />
+            <Setter Property="BorderBrush" Value="#B91C1C" />
+            <Setter Property="Opacity" Value="1" />
+        </Style>
+
+        <Style Selector="Button.danger:pressed /template/ Border">
+            <Setter Property="Background" Value="#991B1B" />
+            <Setter Property="BorderBrush" Value="#991B1B" />
+            <Setter Property="Opacity" Value="1" />
+        </Style>
+
         <Style Selector="DataGrid">
             <Setter Property="Background" Value="White" />
             <Setter Property="Foreground" Value="#132235" />
@@ -425,6 +469,7 @@
 
                         <Button Grid.Column="1"
                                 x:Name="LogoutButton"
+                                Classes="danger"
                                 Content="Çıkış Yap"
                                 Width="120"
                                 VerticalAlignment="Center"

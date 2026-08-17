@@ -192,6 +192,7 @@ public partial class MainWindow : Window
     {
         if (_isAuthenticating) return;
         _activeUser = null;
+        SetNavigationVisibility(false);
         ShowLoginView();
         StatusTextBlock.Text = "Çıkış yapıldı.";
     }
@@ -202,6 +203,9 @@ public partial class MainWindow : Window
 
     private void ShowRegisterView()
     {
+        MainView.IsVisible = false;
+        SetNavigationVisibility(false);
+        HideMainContentPanels();
         LoginView.IsVisible = false;
         RegisterView.IsVisible = true;
         RegisterStatusTextBlock.Text = string.Empty;
@@ -209,6 +213,9 @@ public partial class MainWindow : Window
 
     private void ShowLoginView()
     {
+        MainView.IsVisible = false;
+        SetNavigationVisibility(false);
+        HideMainContentPanels();
         RegisterView.IsVisible = false;
         LoginView.IsVisible = true;
     }
@@ -240,7 +247,24 @@ public partial class MainWindow : Window
         LoginView.IsVisible = false;
         RegisterView.IsVisible = false;
         MainView.IsVisible = true;
+        SetNavigationVisibility(true);
         ShowSearchSection();
+    }
+
+    private void HideMainContentPanels()
+    {
+        ResetBrowserPanelVisualState();
+        SearchPanel.IsVisible = false;
+        SearchResultsPanel.IsVisible = false;
+        FlightPanel.IsVisible = false;
+        HistoryPanel.IsVisible = false;
+        PaymentsPanel.IsVisible = false;
+        PaymentCheckoutPanel.IsVisible = false;
+        BrowserSectionPanel.IsVisible = false;
+        SearchTabButton.Classes.Set("primary", false);
+        FlightTabButton.Classes.Set("primary", false);
+        HistoryTabButton.Classes.Set("primary", false);
+        PaymentsTabButton.Classes.Set("primary", false);
     }
 
     private void SmsReceiverService_SmsReceived(string message)
