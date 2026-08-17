@@ -8,89 +8,37 @@ public sealed partial class BAService
     private const string Yolcu360FlightUrl = "https://www.yolcu360.com/ucak-bileti";
     private const string FlightFromInputSelector = "#inputPickUpLocation";
     private const string FlightToInputSelector = "#inputDropOffLocation";
-    private const string FlightLocationSuggestionSelector = ".search-autocomplete.w-full .search-autocomplete__item.location-item, .search-autocomplete__item.location-item, .search-autocomplete .location-item";
+    private const string FlightLocationSuggestionSelector = ".search-autocomplete .search-autocomplete__item, .search-autocomplete__item, .search-autocomplete .location-item, .search-autocomplete-mobile__item, .location-item, .search-autocomplete div.search-autocomplete__item, .search-autocomplete > div";
     private const string FlightSearchButtonSelector = "#flight_search";
     private const string FlightInputResolverScript =
         """
         const resolveFlightInput = selector => {
             const isVisible = window.__ba?.isVisible || (() => false);
-            const scopedLabelSelector = selector === '#inputPickUpLocation'
+            const direct = document.querySelector(selector);
+            if (direct && isVisible(direct)) return direct;
+
+            const labelSelector = selector === '#inputPickUpLocation'
                 ? '#inputPickUpLocation-label'
                 : selector === '#inputDropOffLocation'
                     ? '#inputDropOffLocation-label'
                     : '';
 
-            if (scopedLabelSelector) {
-                const scopedLabels = Array
-                    .from(document.querySelectorAll(scopedLabelSelector))
-                    .filter(isVisible);
-
-                const scopedInput = scopedLabels
-                    .map(label => label.querySelector(selector))
-                    .find(input =>
-                        input &&
-                        isVisible(input) &&
-                        !input.disabled &&
-                        input.getAttribute('readonly') === null);
-
-                if (scopedInput &&
-                    isVisible(scopedInput) &&
-                    !scopedInput.disabled &&
-                    scopedInput.getAttribute('readonly') === null) {
-                    return scopedInput;
-                }
+            if (labelSelector) {
+                const label = document.querySelector(labelSelector);
+                const inside = label?.querySelector('input') || label?.querySelector(selector);
+                if (inside && isVisible(inside)) return inside;
             }
 
-            const looksLikeLocationInput = input => {
-                if (!input) return false;
-                const attrs = `${input.id || ''} ${input.name || ''} ${input.placeholder || ''} ${input.getAttribute('data-cms-key') || ''} ${input.className || ''}`.toLocaleLowerCase('tr-TR');
-                if (selector === '#inputPickUpLocation') {
-                    return attrs.includes('pickup') ||
-                        attrs.includes('from') ||
-                        attrs.includes('kalkış') ||
-                        attrs.includes('nereden');
-                }
+            if (direct) return direct;
 
-                if (selector === '#inputDropOffLocation') {
-                    return attrs.includes('dropoff') ||
-                        attrs.includes('to') ||
-                        attrs.includes('varış') ||
-                        attrs.includes('nereye');
-                }
-
-                return attrs.includes('location') ||
-                    attrs.includes('airport') ||
-                    attrs.includes('havalimanı') ||
-                    attrs.includes('şehir') ||
-                    attrs.includes('city');
-            };
-
-            const allMatches = Array.from(document.querySelectorAll(selector));
-            const exactMatch = allMatches.find(input =>
-                input.closest('#inputPickUpLocation-label, #inputDropOffLocation-label') &&
-                isVisible(input) &&
-                !input.disabled &&
-                input.getAttribute('readonly') === null
-            );
-            if (exactMatch) return exactMatch;
-
-            const flightMatches = allMatches.filter(input =>
-                input.closest('.flight-search-bar-wrapper, .flight-search-bar__search') &&
-                isVisible(input) &&
-                !input.disabled &&
-                input.getAttribute('readonly') === null
-            );
-            const selectorMatch = flightMatches[0] || allMatches.find(input =>
-                isVisible(input) &&
-                !input.disabled &&
-                input.getAttribute('readonly') === null
-            );
-            if (selectorMatch) return selectorMatch;
-
-            return Array
-                .from(document.querySelectorAll('input'))
-                .filter(input => isVisible(input) && !input.disabled && input.getAttribute('readonly') === null)
-                .find(looksLikeLocationInput) || allMatches[0] || null;
+            const allInputs = Array.from(document.querySelectorAll('input')).filter(isVisible);
+            if (selector === '#inputPickUpLocation') {
+                return allInputs.find(i => (i.id || '').toLowerCase().includes('pickup') || (i.placeholder || '').toLowerCase().includes('kalkış') || (i.placeholder || '').toLowerCase().includes('nereden')) || allInputs[0] || null;
+            }
+            if (selector === '#inputDropOffLocation') {
+                return allInputs.find(i => (i.id || '').toLowerCase().includes('dropoff') || (i.placeholder || '').toLowerCase().includes('varış') || (i.placeholder || '').toLowerCase().includes('nereye')) || allInputs[1] || null;
+            }
+            return null;
         };
         """;
 
@@ -119,7 +67,9 @@ public sealed partial class BAService
         if (filter.OnlyNonStop)
             await ToggleFlightOnlyNonStopAsync();
 
+        var previousResultsSignature = await GetFlightResultsSignatureAsync();
         await ClickFlightSearchButtonAsync();
+        await WaitForFlightResultsChangedAsync(previousResultsSignature, TimeSpan.FromSeconds(35));
     }
 
     private async Task SelectFlightTripTypeAsync(bool isRoundTrip)
@@ -147,53 +97,44 @@ public sealed partial class BAService
     private async Task FillFlightLocationAsync(string selector, string location, string fieldName)
     {
         var selectorJson = JsonSerializer.Serialize(selector);
-        var searchTextJson = JsonSerializer.Serialize(BuildFlightLocationSearchText(location));
+        var searchText = BuildFlightLocationSearchText(location);
+        var searchTextJson = JsonSerializer.Serialize(searchText);
 
+        Report($"{fieldName} alanı açılıyor...");
         await OpenFlightLocationFieldAsync(selector, fieldName);
 
-        Report($"{fieldName} alanı bekleniyor...");
-        await WaitForScriptTrueAsync(
-            $$"""
-            (() => {
-                {{FlightInputResolverScript}}
-                const input = resolveFlightInput({{selectorJson}});
-                return !!window.__ba?.isVisible(input) &&
-                    !input.disabled &&
-                    input.getAttribute('readonly') === null;
-            })();
-            """,
-            TimeSpan.FromSeconds(20));
+        Report($"{fieldName} alanına yazılıyor: {searchText}");
+        var writeResult = await FillFlightLocationInputAsync(selectorJson, searchTextJson);
+        Report($"{fieldName} yazma sonucu: {writeResult}");
 
-        var searchText = BuildFlightLocationSearchText(location);
-        var valueApplied = false;
-        for (var writeAttempt = 1; writeAttempt <= 2 && !valueApplied; writeAttempt++)
-        {
-            if (writeAttempt > 1)
-                await OpenFlightLocationFieldAsync(selector, fieldName);
-
-            await FillFlightLocationInputAsync(selectorJson, searchTextJson);
-            valueApplied = await WaitForFlightInputValueAsync(selector, searchText, TimeSpan.FromSeconds(3));
-        }
-
-        if (!valueApplied)
-            throw new InvalidOperationException($"{fieldName} inputuna değer yazılamadı.");
-
+        Report($"{fieldName} önerileri bekleniyor...");
         await WaitForFlightLocationSuggestionsAsync(fieldName, location, TimeSpan.FromSeconds(12));
 
         var selected = false;
         for (var attempt = 1; attempt <= 3 && !selected; attempt++)
         {
-            await ClickFlightLocationSuggestionAsync(selector, location);
-            selected = await WaitForFlightLocationSelectionAppliedAsync(selector, TimeSpan.FromSeconds(3));
+            Report($"{fieldName} önerisi seçiliyor. Deneme: {attempt}");
+            var selectResult = await ClickFlightLocationSuggestionAsync(selector, location);
+            Report($"{fieldName} öneri seçim sonucu: {selectResult}");
+            selected = await WaitForFlightLocationSelectionAppliedAsync(selector, location, TimeSpan.FromSeconds(4));
+
+            if (!selected && attempt < 3)
+            {
+                await OpenFlightLocationFieldAsync(selector, fieldName);
+                await FillFlightLocationInputAsync(selectorJson, searchTextJson);
+                await WaitForFlightLocationSuggestionsAsync(fieldName, location, TimeSpan.FromSeconds(5));
+            }
         }
 
         if (!selected)
-            throw new InvalidOperationException($"{fieldName} önerisi seçilemedi.");
+            throw new InvalidOperationException($"{fieldName} önerisi seçilemedi ({location}).");
+
+        Report($"{fieldName} başarıyla seçildi: {location}");
     }
 
-    private async Task FillFlightLocationInputAsync(string selectorJson, string searchTextJson)
+    private async Task<string?> FillFlightLocationInputAsync(string selectorJson, string searchTextJson)
     {
-        await EvaluateScriptAsync(
+        return await EvaluateScriptAsync(
             $$"""
             (() => {
                 {{FlightInputResolverScript}}
@@ -206,50 +147,41 @@ public sealed partial class BAService
                     });
                 }
 
+                input.scrollIntoView({ block: 'center', inline: 'nearest' });
                 input.focus();
                 input.click();
-                try { input.setSelectionRange(0, (input.value || '').length); } catch {}
 
-                const descriptor = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
-                const setValue = value => {
-                    if (descriptor?.set) {
-                        descriptor.set.call(input, value);
-                    } else {
-                        input.value = value;
-                    }
-                };
+                const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')?.set
+                    || Object.getOwnPropertyDescriptor(Object.getPrototypeOf(input), 'value')?.set;
 
-                input.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Meta', metaKey: true }));
-                input.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'a', metaKey: true }));
-                input.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true, key: 'a', metaKey: true }));
-                input.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true, key: 'Meta' }));
-                input.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Backspace' }));
-                setValue('');
-                input.setAttribute('value', '');
-                input.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'deleteContentBackward', data: null }));
-                input.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true, key: 'Backspace' }));
+                if (nativeSetter) {
+                    nativeSetter.call(input, '');
+                } else {
+                    input.value = '';
+                }
+                input.dispatchEvent(new Event('input', { bubbles: true, cancelable: true, composed: true }));
 
                 let current = '';
                 for (const char of text) {
-                    input.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: char }));
                     current += char;
-                    setValue(current);
-                    input.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: char }));
-                    input.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true, key: char }));
+                    input.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, cancelable: true, key: char, code: `Key${char.toUpperCase()}` }));
+                    input.dispatchEvent(new KeyboardEvent('keypress', { bubbles: true, cancelable: true, key: char }));
+                    if (nativeSetter) {
+                        nativeSetter.call(input, current);
+                    } else {
+                        input.value = current;
+                    }
+                    input.dispatchEvent(new InputEvent('input', { bubbles: true, cancelable: true, inputType: 'insertText', data: char }));
+                    input.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true, cancelable: true, key: char }));
                 }
 
-                setValue(text);
-                input.setAttribute('value', text);
-                input.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertReplacementText', data: text }));
-                input.dispatchEvent(new Event('change', { bubbles: true }));
+                input.dispatchEvent(new Event('change', { bubbles: true, cancelable: true, composed: true }));
+
                 return JSON.stringify({
-                    success: (input.value || '').trim() === text.trim(),
+                    success: (input.value || '').length > 0,
                     value: input.value || '',
                     expected: text,
-                    id: input.id || '',
-                    activeId: document.activeElement?.id || '',
-                    visible: !!window.__ba?.isVisible(input),
-                    wrapper: input.closest('.flight-search-bar-wrapper, .flight-search-bar__search') ? 'flight' : 'unknown'
+                    id: input.id || ''
                 });
             })();
             """);
@@ -263,7 +195,6 @@ public sealed partial class BAService
             : "#inputDropOffLocation-label";
         var labelSelectorJson = JsonSerializer.Serialize(labelSelector);
 
-        Report($"{fieldName} alanı açılıyor...");
         var openResult = await EvaluateScriptAsync(
             $$"""
             (() => {
@@ -284,7 +215,12 @@ public sealed partial class BAService
                 }
 
                 target.scrollIntoView({ block: 'center', inline: 'nearest' });
-                target.click();
+                if (window.__ba?.clickLikeUser) {
+                    window.__ba.clickLikeUser(target);
+                } else {
+                    target.focus?.();
+                    target.click?.();
+                }
 
                 const resolvedAfterClick = resolveFlightInput({{selectorJson}});
                 if (resolvedAfterClick) {
@@ -296,10 +232,7 @@ public sealed partial class BAService
                     opened: true,
                     targetText: (target.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 120),
                     inputId: resolvedAfterClick?.id || '',
-                    inputPlaceholder: resolvedAfterClick?.placeholder || '',
-                    inputValue: resolvedAfterClick?.value || '',
-                    activeTag: document.activeElement?.tagName || '',
-                    activeId: document.activeElement?.id || ''
+                    inputValue: resolvedAfterClick?.value || ''
                 });
             })();
             """);
@@ -322,158 +255,106 @@ public sealed partial class BAService
                 const normalize = window.__ba?.normalizeTr || (value => (value || '').toLocaleLowerCase('tr-TR').replace(/\s+/g, ' ').trim());
                 const compact = window.__ba?.compactTr || (value => normalize(value).replace(/\s/g, ''));
                 const isVisible = window.__ba?.isVisible || (() => false);
+                const target = normalize(targetText);
+                const targetCompact = compact(targetText);
+
                 const tokenize = value => normalize(value)
                     .replace(/[()]/g, ' ')
                     .split(/[\s,/-]+/)
                     .map(token => token.trim())
-                    .filter(token => token.length >= 3 && !['airport', 'havalimanı', 'uluslararası', 'international', 'türkiye', 'turkey'].includes(token));
-                const target = normalize(targetText);
+                    .filter(token => token.length >= 2 && !['airport', 'havalimanı', 'uluslararası', 'international', 'türkiye', 'turkey', 'tüm'].includes(token));
+
                 const targetTokens = tokenize(targetText);
 
-                const getMainText = item => normalize(
-                    item.querySelector('strong, div > div:first-child, span:first-child')?.textContent || ''
-                );
+                const getMainText = item => {
+                    const primary = item.querySelector('div > div:first-child, span:first-child, strong, p');
+                    return normalize(primary?.textContent || item.textContent || '');
+                };
 
                 const getScore = item => {
                     const fullText = normalize(item.textContent || '');
                     const mainText = getMainText(item);
-                    const compactText = compact(item.textContent || '');
-                    const itemTokens = tokenize(item.textContent || '');
+                    const itemCompact = compact(fullText);
+                    const itemTokens = tokenize(fullText);
                     const commonTokenCount = itemTokens.filter(token => targetTokens.includes(token)).length;
 
                     if (mainText === target) return 0;
-                    if (compactText === compact(targetText)) return 1;
-                    if (fullText === target) return 2;
-                    if (mainText.startsWith(target)) return 3;
-                    if (fullText.startsWith(target)) return 4;
-                    if (targetTokens.length > 0 && commonTokenCount === targetTokens.length) return 5;
-                    if (commonTokenCount >= 2) return 6;
-                    if (mainText.includes(target) || target.includes(mainText)) return 7;
-                    if (fullText.includes(target) || target.includes(fullText)) return 8;
-                    return 7;
+                    if (itemCompact === targetCompact) return 1;
+                    if (fullText.includes(target) || target.includes(fullText)) return 2;
+                    if (mainText.startsWith(target) || target.startsWith(mainText)) return 3;
+                    if (targetTokens.length > 0 && commonTokenCount === targetTokens.length) return 4;
+                    if (commonTokenCount >= 1) return 5;
+                    return 10;
                 };
 
-                const visibleContainers = Array
-                    .from(document.querySelectorAll('.search-autocomplete'))
-                    .filter(isVisible)
-                    .sort((a, b) => {
-                        if (!input) return 0;
-                        const inputRect = input.getBoundingClientRect();
-                        const ar = a.getBoundingClientRect();
-                        const br = b.getBoundingClientRect();
-                        const aDistance = Math.abs(ar.left - inputRect.left) + Math.abs(ar.top - inputRect.bottom);
-                        const bDistance = Math.abs(br.left - inputRect.left) + Math.abs(br.top - inputRect.bottom);
-                        return aDistance - bDistance;
-                    });
+                const allSuggestionElements = Array.from(document.querySelectorAll({{suggestionSelectorJson}}));
+                const visibleItems = allSuggestionElements
+                    .filter(item => isVisible(item) && (!input || (item !== input && !item.contains(input) && !input.contains(item))));
 
-                const sourceRoot = visibleContainers[0] || document;
-                const visibleItems = Array
-                    .from(sourceRoot.querySelectorAll({{suggestionSelectorJson}}))
-                    .filter(item => {
-                        if (!isVisible(item) || (input && (item === input || item.contains(input)))) {
-                            return false;
-                        }
-
-                        return true;
-                    });
-
-                const matchingItems = visibleItems.filter(item => {
-                    const fullText = normalize(item.textContent || '');
-                    const mainText = getMainText(item);
-                    const compactText = compact(item.textContent || '');
-                    const compactTarget = compact(targetText);
-                    const itemTokens = tokenize(item.textContent || '');
-                    const commonTokenCount = itemTokens.filter(token => targetTokens.includes(token)).length;
-
-                    return fullText.includes(target) ||
-                        target.includes(fullText) ||
-                        mainText.includes(target) ||
-                        target.includes(mainText) ||
-                        compactText.includes(compactTarget) ||
-                        compactTarget.includes(compactText) ||
-                        commonTokenCount >= 2;
-                });
-
-                const selected = (matchingItems.length > 0 ? matchingItems : visibleItems)
-                    .sort((a, b) => {
-                        const score = getScore(a) - getScore(b);
-                        if (score !== 0) return score;
-
-                        const ar = a.getBoundingClientRect();
-                        const br = b.getBoundingClientRect();
-                        return ar.top === br.top ? ar.left - br.left : ar.top - br.top;
-                    })[0];
-
-                if (!selected) {
+                if (visibleItems.length === 0) {
                     return JSON.stringify({
                         clicked: false,
                         reason: 'öneri bulunamadı',
-                        itemCount: visibleItems.length
+                        itemCount: 0
                     });
                 }
 
-                const clickResult = window.__ba?.clickLikeUser
-                    ? window.__ba.clickLikeUser(selected, {{suggestionSelectorJson}})
-                    : (() => {
-                        selected.click();
-                        return { clicked: true, pointTargetText: '' };
-                    })();
+                const sorted = visibleItems.sort((a, b) => {
+                    const score = getScore(a) - getScore(b);
+                    if (score !== 0) return score;
+                    const ar = a.getBoundingClientRect();
+                    const br = b.getBoundingClientRect();
+                    return ar.top === br.top ? ar.left - br.left : ar.top - br.top;
+                });
+
+                const selected = sorted[0];
+                selected.scrollIntoView({ block: 'center', inline: 'nearest' });
+
+                if (window.__ba?.clickLikeUser) {
+                    window.__ba.clickLikeUser(selected, {{suggestionSelectorJson}});
+                } else {
+                    selected.click();
+                }
 
                 return JSON.stringify({
-                    clicked: !!clickResult.clicked,
+                    clicked: true,
                     selectedText: (selected.textContent || '').replace(/\s+/g, ' ').trim(),
-                    pointTargetText: clickResult.pointTargetText || '',
                     inputValue: input?.value || '',
-                    remainingSuggestions: document.querySelectorAll({{suggestionSelectorJson}}).length,
-                    visibleCount: visibleItems.length,
-                    matchingCount: matchingItems.length
+                    visibleCount: visibleItems.length
                 });
             })();
             """);
     }
 
-    private Task<bool> WaitForFlightInputValueAsync(string selector, string expectedValue, TimeSpan timeout)
-    {
-        var selectorJson = JsonSerializer.Serialize(selector);
-        var expectedJson = JsonSerializer.Serialize(expectedValue.Trim());
-
-        return WaitForScriptTrueOrTimeoutAsync(
-            $$"""
-            (() => {
-                {{FlightInputResolverScript}}
-                const input = resolveFlightInput({{selectorJson}});
-                const expected = {{expectedJson}};
-                const normalize = window.__ba?.normalizeTr || (value => (value || '').toLocaleLowerCase('tr-TR').replace(/\s+/g, ' ').trim());
-
-                const actual = normalize(input.value || '');
-                const target = normalize(expected);
-
-                return !!input &&
-                    actual === target;
-            })();
-            """,
-            timeout,
-            TimeSpan.FromMilliseconds(250));
-    }
-
-    private Task<bool> WaitForFlightLocationSelectionAppliedAsync(string inputSelector, TimeSpan timeout)
+    private Task<bool> WaitForFlightLocationSelectionAppliedAsync(string inputSelector, string expectedLocation, TimeSpan timeout)
     {
         var inputSelectorJson = JsonSerializer.Serialize(inputSelector);
-        var suggestionSelectorJson = JsonSerializer.Serialize(FlightLocationSuggestionSelector);
+        var expectedLocationJson = JsonSerializer.Serialize(expectedLocation.Trim());
 
         return WaitForScriptTrueOrTimeoutAsync(
             $$"""
             (() => {
                 {{FlightInputResolverScript}}
                 const input = resolveFlightInput({{inputSelectorJson}});
-                const isVisible = window.__ba?.isVisible || (() => false);
-                const openSuggestions = Array
-                    .from(document.querySelectorAll({{suggestionSelectorJson}}))
-                    .filter(isVisible);
+                if (!input) return false;
+                const normalize = window.__ba?.normalizeTr || (value => (value || '').toLocaleLowerCase('tr-TR').replace(/\s+/g, ' ').trim());
+                const tokenize = value => normalize(value)
+                    .replace(/[()]/g, ' ')
+                    .split(/[\s,/-]+/)
+                    .map(t => t.trim())
+                    .filter(t => t.length >= 3 && !['airport', 'havalimanı', 'uluslararası', 'international', 'türkiye', 'turkey', 'tüm'].includes(t));
 
-                return !!input &&
-                    (input.value || '').trim().length > 0 &&
-                    openSuggestions.length === 0;
+                const actual = normalize(input.value || '');
+                const expected = normalize({{expectedLocationJson}});
+                if (!actual || actual.length === 0) return false;
+
+                const actualTokens = tokenize(actual);
+                const expectedTokens = tokenize(expected);
+                const commonCount = expectedTokens.filter(t => actualTokens.includes(t)).length;
+
+                return actual.includes(expected) ||
+                    expected.includes(actual) ||
+                    (expectedTokens.length > 0 && commonCount >= 1);
             })();
             """,
             timeout);
@@ -514,7 +395,7 @@ public sealed partial class BAService
                                 target.includes(text) ||
                                 compactText.includes(compactTarget) ||
                                 compactTarget.includes(compactText) ||
-                                commonTokenCount >= 2;
+                                commonTokenCount >= 1;
                         });
 
                         return JSON.stringify({
@@ -544,28 +425,78 @@ public sealed partial class BAService
     private async Task SelectFlightDateAsync(string triggerCmsKey, DateTime date, string fieldName)
     {
         var triggerCmsKeyJson = JsonSerializer.Serialize(triggerCmsKey);
+        var fieldNameJson = JsonSerializer.Serialize(fieldName);
 
         Report($"{fieldName} açılıyor: {date:dd.MM.yyyy}");
-        var opened = await EvaluateBooleanScriptAsync(
+        var openResult = await EvaluateScriptAsync(
             $$"""
             (() => {
                 const cmsKey = {{triggerCmsKeyJson}};
+                const fieldName = {{fieldNameJson}};
                 const isVisible = window.__ba?.isVisible || (() => false);
-                const trigger = Array
-                    .from(document.querySelectorAll(`[triggerlabelcmskey="${cmsKey}"][modaltitlecmskey="${cmsKey}"], [triggerlabelcmskey="${cmsKey}"], [modaltitlecmskey="${cmsKey}"]`))
-                    .find(isVisible);
+                const normalize = window.__ba?.normalizeTr || (value => (value || '').toLocaleLowerCase('tr-TR').replace(/\s+/g, ' ').trim());
 
-                if (!trigger) return false;
+                const attributeSelector = `[triggerlabelcmskey="${cmsKey}"], [modaltitlecmskey="${cmsKey}"]`;
+                const attributeMatches = Array.from(document.querySelectorAll(attributeSelector));
+                const dataKeyMatches = Array
+                    .from(document.querySelectorAll(`[data-cms-key="${cmsKey}"]`))
+                    .map(element => element.closest('[triggerlabelcmskey], [modaltitlecmskey], label, div') || element);
 
-                const clickable = trigger.querySelector('.flex.items-center, .icon-calendar') || trigger;
+                const targetText = normalize(fieldName);
+                const textMatches = Array
+                    .from(document.querySelectorAll('div, label, button, span'))
+                    .filter(element => {
+                        if (!isVisible(element)) return false;
+                        const text = normalize(element.textContent || '');
+                        return text === targetText || text.includes(targetText);
+                    })
+                    .map(element => element.closest('[triggerlabelcmskey], [modaltitlecmskey], label, div') || element);
+
+                const candidates = [...attributeMatches, ...dataKeyMatches, ...textMatches];
+                const trigger = candidates.find(isVisible);
+
+                if (!trigger) {
+                    return JSON.stringify({
+                        opened: false,
+                        reason: 'visible trigger not found',
+                        attributeCount: attributeMatches.length,
+                        dataKeyCount: dataKeyMatches.length,
+                        textCount: textMatches.length
+                    });
+                }
+
+                const clickable = trigger.querySelector('.icon-calendar, .flex.items-center, span') || trigger;
                 clickable.scrollIntoView({ block: 'center', inline: 'nearest' });
-                clickable.click();
-                return true;
+                const clickResult = window.__ba?.clickLikeUser
+                    ? window.__ba.clickLikeUser(clickable)
+                    : (() => {
+                        clickable.click();
+                        return { clicked: true };
+                    })();
+
+                return JSON.stringify({
+                    opened: true,
+                    triggerText: (trigger.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 120),
+                    triggerAttribute: trigger.getAttribute('triggerlabelcmskey') || trigger.getAttribute('modaltitlecmskey') || '',
+                    clickResult
+                });
             })();
             """);
 
+        var opened = false;
+        try
+        {
+            using var document = JsonDocument.Parse((openResult ?? string.Empty).Trim('"'));
+            opened = document.RootElement.TryGetProperty("opened", out var openedElement) &&
+                openedElement.ValueKind == JsonValueKind.True;
+        }
+        catch
+        {
+            opened = IsScriptTrue(openResult);
+        }
+
         if (!opened)
-            throw new InvalidOperationException($"{fieldName} alanı açılamadı.");
+            throw new InvalidOperationException($"{fieldName} alanı açılamadı. Detay: {openResult}");
 
         await WaitForDatePickerMenuAsync(TimeSpan.FromSeconds(10));
         await NavigateToMonthAsync(date);
@@ -608,6 +539,78 @@ public sealed partial class BAService
 
         if (!isReady)
             throw new TimeoutException("Uçuş sonuçları zaman aşımı süresinde görünmedi.");
+    }
+
+    private Task<string?> GetFlightResultsSignatureAsync()
+    {
+        return EvaluateScriptAsync(
+            """
+            (() => {
+                const normalize = window.__ba?.normalizeText || (value => (value || '').replace(/\s+/g, ' ').trim());
+                const isVisible = window.__ba?.isVisible || (() => false);
+                const cards = Array
+                    .from(document.querySelectorAll('#flight_card_list .flight-card'))
+                    .filter(isVisible)
+                    .slice(0, 5)
+                    .map(card => normalize(card.textContent).slice(0, 300));
+
+                return JSON.stringify({
+                    url: location.href,
+                    count: cards.length,
+                    cards
+                });
+            })();
+            """);
+    }
+
+    private async Task WaitForFlightResultsChangedAsync(string? previousSignature, TimeSpan timeout)
+    {
+        var previous = (previousSignature ?? string.Empty).Trim();
+        var isReady = await WaitUntilAsync(
+            async () =>
+            {
+                var currentSignature = (await GetFlightResultsSignatureAsync() ?? string.Empty).Trim();
+                if (!string.Equals(currentSignature, previous, StringComparison.Ordinal))
+                    return await IsFlightResultsReadyAsync();
+
+                return await HasFlightNoResultTextAsync();
+            },
+            timeout,
+            TimeSpan.FromMilliseconds(500));
+
+        if (!isReady)
+            throw new TimeoutException("Uçuş sonuçları yenilenmedi; eski sonuçlar okunmadı.");
+    }
+
+    private Task<bool> IsFlightResultsReadyAsync()
+    {
+        return EvaluateBooleanScriptAsync(
+            """
+            (() => {
+                const isVisible = window.__ba?.isVisible || (() => false);
+                return Array
+                    .from(document.querySelectorAll('#flight_card_list .flight-card'))
+                    .some(card =>
+                        isVisible(card) &&
+                        card.querySelector('#departuretime') &&
+                        card.querySelector('#arrivaltime') &&
+                        card.querySelector('[data-cms-key="flight_total_price"]')
+                    );
+            })();
+            """);
+    }
+
+    private Task<bool> HasFlightNoResultTextAsync()
+    {
+        return EvaluateBooleanScriptAsync(
+            """
+            (() => {
+                const bodyText = (document.body?.innerText || '').toLocaleLowerCase('tr-TR');
+                return bodyText.includes('sonuç bulunamadı') ||
+                    bodyText.includes('uygun uçuş bulunamadı') ||
+                    bodyText.includes('uçuş bulunamadı');
+            })();
+            """);
     }
 
     public async Task<List<FlightResultItem>> ReadFlightResultsAsync()
@@ -675,6 +678,30 @@ public sealed partial class BAService
         {
             return new List<FlightResultItem>();
         }
+    }
+
+    public Task<string?> GetFlightFormSnapshotAsync()
+    {
+        return EvaluateScriptAsync(
+            """
+            (() => {
+                const normalize = window.__ba?.normalizeText || (value => (value || '').replace(/\s+/g, ' ').trim());
+                const fromInput = document.querySelector('#inputPickUpLocation');
+                const toInput = document.querySelector('#inputDropOffLocation');
+                const departureDate = document
+                    .querySelector('[triggerlabelcmskey="flight_departure_date"], [modaltitlecmskey="flight_departure_date"]');
+                const returnDate = document
+                    .querySelector('[triggerlabelcmskey="flight_return_date"], [modaltitlecmskey="flight_return_date"]');
+
+                return JSON.stringify({
+                    fromInput: normalize(fromInput?.value),
+                    toInput: normalize(toInput?.value),
+                    departureDateText: normalize(departureDate?.textContent),
+                    returnDateText: normalize(returnDate?.textContent),
+                    url: location.href
+                });
+            })();
+            """);
     }
 
     private async Task ToggleFlightOnlyNonStopAsync()

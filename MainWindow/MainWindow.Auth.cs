@@ -259,12 +259,18 @@ public partial class MainWindow : Window
         FlightPanel.IsVisible = false;
         HistoryPanel.IsVisible = false;
         PaymentsPanel.IsVisible = false;
+        // Extra - Statistics START
+        StatisticsPanel.IsVisible = false;
+        // Extra - Statistics END
         PaymentCheckoutPanel.IsVisible = false;
         BrowserSectionPanel.IsVisible = false;
         SearchTabButton.Classes.Set("primary", false);
         FlightTabButton.Classes.Set("primary", false);
         HistoryTabButton.Classes.Set("primary", false);
         PaymentsTabButton.Classes.Set("primary", false);
+        // Extra - Statistics START
+        StatisticsTabButton.Classes.Set("primary", false);
+        // Extra - Statistics END
     }
 
     private void SmsReceiverService_SmsReceived(string message)

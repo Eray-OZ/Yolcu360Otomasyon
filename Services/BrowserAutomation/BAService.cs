@@ -253,51 +253,18 @@ public sealed partial class BAService
         return EvaluateScriptAsync(
             """
             (() => {
-                const normalizeText = window.__ba?.normalizeText || (value => (value || '').replace(/\s+/g, ' ').trim());
+                const input = document.querySelector('#inputPickUpLocation');
                 const isVisible = window.__ba?.isVisible || (() => false);
-
-                const inputs = Array
-                    .from(document.querySelectorAll('input, textarea'))
-                    .slice(0, 20)
-                    .map((input, index) => ({
-                        index,
-                        id: input.id || '',
-                        name: input.getAttribute('name') || '',
-                        type: input.getAttribute('type') || '',
-                        placeholder: input.getAttribute('placeholder') || '',
-                        value: input.value || '',
-                        ariaLabel: input.getAttribute('aria-label') || '',
-                        visible: isVisible(input)
-                    }));
-
-                const locationCandidateSelector = [
-                    '[id*="location" i]',
-                    '[placeholder*="alış" i]',
-                    '[placeholder*="teslim" i]',
-                    '[class*="location" i]',
-                    '[class*="autocomplete" i]'
-                ].join(',');
-
-                const possibleLocationElements = Array
-                    .from(document.querySelectorAll(locationCandidateSelector))
-                    .slice(0, 20)
-                    .map((element, index) => ({
-                        index,
-                        tag: element.tagName,
-                        id: element.id || '',
-                        className: element.className || '',
-                        placeholder: element.getAttribute('placeholder') || '',
-                        text: normalizeText(element.textContent).slice(0, 120),
-                        visible: isVisible(element)
-                    }));
+                const suggestions = [...document.querySelectorAll(
+                    '.search-autocomplete__item, .search-autocomplete .location-item'
+                )]
+                    .filter(isVisible)
+                    .map(item => item.textContent.trim());
 
                 return JSON.stringify({
-                    url: location.href,
-                    title: document.title,
-                    inputCount: document.querySelectorAll('input, textarea').length,
-                    pickupById: !!document.querySelector('#inputPickUpLocation'),
-                    inputs,
-                    possibleLocationElements
+                    pickupValue: input?.value || '',
+                    pickupVisible: isVisible(input),
+                    suggestions
                 });
             })();
             """);

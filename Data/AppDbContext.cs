@@ -14,6 +14,9 @@ public sealed class AppDbContext : DbContext
     public DbSet<Koleksiyon> Koleksiyonlar => Set<Koleksiyon>();
     public DbSet<Arac> Araclar => Set<Arac>();
     public DbSet<Odeme> Odemeler => Set<Odeme>();
+    // Extra - Statistics START
+    public DbSet<AramaIstatistigi> AramaIstatistikleri => Set<AramaIstatistigi>();
+    // Extra - Statistics END
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -87,5 +90,17 @@ public sealed class AppDbContext : DbContext
             .WithMany(item => item.Odemeler)
             .HasForeignKey(item => item.KoleksiyonId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        // Extra - Statistics START
+        var statistic = modelBuilder.Entity<AramaIstatistigi>();
+        statistic.ToTable("arama_istatistikleri");
+        statistic.HasKey(item => item.Id);
+        statistic.Property(item => item.AramaTuru).HasMaxLength(32).IsRequired();
+        statistic.Property(item => item.Basarili).IsRequired();
+        statistic.Property(item => item.SonucSayisi).IsRequired();
+        statistic.Property(item => item.SureMs).IsRequired();
+        statistic.Property(item => item.OlusturmaTarihi).IsRequired();
+        statistic.HasIndex(item => item.KullaniciId);
+        // Extra - Statistics END
     }
 }

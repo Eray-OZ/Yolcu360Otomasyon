@@ -16,12 +16,14 @@ public partial class MainWindow : Window
         FlightPanel.IsVisible = false;
         HistoryPanel.IsVisible = false;
         PaymentsPanel.IsVisible = false;
+        StatisticsPanel.IsVisible = false;
         PaymentCheckoutPanel.IsVisible = false;
         BrowserSectionPanel.IsVisible = false;
         SearchTabButton.Classes.Set("primary", true);
         FlightTabButton.Classes.Set("primary", false);
         HistoryTabButton.Classes.Set("primary", false);
         PaymentsTabButton.Classes.Set("primary", false);
+        StatisticsTabButton.Classes.Set("primary", false);
     }
 
     private void ShowHistorySection()
@@ -30,12 +32,14 @@ public partial class MainWindow : Window
         FlightPanel.IsVisible = false;
         HistoryPanel.IsVisible = true;
         PaymentsPanel.IsVisible = false;
+        StatisticsPanel.IsVisible = false;
         PaymentCheckoutPanel.IsVisible = false;
         BrowserSectionPanel.IsVisible = false;
         SearchTabButton.Classes.Set("primary", false);
         FlightTabButton.Classes.Set("primary", false);
         HistoryTabButton.Classes.Set("primary", true);
         PaymentsTabButton.Classes.Set("primary", false);
+        StatisticsTabButton.Classes.Set("primary", false);
     }
 
     private void ShowPaymentsSection()
@@ -44,12 +48,14 @@ public partial class MainWindow : Window
         FlightPanel.IsVisible = false;
         HistoryPanel.IsVisible = false;
         PaymentsPanel.IsVisible = true;
+        StatisticsPanel.IsVisible = false;
         PaymentCheckoutPanel.IsVisible = false;
         BrowserSectionPanel.IsVisible = false;
         SearchTabButton.Classes.Set("primary", false);
         FlightTabButton.Classes.Set("primary", false);
         HistoryTabButton.Classes.Set("primary", false);
         PaymentsTabButton.Classes.Set("primary", true);
+        StatisticsTabButton.Classes.Set("primary", false);
     }
 
     private void ShowPaymentCheckoutSection()
@@ -58,12 +64,14 @@ public partial class MainWindow : Window
         FlightPanel.IsVisible = false;
         HistoryPanel.IsVisible = false;
         PaymentsPanel.IsVisible = false;
+        StatisticsPanel.IsVisible = false;
         PaymentCheckoutPanel.IsVisible = true;
         BrowserSectionPanel.IsVisible = false;
         SearchTabButton.Classes.Set("primary", false);
         FlightTabButton.Classes.Set("primary", false);
         HistoryTabButton.Classes.Set("primary", false);
         PaymentsTabButton.Classes.Set("primary", true);
+        StatisticsTabButton.Classes.Set("primary", false);
     }
 
     private void ShowBrowserSection()
@@ -73,12 +81,14 @@ public partial class MainWindow : Window
         FlightPanel.IsVisible = false;
         HistoryPanel.IsVisible = false;
         PaymentsPanel.IsVisible = false;
+        StatisticsPanel.IsVisible = false;
         PaymentCheckoutPanel.IsVisible = false;
         BrowserSectionPanel.IsVisible = true;
         SearchTabButton.Classes.Set("primary", false);
         FlightTabButton.Classes.Set("primary", false);
         HistoryTabButton.Classes.Set("primary", false);
         PaymentsTabButton.Classes.Set("primary", false);
+        StatisticsTabButton.Classes.Set("primary", false);
     }
 
     private void KeepBrowserAliveBehindSearch()
@@ -88,6 +98,7 @@ public partial class MainWindow : Window
         FlightPanel.IsVisible = false;
         HistoryPanel.IsVisible = false;
         PaymentsPanel.IsVisible = false;
+        StatisticsPanel.IsVisible = false;
         PaymentCheckoutPanel.IsVisible = false;
         BrowserSectionPanel.IsVisible = true;
         BrowserSectionPanel.Opacity = 1;
@@ -99,6 +110,7 @@ public partial class MainWindow : Window
         FlightTabButton.Classes.Set("primary", false);
         HistoryTabButton.Classes.Set("primary", false);
         PaymentsTabButton.Classes.Set("primary", false);
+        StatisticsTabButton.Classes.Set("primary", false);
     }
 
     private void KeepBrowserAliveOffscreen()
@@ -125,12 +137,14 @@ public partial class MainWindow : Window
         FlightPanel.IsVisible = true;
         HistoryPanel.IsVisible = false;
         PaymentsPanel.IsVisible = false;
+        StatisticsPanel.IsVisible = false;
         PaymentCheckoutPanel.IsVisible = false;
         BrowserSectionPanel.IsVisible = false;
         SearchTabButton.Classes.Set("primary", false);
         FlightTabButton.Classes.Set("primary", true);
         HistoryTabButton.Classes.Set("primary", false);
         PaymentsTabButton.Classes.Set("primary", false);
+        StatisticsTabButton.Classes.Set("primary", false);
     }
 
     private void ConfigureFlightResultsGrid()

@@ -9,6 +9,9 @@ namespace Yolcu360Otomasyon;
 public partial class MainWindow : Window
 {
     private readonly DatabaseService _databaseService = new(AppSettings.GetConnectionString());
+    // Extra - Statistics START
+    private readonly StatisticsService _statisticsService = new(AppSettings.GetConnectionString());
+    // Extra - Statistics END
     // Extra - Dynamic Collections START
     private readonly DynamicCollectionService _dynamicCollectionService;
     // Extra - Dynamic Collections END
@@ -56,19 +59,25 @@ public partial class MainWindow : Window
         _dynamicCollectionService = new DynamicCollectionService(_databaseService);
         // Extra - Dynamic Collections END
         _iyzicoPaymentService = new IyzicoPaymentService(AppSettings.GetIyzicoSettings());
+        // Extra - Statistics START
+        _ = _statisticsService.EnsureTableAsync();
+        // Extra - Statistics END
         PickupDatePicker.DisplayDateStart = DateTime.Today;
         ReturnDatePicker.DisplayDateStart = DateTime.Today;
+        FlightDepartureDatePicker.DisplayDateStart = DateTime.Today;
+        FlightReturnDatePicker.DisplayDateStart = DateTime.Today;
         PickupDatePicker.SelectedDate = DateTime.Today;
         ReturnDatePicker.SelectedDate = DateTime.Today.AddDays(2);
+        FlightDepartureDatePicker.SelectedDate = DateTime.Today.AddDays(7);
+        FlightReturnDatePicker.SelectedDate = null;
         UpdateSearchDateTexts();
+        UpdateFlightDateTexts();
         InitializeTimeComboBox(PickupTimeComboBox, "10:00");
         InitializeTimeComboBox(ReturnTimeComboBox, "18:00");
         ConfigureResultsGrid();
         ConfigureFlightResultsGrid();
         ConfigureCollectionsGrid();
         ConfigurePaymentsGrid();
-        FlightDepartureDateTextBox.Text = DateTime.Today.AddDays(7).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
-        FlightReturnDateTextBox.Text = string.Empty;
         _smsReceiverService.SmsReceived += SmsReceiverService_SmsReceived;
         _ = _databaseService.EnsureDatabaseAsync();
         InitializeSmsReceiver();
@@ -105,6 +114,9 @@ public partial class MainWindow : Window
         SearchTabButton.IsEnabled = enabled;
         HistoryTabButton.IsEnabled = enabled;
         PaymentsTabButton.IsEnabled = enabled;
+        // Extra - Statistics START
+        StatisticsTabButton.IsEnabled = enabled;
+        // Extra - Statistics END
         if (LogoutButton is not null)
             LogoutButton.IsEnabled = enabled;
     }

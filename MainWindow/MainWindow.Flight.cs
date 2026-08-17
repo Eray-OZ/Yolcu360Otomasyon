@@ -1,5 +1,7 @@
+using System.Diagnostics;
 using System.Globalization;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
 using Yolcu360Otomasyon.Models;
@@ -8,6 +10,34 @@ namespace Yolcu360Otomasyon;
 
 public partial class MainWindow : Window
 {
+    private void FlightDepartureDateBox_PointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        FlightDepartureDatePicker.IsDropDownOpen = true;
+        e.Handled = true;
+    }
+
+    private void FlightReturnDateBox_PointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        FlightReturnDatePicker.IsDropDownOpen = true;
+        e.Handled = true;
+    }
+
+    private void FlightDatePicker_SelectedDateChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (sender == FlightReturnDatePicker && FlightReturnDatePicker.SelectedDate is not null)
+            FlightRoundTripCheckBox.IsChecked = true;
+
+        UpdateFlightDateTexts();
+    }
+
+    private void UpdateFlightDateTexts()
+    {
+        FlightDepartureDateTextBlock.Text = FormatSearchDate(FlightDepartureDatePicker.SelectedDate);
+        FlightReturnDateTextBlock.Text = FlightReturnDatePicker.SelectedDate is null
+            ? "Tek yön"
+            : FormatSearchDate(FlightReturnDatePicker.SelectedDate);
+    }
+
     private async void FlightFromTextBox_TextChanged(object? sender, TextChangedEventArgs e)
     {
         if (_suppressFlightFromSuggestionLookup)
@@ -164,43 +194,29 @@ public partial class MainWindow : Window
         FlightStatusTextBlock.Text = "Uçuş araması hazırlanıyor...";
         FlightResultsDataGrid.ItemsSource = null;
         SetFlightResultsPlaceholder("Uçuşlar aranıyor, bekleyiniz...");
+        Stopwatch? flightTimer = null;
 
         try
         {
-            if (!DateTime.TryParseExact(
-                    FlightDepartureDateTextBox.Text?.Trim(),
-                    "yyyy-MM-dd",
-                    CultureInfo.InvariantCulture,
-                    DateTimeStyles.None,
-                    out var departureDate))
+            var departureDate = FlightDepartureDatePicker.SelectedDate?.Date;
+            if (departureDate is null)
             {
-                FlightStatusTextBlock.Text = "Gidiş tarihi formatı geçersiz. Örnek: 2026-08-20";
+                FlightStatusTextBlock.Text = "Gidiş tarihi seçilmeli.";
                 return;
             }
 
-            DateTime? returnDate = null;
-            var returnDateText = FlightReturnDateTextBox.Text?.Trim() ?? string.Empty;
-            if (!string.IsNullOrWhiteSpace(returnDateText))
+            var returnDate = FlightReturnDatePicker.SelectedDate?.Date;
+            if (FlightRoundTripCheckBox.IsChecked == true && returnDate is null)
             {
-                if (!DateTime.TryParseExact(
-                        returnDateText,
-                        "yyyy-MM-dd",
-                        CultureInfo.InvariantCulture,
-                        DateTimeStyles.None,
-                        out var parsedReturnDate))
-                {
-                    FlightStatusTextBlock.Text = "Dönüş tarihi formatı geçersiz. Örnek: 2026-08-25";
-                    return;
-                }
-
-                returnDate = parsedReturnDate.Date;
+                FlightStatusTextBlock.Text = "Gidiş-dönüş araması için dönüş tarihi seçilmeli.";
+                return;
             }
 
             var filter = new FlightSearchFilter
             {
                 FromLocation = FlightFromTextBox.Text?.Trim() ?? string.Empty,
                 ToLocation = FlightToTextBox.Text?.Trim() ?? string.Empty,
-                DepartureDate = departureDate.Date,
+                DepartureDate = departureDate.Value.Date,
                 ReturnDate = returnDate,
                 IsRoundTrip = FlightRoundTripCheckBox.IsChecked == true || returnDate is not null,
                 OnlyNonStop = FlightOnlyNonStopCheckBox.IsChecked == true
@@ -212,29 +228,34 @@ public partial class MainWindow : Window
                 return;
             }
 
-            var fromSuggestion = await _flightLocationSuggestionService.ResolveBestSuggestionAsync(filter.FromLocation);
-            var toSuggestion = await _flightLocationSuggestionService.ResolveBestSuggestionAsync(filter.ToLocation);
+            var fromSuggestion = _selectedFlightFromSuggestion ?? await _flightLocationSuggestionService.ResolveBestSuggestionAsync(filter.FromLocation);
+            var toSuggestion = _selectedFlightToSuggestion ?? await _flightLocationSuggestionService.ResolveBestSuggestionAsync(filter.ToLocation);
 
-            if (fromSuggestion is null || toSuggestion is null)
+            if (fromSuggestion is not null)
             {
-                FlightStatusTextBlock.Text = "Uçuş için nereden/nereye önerilerinden seçim yapılmalı.";
-                return;
+                filter.FromLocation = fromSuggestion.MainText;
+                filter.FromPlaceCode = fromSuggestion.PlaceCode;
+                filter.FromPlaceId = fromSuggestion.PlaceId;
+                filter.FromPlaceType = fromSuggestion.Type;
             }
 
-            filter.FromLocation = fromSuggestion.MainText;
-            filter.FromPlaceCode = fromSuggestion.PlaceCode;
-            filter.FromPlaceId = fromSuggestion.PlaceId;
-            filter.FromPlaceType = fromSuggestion.Type;
-            filter.ToLocation = toSuggestion.MainText;
-            filter.ToPlaceCode = toSuggestion.PlaceCode;
-            filter.ToPlaceId = toSuggestion.PlaceId;
-            filter.ToPlaceType = toSuggestion.Type;
+            if (toSuggestion is not null)
+            {
+                filter.ToLocation = toSuggestion.MainText;
+                filter.ToPlaceCode = toSuggestion.PlaceCode;
+                filter.ToPlaceId = toSuggestion.PlaceId;
+                filter.ToPlaceType = toSuggestion.Type;
+            }
 
             if (_activeUser is null)
             {
                 FlightStatusTextBlock.Text = "Önce giriş yapılmalı.";
                 return;
             }
+
+            // Extra - Statistics START
+            flightTimer = Stopwatch.StartNew();
+            // Extra - Statistics END
 
             ShowBrowserSection();
             FlightStatusTextBlock.Text = "Gömülü tarayıcı uçuş araması için hazırlanıyor...";
@@ -244,17 +265,25 @@ public partial class MainWindow : Window
                 await baService.RestoreSessionAsync(_activeUser.SessionStatePath);
 
             await baService.SearchFlightTicketsAsync(filter);
-            FlightStatusTextBlock.Text = "Uçuş sonuçları bekleniyor...";
-            await baService.WaitForFlightResultsAsync();
+            var formSnapshot = await baService.GetFlightFormSnapshotAsync();
 
             FlightStatusTextBlock.Text = "Uçuş sonuçları okunuyor...";
             _latestFlightResults = await baService.ReadFlightResultsAsync();
             foreach (var flightResult in _latestFlightResults)
             {
-                flightResult.FromLocation = filter.FromLocation;
-                flightResult.ToLocation = filter.ToLocation;
-                flightResult.Route = $"{filter.FromLocation} → {filter.ToLocation}";
+                if (string.IsNullOrWhiteSpace(flightResult.FromLocation))
+                    flightResult.FromLocation = filter.FromLocation;
+
+                if (string.IsNullOrWhiteSpace(flightResult.ToLocation))
+                    flightResult.ToLocation = filter.ToLocation;
+
+                if (string.IsNullOrWhiteSpace(flightResult.Route))
+                    flightResult.Route = $"{flightResult.FromLocation} → {flightResult.ToLocation}";
             }
+
+            // Extra - Statistics START
+            await RecordSearchStatisticSafelyAsync(flightTimer, "Uçuş", true, _latestFlightResults.Count);
+            // Extra - Statistics END
 
             await Dispatcher.UIThread.InvokeAsync(() =>
             {
@@ -264,11 +293,15 @@ public partial class MainWindow : Window
             });
 
             FlightStatusTextBlock.Text = _latestFlightResults.Count == 0
-                ? "Uçuş araması tamamlandı, sonuç bulunamadı."
-                : $"{_latestFlightResults.Count} uçuş sonucu listelendi.";
+                ? $"Uçuş araması tamamlandı, sonuç bulunamadı. Form: {formSnapshot}"
+                : $"{_latestFlightResults.Count} uçuş sonucu listelendi. Form: {formSnapshot}";
         }
         catch (Exception ex)
         {
+            // Extra - Statistics START
+            if (flightTimer is not null)
+                await RecordSearchStatisticSafelyAsync(flightTimer, "Uçuş", false, 0);
+            // Extra - Statistics END
             FlightStatusTextBlock.Text = $"Uçuş arama hatası: {ex.Message}";
             SetFlightResultsPlaceholder("Uçuş araması sırasında hata oluştu.");
         }
