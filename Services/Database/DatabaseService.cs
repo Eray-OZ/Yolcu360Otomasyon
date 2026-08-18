@@ -30,6 +30,14 @@ public sealed partial class DatabaseService
             await using var context = new AppDbContext(_options);
             await context.Database.EnsureCreatedAsync();
 
+            try
+            {
+                await context.Database.ExecuteSqlRawAsync("ALTER TABLE `odemeler` MODIFY COLUMN `KoleksiyonId` INT NULL;");
+            }
+            catch
+            {
+            }
+
             _schemaReady = true;
         }
         catch (Exception ex)

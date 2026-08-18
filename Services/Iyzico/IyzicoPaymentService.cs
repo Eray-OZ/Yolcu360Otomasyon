@@ -115,9 +115,9 @@ public sealed class IyzicoPaymentService
     {
         return new BasketItem
         {
-            Id = item.KoleksiyonId.ToString(CultureInfo.InvariantCulture),
+            Id = item.KoleksiyonId?.ToString(CultureInfo.InvariantCulture) ?? Guid.NewGuid().ToString("N"),
             Name = item.KoleksiyonAdi,
-            Category1 = "Arac Kiralama",
+            Category1 = item.KoleksiyonAdi.StartsWith("[Uçak Bileti]") ? "Ucak Bileti" : "Arac Kiralama",
             ItemType = BasketItemType.VIRTUAL.ToString(),
             Price = FormatPrice(item.Tutar)
         };

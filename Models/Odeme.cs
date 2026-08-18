@@ -5,7 +5,7 @@ public sealed class Odeme
     public int Id { get; set; }
     public int KullaniciId { get; set; }
     public AppUser? Kullanici { get; set; }
-    public int KoleksiyonId { get; set; }
+    public int? KoleksiyonId { get; set; }
     public Koleksiyon? Koleksiyon { get; set; }
     public string ReferansNo { get; set; } = string.Empty;
     public string KoleksiyonAdi { get; set; } = string.Empty;

@@ -86,7 +86,8 @@ public sealed class AppDbContext : DbContext
             .HasOne(item => item.Koleksiyon)
             .WithMany(item => item.Odemeler)
             .HasForeignKey(item => item.KoleksiyonId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.SetNull);
 
     }
 }

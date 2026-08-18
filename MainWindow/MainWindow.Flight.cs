@@ -4,6 +4,7 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
 using Yolcu360Otomasyon.Models;
+using Yolcu360Otomasyon.Services;
 
 namespace Yolcu360Otomasyon;
 
@@ -336,5 +337,54 @@ public partial class MainWindow : Window
             FlightSearchButton.IsEnabled = true;
             ShowFlightSection();
         }
+    }
+
+    private FlightResultItem? _selectedFlightResult;
+
+    private void FlightResultsDataGrid_SelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        _selectedFlightResult = FlightResultsDataGrid.SelectedItem as FlightResultItem;
+        FlightCreatePaymentButton.IsEnabled = _selectedFlightResult is not null;
+        if (_selectedFlightResult is not null)
+        {
+            FlightStatusTextBlock.Text = $"{_selectedFlightResult.Airline} ({_selectedFlightResult.Route}) seçildi - {_selectedFlightResult.Price}.";
+        }
+    }
+
+    private void FlightCreatePaymentButton_Click(object? sender, RoutedEventArgs e)
+    {
+        if (_activeUser is null)
+        {
+            FlightStatusTextBlock.Text = "Ödeme için önce giriş yapılmalı.";
+            return;
+        }
+
+        if (_selectedFlightResult is null)
+        {
+            FlightStatusTextBlock.Text = "Lütfen ödeme yapmak için bir uçuş seçin.";
+            return;
+        }
+
+        var flight = _selectedFlightResult;
+        var flightPrice = ParseFlightPrice(flight.Price);
+
+        _paymentPreviewItems = new List<OdemeHazirlikItem>
+        {
+            new OdemeHazirlikItem
+            {
+                KoleksiyonId = null,
+                KoleksiyonAdi = $"[Uçak Bileti] {flight.Airline} ({flight.FromLocation} - {flight.ToLocation}) {flight.DepartureTime}-{flight.ArrivalTime}",
+                Tutar = flightPrice
+            }
+        };
+
+        PrepareCheckoutSummary();
+        ShowPaymentCheckoutSection();
+    }
+
+    private static decimal ParseFlightPrice(string? priceText)
+    {
+        var parsed = DatabaseService.ParseCurrency(priceText ?? string.Empty);
+        return parsed > 0 ? parsed : 500.00m;
     }
 }

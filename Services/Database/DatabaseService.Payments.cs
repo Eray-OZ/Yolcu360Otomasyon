@@ -37,7 +37,7 @@ public sealed partial class DatabaseService
             context.Odemeler.Add(new Odeme
             {
                 KullaniciId = kullaniciId,
-                KoleksiyonId = item.KoleksiyonId,
+                KoleksiyonId = item.KoleksiyonId.HasValue && item.KoleksiyonId.Value > 0 ? item.KoleksiyonId.Value : null,
                 ReferansNo = paymentResult.ReferenceNo,
                 KoleksiyonAdi = item.KoleksiyonAdi,
                 Tutar = item.Tutar,

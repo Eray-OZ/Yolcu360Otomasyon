@@ -58,6 +58,16 @@ public partial class MainWindow : Window
         }
     }
 
+    private enum PaymentFilterType
+    {
+        All,
+        CarRental,
+        Flight
+    }
+
+    private PaymentFilterType _currentPaymentFilter = PaymentFilterType.All;
+    private List<OdemeListItem> _allPayments = new();
+
     private static decimal ParseVehiclePrice(string? priceText)
     {
         var parsed = DatabaseService.ParseCurrency(priceText ?? string.Empty);
@@ -66,7 +76,14 @@ public partial class MainWindow : Window
 
     private void BackFromCheckoutButton_Click(object? sender, RoutedEventArgs e)
     {
-        ShowHistorySection();
+        if (_paymentPreviewItems.Any(item => item.KoleksiyonAdi.StartsWith("[Uçak Bileti]")))
+        {
+            ShowFlightSection();
+        }
+        else
+        {
+            ShowHistorySection();
+        }
     }
 
     private async void ConfirmPaymentButton_Click(object? sender, RoutedEventArgs e)
@@ -120,12 +137,64 @@ public partial class MainWindow : Window
         if (_activeUser is null)
             return;
 
-        var payments = await _databaseService.GetPaymentsAsync(_activeUser.Id);
+        _allPayments = await _databaseService.GetPaymentsAsync(_activeUser.Id);
+        ApplyPaymentFilter();
+    }
+
+    private void ApplyPaymentFilter()
+    {
+        var filtered = _currentPaymentFilter switch
+        {
+            PaymentFilterType.CarRental => _allPayments.Where(p => !p.KoleksiyonAdi.StartsWith("[Uçak Bileti]")).ToList(),
+            PaymentFilterType.Flight => _allPayments.Where(p => p.KoleksiyonAdi.StartsWith("[Uçak Bileti]")).ToList(),
+            _ => _allPayments
+        };
+
         PaymentsDataGrid.ItemsSource = null;
-        PaymentsDataGrid.ItemsSource = payments;
-        PaymentsStatusTextBlock.Text = payments.Count == 0
-            ? "Ödeme kaydı bulunamadı."
-            : $"{payments.Count} ödeme kaydı listelendi.";
+        PaymentsDataGrid.ItemsSource = filtered;
+
+        UpdatePaymentFilterButtonStyles();
+
+        var filterName = _currentPaymentFilter switch
+        {
+            PaymentFilterType.CarRental => "araç kiralama",
+            PaymentFilterType.Flight => "uçak bileti",
+            _ => "tüm"
+        };
+
+        PaymentsStatusTextBlock.Text = filtered.Count == 0
+            ? $"{filterName} ödeme kaydı bulunamadı."
+            : $"{filtered.Count} {filterName} ödeme kaydı listelendi (Toplam {_allPayments.Count} kayıt).";
+    }
+
+    private void UpdatePaymentFilterButtonStyles()
+    {
+        PaymentFilterAllButton.Classes.Set("primary", _currentPaymentFilter == PaymentFilterType.All);
+        PaymentFilterAllButton.Classes.Set("btn-secondary", _currentPaymentFilter != PaymentFilterType.All);
+
+        PaymentFilterCarButton.Classes.Set("primary", _currentPaymentFilter == PaymentFilterType.CarRental);
+        PaymentFilterCarButton.Classes.Set("btn-secondary", _currentPaymentFilter != PaymentFilterType.CarRental);
+
+        PaymentFilterFlightButton.Classes.Set("primary", _currentPaymentFilter == PaymentFilterType.Flight);
+        PaymentFilterFlightButton.Classes.Set("btn-secondary", _currentPaymentFilter != PaymentFilterType.Flight);
+    }
+
+    private void PaymentFilterAllButton_Click(object? sender, RoutedEventArgs e)
+    {
+        _currentPaymentFilter = PaymentFilterType.All;
+        ApplyPaymentFilter();
+    }
+
+    private void PaymentFilterCarButton_Click(object? sender, RoutedEventArgs e)
+    {
+        _currentPaymentFilter = PaymentFilterType.CarRental;
+        ApplyPaymentFilter();
+    }
+
+    private void PaymentFilterFlightButton_Click(object? sender, RoutedEventArgs e)
+    {
+        _currentPaymentFilter = PaymentFilterType.Flight;
+        ApplyPaymentFilter();
     }
 
     private void PrepareCheckoutSummary()
