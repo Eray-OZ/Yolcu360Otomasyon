@@ -378,6 +378,14 @@ public partial class MainWindow : Window
             }
         };
 
+        // Extra - Flight Car Recommendation START
+        var isRoundTrip = FlightRoundTripCheckBox.IsChecked == true && FlightReturnDatePicker.SelectedDate != null;
+        _isLastFlightRoundTrip = isRoundTrip;
+        _lastPaidRoundTripFlight = isRoundTrip ? flight : null;
+        _lastPaidDepartureDate = FlightDepartureDatePicker.SelectedDate ?? DateTime.Today.AddDays(7);
+        _lastPaidReturnDate = FlightReturnDatePicker.SelectedDate ?? DateTime.Today.AddDays(10);
+        // Extra - Flight Car Recommendation END
+
         PrepareCheckoutSummary();
         ShowPaymentCheckoutSection();
     }
@@ -387,4 +395,144 @@ public partial class MainWindow : Window
         var parsed = DatabaseService.ParseCurrency(priceText ?? string.Empty);
         return parsed > 0 ? parsed : 500.00m;
     }
+
+    // Extra - Flight Car Recommendation START
+    private bool _isLastFlightRoundTrip;
+    private FlightResultItem? _lastPaidRoundTripFlight;
+    private DateTime? _lastPaidDepartureDate;
+    private DateTime? _lastPaidReturnDate;
+
+    private void PrepareFlightCarRecommendationView()
+    {
+        if (_lastPaidRoundTripFlight is null || _lastPaidDepartureDate is null || _lastPaidReturnDate is null)
+            return;
+
+        var flight = _lastPaidRoundTripFlight;
+        var destination = flight.ToLocation;
+        var departureDate = _lastPaidDepartureDate.Value;
+        var returnDate = _lastPaidReturnDate.Value;
+        var pickupTime = CalculatePickupTime(flight.ArrivalTime);
+        var returnTime = "16:00";
+
+        FlightCarRecLocationTextBlock.Text = destination;
+        FlightCarRecPickupTextBlock.Text = $"{departureDate:dd.MM.yyyy} - {pickupTime}";
+        FlightCarRecReturnTextBlock.Text = $"{returnDate:dd.MM.yyyy} - {returnTime}";
+    }
+
+    private static string CalculatePickupTime(string? arrivalTime)
+    {
+        if (TimeSpan.TryParse(arrivalTime?.Trim(), out var ts))
+        {
+            var target = ts.Add(TimeSpan.FromMinutes(30));
+            var minute = target.Minutes < 15 ? 0 : (target.Minutes < 45 ? 30 : 0);
+            var hour = target.Minutes >= 45 ? (target.Hours + 1) % 24 : target.Hours;
+            return $"{hour:00}:{minute:00}";
+        }
+        return "14:30";
+    }
+
+    private static void SetComboBoxSelectedTime(ComboBox comboBox, string time)
+    {
+        var match = comboBox.Items
+            .OfType<ComboBoxItem>()
+            .FirstOrDefault(i => (i.Tag as string) == time || (i.Content as string) == time);
+        if (match is not null)
+            comboBox.SelectedItem = match;
+    }
+
+    private async void AcceptFlightCarRecommendationButton_Click(object? sender, RoutedEventArgs e)
+    {
+        if (_lastPaidRoundTripFlight is null || _lastPaidDepartureDate is null || _lastPaidReturnDate is null)
+        {
+            ShowPaymentsSection();
+            await LoadPaymentsAsync();
+            return;
+        }
+
+        var flight = _lastPaidRoundTripFlight;
+        var destination = flight.ToLocation;
+        var departureDate = _lastPaidDepartureDate.Value;
+        var returnDate = _lastPaidReturnDate.Value;
+        var pickupTime = CalculatePickupTime(flight.ArrivalTime);
+        var returnTime = "16:00";
+
+        PickupLocationTextBox.Text = destination;
+        PickupDatePicker.SelectedDate = departureDate;
+        ReturnDatePicker.SelectedDate = returnDate;
+        SetComboBoxSelectedTime(PickupTimeComboBox, pickupTime);
+        SetComboBoxSelectedTime(ReturnTimeComboBox, returnTime);
+        UpdateSearchDateTexts();
+
+        ShowSearchSection();
+        SearchStatusTextBlock.Text = $"{destination} için arka planda araçlar aranıyor...";
+
+        var filter = new SearchFilter
+        {
+            PickupLocation = destination,
+            PickupDate = departureDate,
+            ReturnDate = returnDate,
+            PickupTime = pickupTime,
+            ReturnTime = returnTime,
+            TransmissionType = "Farketmez",
+            FuelType = "Farketmez"
+        };
+
+        _ = RunBackgroundCarSearchFromFlightAsync(filter);
+    }
+
+    private async void DeclineFlightCarRecommendationButton_Click(object? sender, RoutedEventArgs e)
+    {
+        ShowPaymentsSection();
+        await LoadPaymentsAsync();
+        PaymentsStatusTextBlock.Text = "iyzico sandbox ödeme kaydı oluşturuldu.";
+    }
+
+    private async Task RunBackgroundCarSearchFromFlightAsync(SearchFilter filter)
+    {
+        SearchButton.IsEnabled = false;
+        try
+        {
+            KeepBrowserAliveOffscreen();
+            SearchStatusTextBlock.Text = $"{filter.PickupLocation} için arka planda araçlar aranıyor...";
+
+            var baService = CreateBAService(attachProgress: false);
+            if (_activeUser is not null && !string.IsNullOrWhiteSpace(_activeUser.SessionStatePath))
+            {
+                await baService.RestoreSessionAsync(_activeUser.SessionStatePath);
+            }
+
+            await baService.OpenYolcu360HomeAsync();
+            await baService.FillPickupLocationAsync(filter.PickupLocation);
+            await baService.SelectDateRangeAsync(filter.PickupDate, filter.ReturnDate);
+            await baService.SelectTimeAsync(0, filter.PickupTime);
+            await baService.SelectTimeAsync(1, filter.ReturnTime);
+            await baService.ClickSearchButtonAsync();
+            await baService.WaitForSearchResultsAsync();
+
+            SearchStatusTextBlock.Text = "Arama sonuçları okunuyor...";
+            var results = await baService.ReadSearchResultsAsync();
+
+            _latestResults = results;
+
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                ResultsDataGrid.ItemsSource = null;
+                ResultsDataGrid.ItemsSource = _latestResults;
+                SetSearchResultsPlaceholder(_latestResults.Count == 0 ? "Kiralık araç bulunamadı." : null);
+            });
+
+            SearchStatusTextBlock.Text = _latestResults.Count == 0
+                ? "Araç araması tamamlandı, sonuç bulunamadı."
+                : $"{_latestResults.Count} araç bulundu ({filter.PickupLocation}).";
+        }
+        catch (Exception ex)
+        {
+            SearchStatusTextBlock.Text = $"Araç arama hatası: {ex.Message}";
+        }
+        finally
+        {
+            SearchButton.IsEnabled = true;
+        }
+    }
+    // Extra - Flight Car Recommendation END
 }

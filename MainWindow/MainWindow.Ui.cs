@@ -18,6 +18,9 @@ public partial class MainWindow : Window
         PaymentsPanel.IsVisible = false;
         StatisticsPanel.IsVisible = false;
         PaymentCheckoutPanel.IsVisible = false;
+        // Extra - Flight Car Recommendation START
+        FlightCarRecommendationPanel.IsVisible = false;
+        // Extra - Flight Car Recommendation END
         BrowserSectionPanel.IsVisible = false;
         SearchTabButton.Classes.Set("primary", true);
         FlightTabButton.Classes.Set("primary", false);
@@ -34,6 +37,9 @@ public partial class MainWindow : Window
         PaymentsPanel.IsVisible = false;
         StatisticsPanel.IsVisible = false;
         PaymentCheckoutPanel.IsVisible = false;
+        // Extra - Flight Car Recommendation START
+        FlightCarRecommendationPanel.IsVisible = false;
+        // Extra - Flight Car Recommendation END
         BrowserSectionPanel.IsVisible = false;
         SearchTabButton.Classes.Set("primary", false);
         FlightTabButton.Classes.Set("primary", false);
@@ -50,6 +56,9 @@ public partial class MainWindow : Window
         PaymentsPanel.IsVisible = true;
         StatisticsPanel.IsVisible = false;
         PaymentCheckoutPanel.IsVisible = false;
+        // Extra - Flight Car Recommendation START
+        FlightCarRecommendationPanel.IsVisible = false;
+        // Extra - Flight Car Recommendation END
         BrowserSectionPanel.IsVisible = false;
         SearchTabButton.Classes.Set("primary", false);
         FlightTabButton.Classes.Set("primary", false);
@@ -66,6 +75,9 @@ public partial class MainWindow : Window
         PaymentsPanel.IsVisible = false;
         StatisticsPanel.IsVisible = false;
         PaymentCheckoutPanel.IsVisible = true;
+        // Extra - Flight Car Recommendation START
+        FlightCarRecommendationPanel.IsVisible = false;
+        // Extra - Flight Car Recommendation END
         BrowserSectionPanel.IsVisible = false;
         SearchTabButton.Classes.Set("primary", false);
         FlightTabButton.Classes.Set("primary", false);
@@ -83,6 +95,9 @@ public partial class MainWindow : Window
         PaymentsPanel.IsVisible = false;
         StatisticsPanel.IsVisible = false;
         PaymentCheckoutPanel.IsVisible = false;
+        // Extra - Flight Car Recommendation START
+        FlightCarRecommendationPanel.IsVisible = false;
+        // Extra - Flight Car Recommendation END
         BrowserSectionPanel.IsVisible = true;
         SearchTabButton.Classes.Set("primary", false);
         FlightTabButton.Classes.Set("primary", false);
@@ -100,6 +115,9 @@ public partial class MainWindow : Window
         PaymentsPanel.IsVisible = false;
         StatisticsPanel.IsVisible = false;
         PaymentCheckoutPanel.IsVisible = false;
+        // Extra - Flight Car Recommendation START
+        FlightCarRecommendationPanel.IsVisible = false;
+        // Extra - Flight Car Recommendation END
         BrowserSectionPanel.IsVisible = true;
         BrowserSectionPanel.Opacity = 1;
         BrowserSectionPanel.IsHitTestVisible = false;
@@ -139,6 +157,9 @@ public partial class MainWindow : Window
         PaymentsPanel.IsVisible = false;
         StatisticsPanel.IsVisible = false;
         PaymentCheckoutPanel.IsVisible = false;
+        // Extra - Flight Car Recommendation START
+        FlightCarRecommendationPanel.IsVisible = false;
+        // Extra - Flight Car Recommendation END
         BrowserSectionPanel.IsVisible = false;
         SearchTabButton.Classes.Set("primary", false);
         FlightTabButton.Classes.Set("primary", true);
@@ -146,6 +167,25 @@ public partial class MainWindow : Window
         PaymentsTabButton.Classes.Set("primary", false);
         StatisticsTabButton.Classes.Set("primary", false);
     }
+
+    // Extra - Flight Car Recommendation START
+    private void ShowFlightCarRecommendationSection()
+    {
+        SearchPanel.IsVisible = false;
+        FlightPanel.IsVisible = false;
+        HistoryPanel.IsVisible = false;
+        PaymentsPanel.IsVisible = false;
+        StatisticsPanel.IsVisible = false;
+        PaymentCheckoutPanel.IsVisible = false;
+        BrowserSectionPanel.IsVisible = false;
+        FlightCarRecommendationPanel.IsVisible = true;
+        SearchTabButton.Classes.Set("primary", false);
+        FlightTabButton.Classes.Set("primary", true);
+        HistoryTabButton.Classes.Set("primary", false);
+        PaymentsTabButton.Classes.Set("primary", false);
+        StatisticsTabButton.Classes.Set("primary", false);
+    }
+    // Extra - Flight Car Recommendation END
 
     private void ConfigureFlightResultsGrid()
     {

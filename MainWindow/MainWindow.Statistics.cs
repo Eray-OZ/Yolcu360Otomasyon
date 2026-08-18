@@ -25,6 +25,9 @@ public partial class MainWindow : Window
         PaymentsPanel.IsVisible = false;
         StatisticsPanel.IsVisible = true;
         PaymentCheckoutPanel.IsVisible = false;
+        // Extra - Flight Car Recommendation START
+        FlightCarRecommendationPanel.IsVisible = false;
+        // Extra - Flight Car Recommendation END
         BrowserSectionPanel.IsVisible = false;
 
         SearchTabButton.Classes.Set("primary", false);

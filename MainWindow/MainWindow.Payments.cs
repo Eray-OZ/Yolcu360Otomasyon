@@ -118,6 +118,17 @@ public partial class MainWindow : Window
                 paymentResult);
 
             ClearCheckoutForm();
+
+            // Extra - Flight Car Recommendation START
+            var isRoundTripFlight = _isLastFlightRoundTrip && _lastPaidRoundTripFlight is not null;
+            if (isRoundTripFlight)
+            {
+                PrepareFlightCarRecommendationView();
+                ShowFlightCarRecommendationSection();
+                return;
+            }
+            // Extra - Flight Car Recommendation END
+
             ShowPaymentsSection();
             await LoadPaymentsAsync();
             PaymentsStatusTextBlock.Text = "iyzico sandbox ödeme kaydı oluşturuldu.";

@@ -1816,6 +1816,116 @@
                             </Border>
                         </Grid>
                     </Border>
+                    <!-- Extra - Flight Car Recommendation START -->
+                    <Border Grid.Row="1"
+                            Grid.RowSpan="2"
+                            x:Name="FlightCarRecommendationPanel"
+                            IsVisible="False"
+                            Background="White"
+                            BorderBrush="#D9E2EC"
+                            BorderThickness="1"
+                            CornerRadius="12"
+                            Padding="32"
+                            MaxWidth="760"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center">
+                        <StackPanel Spacing="24">
+                            <!-- BAŞARI İKONU & BAŞLIK -->
+                            <StackPanel Spacing="10" HorizontalAlignment="Center">
+                                <Border Background="#ECFDF5"
+                                        BorderBrush="#A7F3D0"
+                                        BorderThickness="1"
+                                        CornerRadius="24"
+                                        Padding="14,6"
+                                        HorizontalAlignment="Center">
+                                    <TextBlock Text="✓ Uçak Bileti Ödemesi Başarılı"
+                                               Foreground="#047857"
+                                               FontSize="13"
+                                               FontWeight="Bold" />
+                                </Border>
+
+                                <TextBlock Text="Biletiniz Başarıyla Alındı!"
+                                           FontSize="24"
+                                           FontWeight="Bold"
+                                           Foreground="#122033"
+                                           HorizontalAlignment="Center" />
+
+                                <TextBlock Text="Seyahatiniz için iniş noktanızda konforlu bir kiralık araç bulmak ister misiniz?"
+                                           FontSize="14"
+                                           Foreground="#5F7187"
+                                           HorizontalAlignment="Center"
+                                           TextAlignment="Center" />
+                            </StackPanel>
+
+                            <!-- SEYAHAT BİLGİ KARTI -->
+                            <Border Background="#F8FAFC"
+                                    BorderBrush="#E2E8F0"
+                                    BorderThickness="1"
+                                    CornerRadius="10"
+                                    Padding="20">
+                                <Grid RowDefinitions="Auto,Auto" RowSpacing="14">
+                                    <StackPanel Spacing="4">
+                                        <TextBlock Text="Varış &amp; Araç Alış Yeri"
+                                                   FontSize="12"
+                                                   FontWeight="SemiBold"
+                                                   Foreground="#64748B" />
+                                        <TextBlock x:Name="FlightCarRecLocationTextBlock"
+                                                   Text="-"
+                                                   FontSize="16"
+                                                   FontWeight="Bold"
+                                                   Foreground="#0F172A" />
+                                    </StackPanel>
+
+                                    <Grid Grid.Row="1" ColumnDefinitions="*,*" ColumnSpacing="20">
+                                        <StackPanel Spacing="4">
+                                            <TextBlock Text="Araç Alış Tarihi &amp; Saati"
+                                                       FontSize="12"
+                                                       FontWeight="SemiBold"
+                                                       Foreground="#64748B" />
+                                            <TextBlock x:Name="FlightCarRecPickupTextBlock"
+                                                       Text="-"
+                                                       FontSize="14"
+                                                       FontWeight="SemiBold"
+                                                       Foreground="#1E293B" />
+                                            <TextBlock Text="(İnişten 30 dk sonra teslim)"
+                                                       FontSize="11"
+                                                       Foreground="#94A3B8" />
+                                        </StackPanel>
+
+                                        <StackPanel Grid.Column="1" Spacing="4">
+                                            <TextBlock Text="Araç Bırakış Tarihi &amp; Saati"
+                                                       FontSize="12"
+                                                       FontWeight="SemiBold"
+                                                       Foreground="#64748B" />
+                                            <TextBlock x:Name="FlightCarRecReturnTextBlock"
+                                                       Text="-"
+                                                       FontSize="14"
+                                                       FontWeight="SemiBold"
+                                                       Foreground="#1E293B" />
+                                            <TextBlock Text="(Dönüşten önce teslim)"
+                                                       FontSize="11"
+                                                       Foreground="#94A3B8" />
+                                        </StackPanel>
+                                    </Grid>
+                                </Grid>
+                            </Border>
+
+                            <!-- AKSİYON BUTONLARI -->
+                            <StackPanel Orientation="Horizontal"
+                                        HorizontalAlignment="Center"
+                                        Spacing="14">
+                                <Button x:Name="AcceptFlightCarRecommendationButton"
+                                        Classes="primary btn-sm"
+                                        Content="Evet, Uygun Araçları Bul"
+                                        Click="AcceptFlightCarRecommendationButton_Click" />
+                                <Button x:Name="DeclineFlightCarRecommendationButton"
+                                        Classes="btn-secondary btn-sm"
+                                        Content="Hayır, Ödemelere Geç"
+                                        Click="DeclineFlightCarRecommendationButton_Click" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                    <!-- Extra - Flight Car Recommendation END -->
                 </Grid>
             </Grid>
         </ScrollViewer>
