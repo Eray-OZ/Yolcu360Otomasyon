@@ -9,6 +9,9 @@ namespace Yolcu360Otomasyon;
 public partial class MainWindow : Window
 {
     private readonly DatabaseService _databaseService = new(AppSettings.GetConnectionString());
+    // Extra - Collection Export START
+    private readonly CollectionExportService _collectionExportService = new();
+    // Extra - Collection Export END
     // Extra - Statistics START
     private readonly StatisticsService _statisticsService = new(AppSettings.GetConnectionString());
     // Extra - Statistics END
@@ -60,7 +63,7 @@ public partial class MainWindow : Window
         // Extra - Dynamic Collections END
         _iyzicoPaymentService = new IyzicoPaymentService(AppSettings.GetIyzicoSettings());
         // Extra - Statistics START
-        _ = _statisticsService.EnsureTableAsync();
+        ConfigureStatisticsGrids();
         // Extra - Statistics END
         PickupDatePicker.DisplayDateStart = DateTime.Today;
         ReturnDatePicker.DisplayDateStart = DateTime.Today;

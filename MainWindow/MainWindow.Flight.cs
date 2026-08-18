@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Globalization;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -194,8 +193,6 @@ public partial class MainWindow : Window
         FlightStatusTextBlock.Text = "Uçuş araması hazırlanıyor...";
         FlightResultsDataGrid.ItemsSource = null;
         SetFlightResultsPlaceholder("Uçuşlar aranıyor, bekleyiniz...");
-        Stopwatch? flightTimer = null;
-
         try
         {
             var departureDate = FlightDepartureDatePicker.SelectedDate?.Date;
@@ -228,8 +225,32 @@ public partial class MainWindow : Window
                 return;
             }
 
-            var fromSuggestion = _selectedFlightFromSuggestion ?? await _flightLocationSuggestionService.ResolveBestSuggestionAsync(filter.FromLocation);
-            var toSuggestion = _selectedFlightToSuggestion ?? await _flightLocationSuggestionService.ResolveBestSuggestionAsync(filter.ToLocation);
+            var fromText = FlightFromTextBox.Text?.Trim() ?? string.Empty;
+            var toText = FlightToTextBox.Text?.Trim() ?? string.Empty;
+
+            LocationSuggestionItem? fromSuggestion = null;
+            if (_selectedFlightFromSuggestion is not null &&
+                (string.Equals(_selectedFlightFromSuggestion.MainText, fromText, StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(_selectedFlightFromSuggestion.Description, fromText, StringComparison.OrdinalIgnoreCase)))
+            {
+                fromSuggestion = _selectedFlightFromSuggestion;
+            }
+            else
+            {
+                fromSuggestion = await _flightLocationSuggestionService.ResolveBestSuggestionAsync(fromText);
+            }
+
+            LocationSuggestionItem? toSuggestion = null;
+            if (_selectedFlightToSuggestion is not null &&
+                (string.Equals(_selectedFlightToSuggestion.MainText, toText, StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(_selectedFlightToSuggestion.Description, toText, StringComparison.OrdinalIgnoreCase)))
+            {
+                toSuggestion = _selectedFlightToSuggestion;
+            }
+            else
+            {
+                toSuggestion = await _flightLocationSuggestionService.ResolveBestSuggestionAsync(toText);
+            }
 
             if (fromSuggestion is not null)
             {
@@ -253,10 +274,6 @@ public partial class MainWindow : Window
                 return;
             }
 
-            // Extra - Statistics START
-            flightTimer = Stopwatch.StartNew();
-            // Extra - Statistics END
-
             ShowBrowserSection();
             FlightStatusTextBlock.Text = "Gömülü tarayıcı uçuş araması için hazırlanıyor...";
 
@@ -265,7 +282,6 @@ public partial class MainWindow : Window
                 await baService.RestoreSessionAsync(_activeUser.SessionStatePath);
 
             await baService.SearchFlightTicketsAsync(filter);
-            var formSnapshot = await baService.GetFlightFormSnapshotAsync();
 
             FlightStatusTextBlock.Text = "Uçuş sonuçları okunuyor...";
             _latestFlightResults = await baService.ReadFlightResultsAsync();
@@ -281,10 +297,6 @@ public partial class MainWindow : Window
                     flightResult.Route = $"{flightResult.FromLocation} → {flightResult.ToLocation}";
             }
 
-            // Extra - Statistics START
-            await RecordSearchStatisticSafelyAsync(flightTimer, "Uçuş", true, _latestFlightResults.Count);
-            // Extra - Statistics END
-
             await Dispatcher.UIThread.InvokeAsync(() =>
             {
                 FlightResultsDataGrid.ItemsSource = null;
@@ -293,15 +305,11 @@ public partial class MainWindow : Window
             });
 
             FlightStatusTextBlock.Text = _latestFlightResults.Count == 0
-                ? $"Uçuş araması tamamlandı, sonuç bulunamadı. Form: {formSnapshot}"
-                : $"{_latestFlightResults.Count} uçuş sonucu listelendi. Form: {formSnapshot}";
+                ? "Uçuş araması tamamlandı, sonuç bulunamadı."
+                : $"{_latestFlightResults.Count} uçuş sonucu listelendi.";
         }
         catch (Exception ex)
         {
-            // Extra - Statistics START
-            if (flightTimer is not null)
-                await RecordSearchStatisticSafelyAsync(flightTimer, "Uçuş", false, 0);
-            // Extra - Statistics END
             FlightStatusTextBlock.Text = $"Uçuş arama hatası: {ex.Message}";
             SetFlightResultsPlaceholder("Uçuş araması sırasında hata oluştu.");
         }

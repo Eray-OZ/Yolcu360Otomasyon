@@ -1,6 +1,5 @@
-using System.Diagnostics;
-using System.Globalization;
 using Avalonia.Controls;
+using Avalonia.Data;
 using Avalonia.Interactivity;
 using Yolcu360Otomasyon.Models;
 
@@ -35,55 +34,53 @@ public partial class MainWindow : Window
         StatisticsTabButton.Classes.Set("primary", true);
     }
 
+    private void ConfigureStatisticsGrids()
+    {
+        ConfigureStatisticsGrid(StatisticsVehiclesDataGrid, "Araç", "Kiralama sayısı");
+        ConfigureStatisticsGrid(StatisticsCitiesDataGrid, "Şehir", "Kiralama sayısı");
+    }
+
+    private static void ConfigureStatisticsGrid(DataGrid grid, string nameHeader, string countHeader)
+    {
+        grid.AutoGenerateColumns = false;
+        grid.Columns.Clear();
+        grid.Columns.Add(new DataGridTextColumn
+        {
+            Header = nameHeader,
+            Binding = new Binding(nameof(IstatistikSatir.Ad)),
+            Width = new DataGridLength(1, DataGridLengthUnitType.Star)
+        });
+        grid.Columns.Add(new DataGridTextColumn
+        {
+            Header = countHeader,
+            Binding = new Binding(nameof(IstatistikSatir.Sayi)),
+            Width = new DataGridLength(90)
+        });
+    }
+
     private async Task LoadStatisticsAsync()
     {
         if (_activeUser is null)
             return;
 
-        StatisticsStatusTextBlock.Text = "İstatistikler yükleniyor...";
-
         try
         {
             var summary = await _statisticsService.GetSummaryAsync(_activeUser.Id);
 
-            StatisticsTotalSearchesTextBlock.Text = summary.ToplamArama.ToString(CultureInfo.InvariantCulture);
-            StatisticsSuccessfulSearchesTextBlock.Text = summary.BasariliArama.ToString(CultureInfo.InvariantCulture);
-            StatisticsTotalResultsTextBlock.Text = summary.ToplamSonuc.ToString(CultureInfo.InvariantCulture);
-            StatisticsAverageDurationTextBlock.Text = $"{summary.OrtalamaSureSaniye:N1} sn";
-            StatisticsCollectionsTextBlock.Text = summary.KoleksiyonSayisi.ToString(CultureInfo.InvariantCulture);
-            StatisticsVehiclesTextBlock.Text = summary.AracSayisi.ToString(CultureInfo.InvariantCulture);
-            StatisticsPaymentsTextBlock.Text = summary.OdemeSayisi.ToString(CultureInfo.InvariantCulture);
+            StatisticsCollectionsTextBlock.Text = summary.KoleksiyonSayisi.ToString();
+            StatisticsVehiclesTextBlock.Text = summary.AracSayisi.ToString();
+            StatisticsPaymentsTextBlock.Text = summary.OdemeSayisi.ToString();
             StatisticsTotalPaymentTextBlock.Text = $"{summary.ToplamOdeme:N2} TL";
-            StatisticsStatusTextBlock.Text = $"Başarısız arama: {summary.BasarisizArama}";
-        }
-        catch (Exception ex)
-        {
-            StatisticsStatusTextBlock.Text = $"İstatistikler yüklenemedi: {ex.Message}";
-        }
-    }
-
-    private async Task RecordSearchStatisticSafelyAsync(
-        Stopwatch? timer,
-        string searchType,
-        bool success,
-        int resultCount)
-    {
-        if (_activeUser is null || timer is null)
-            return;
-
-        try
-        {
-            await _statisticsService.RecordSearchAsync(
-                _activeUser.Id,
-                searchType,
-                success,
-                resultCount,
-                timer.Elapsed);
+            StatisticsHighestPaymentTextBlock.Text = $"{summary.EnYuksekKiralama:N2} TL";
+            StatisticsLowestPaymentTextBlock.Text = $"{summary.EnDusukKiralama:N2} TL";
+            StatisticsVehiclesDataGrid.ItemsSource = summary.EnCokKiralananAraclar;
+            StatisticsCitiesDataGrid.ItemsSource = summary.EnCokKiralananSehirler;
         }
         catch
         {
-            // Statistics must never break a search flow.
+            // İstatistik panelinde durum mesajı gösterilmez.
         }
     }
+
     // Extra - Statistics END
 }

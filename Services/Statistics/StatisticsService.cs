@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using System.Globalization;
 using Yolcu360Otomasyon.Data;
 using Yolcu360Otomasyon.Models;
 
@@ -16,86 +17,90 @@ public sealed class StatisticsService
             .Options;
     }
 
-    public async Task EnsureTableAsync()
-    {
-        await using var context = new AppDbContext(_options);
-        await context.Database.ExecuteSqlRawAsync(
-            """
-            CREATE TABLE IF NOT EXISTS arama_istatistikleri (
-                Id INT NOT NULL AUTO_INCREMENT,
-                KullaniciId INT NOT NULL,
-                AramaTuru VARCHAR(32) NOT NULL,
-                Basarili TINYINT(1) NOT NULL,
-                SonucSayisi INT NOT NULL,
-                SureMs BIGINT NOT NULL,
-                OlusturmaTarihi DATETIME(6) NOT NULL,
-                PRIMARY KEY (Id),
-                INDEX IX_arama_istatistikleri_KullaniciId (KullaniciId)
-            ) CHARACTER SET utf8mb4;
-            """);
-    }
-
-    public async Task RecordSearchAsync(
-        int kullaniciId,
-        string aramaTuru,
-        bool basarili,
-        int sonucSayisi,
-        TimeSpan sure)
-    {
-        await EnsureTableAsync();
-
-        await using var context = new AppDbContext(_options);
-        context.AramaIstatistikleri.Add(new AramaIstatistigi
-        {
-            KullaniciId = kullaniciId,
-            AramaTuru = aramaTuru,
-            Basarili = basarili,
-            SonucSayisi = sonucSayisi,
-            SureMs = (long)sure.TotalMilliseconds,
-            OlusturmaTarihi = DateTime.UtcNow
-        });
-
-        await context.SaveChangesAsync();
-    }
-
     public async Task<IstatistikOzet> GetSummaryAsync(int kullaniciId)
     {
-        await EnsureTableAsync();
-
         await using var context = new AppDbContext(_options);
-        var searches = await context.AramaIstatistikleri
+
+        var collections = await context.Koleksiyonlar
+            .AsNoTracking()
+            .Include(item => item.Araclar)
             .Where(item => item.KullaniciId == kullaniciId)
             .ToListAsync();
 
-        var collectionIds = await context.Koleksiyonlar
+        var payments = (await context.Odemeler
+            .AsNoTracking()
             .Where(item => item.KullaniciId == kullaniciId)
-            .Select(item => item.Id)
-            .ToListAsync();
-
-        var vehicleCount = collectionIds.Count == 0
-            ? 0
-            : await context.Araclar.CountAsync(item => collectionIds.Contains(item.KoleksiyonId));
-
-        var payments = await context.Odemeler
-            .Where(item => item.KullaniciId == kullaniciId)
-            .ToListAsync();
+            .ToListAsync())
+            .Where(item => IsSuccessfulPayment(item.Durum))
+            .ToList();
 
         return new IstatistikOzet
         {
-            ToplamArama = searches.Count,
-            BasariliArama = searches.Count(item => item.Basarili),
-            BasarisizArama = searches.Count(item => !item.Basarili),
-            ToplamSonuc = searches.Sum(item => item.SonucSayisi),
-            OrtalamaSureSaniye = searches.Count == 0
-                ? 0
-                : searches.Average(item => item.SureMs) / 1000d,
-            KoleksiyonSayisi = collectionIds.Count,
-            AracSayisi = vehicleCount,
+            KoleksiyonSayisi = collections.Count,
+            AracSayisi = collections.Sum(item => item.Araclar.Count),
             OdemeSayisi = payments.Count,
-            ToplamOdeme = payments
-                .Where(item => item.Durum.Equals("success", StringComparison.OrdinalIgnoreCase))
-                .Sum(item => item.Tutar)
+            ToplamOdeme = payments.Sum(item => item.Tutar),
+            EnYuksekKiralama = payments.Count == 0 ? 0m : payments.Max(item => item.Tutar),
+            EnDusukKiralama = payments.Count == 0 ? 0m : payments.Min(item => item.Tutar),
+            EnCokKiralananAraclar = payments
+                .Select(item => ExtractVehicleName(item.KoleksiyonAdi))
+                .Where(item => !string.IsNullOrWhiteSpace(item))
+                .GroupBy(item => item, StringComparer.OrdinalIgnoreCase)
+                .OrderByDescending(group => group.Count())
+                .ThenBy(group => group.Key)
+                .Take(5)
+                .Select(group => new IstatistikSatir { Ad = group.Key, Sayi = group.Count() })
+                .ToList(),
+            EnCokKiralananSehirler = collections
+                .Select(item => ExtractCityName(item.AlisYeri))
+                .Where(item => !string.IsNullOrWhiteSpace(item))
+                .GroupBy(item => NormalizeCityKey(item))
+                .OrderByDescending(group => group.Count())
+                .ThenBy(group => group.Key)
+                .Take(5)
+                .Select(group => new IstatistikSatir { Ad = group.First(), Sayi = group.Count() })
+                .ToList()
         };
+    }
+
+    private static bool IsSuccessfulPayment(string? status)
+    {
+        return string.Equals(status, "success", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(status, "SUCCESS", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string ExtractVehicleName(string? collectionName)
+    {
+        var value = collectionName?.Trim() ?? string.Empty;
+        var start = value.LastIndexOf('(');
+        var end = value.LastIndexOf(')');
+
+        return start >= 0 && end > start
+            ? value[(start + 1)..end].Trim()
+            : string.Empty;
+    }
+
+    private static string ExtractCityName(string? location)
+    {
+        var value = location?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(value))
+            return string.Empty;
+
+        var commaIndex = value.IndexOf(',');
+        if (commaIndex > 0)
+            value = value[..commaIndex];
+
+        return value
+            .Replace("Havalimanı", string.Empty, StringComparison.OrdinalIgnoreCase)
+            .Replace("Airport", string.Empty, StringComparison.OrdinalIgnoreCase)
+            .Trim();
+    }
+
+    private static string NormalizeCityKey(string value)
+    {
+        return value
+            .ToLower(new CultureInfo("tr-TR"))
+            .Replace('ı', 'i');
     }
 }
 // Extra - Statistics END

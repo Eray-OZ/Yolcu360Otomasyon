@@ -1112,7 +1112,7 @@
                                                FontSize="22"
                                                FontWeight="Bold"
                                                Foreground="#122033" />
-                                    <TextBlock Text="Kaydedilen arama listelerinizi inceleyin, araçlarını görüntüleyin veya PNG olarak indirin."
+                                    <TextBlock Text="Kaydedilen arama listelerinizi inceleyin, araçlarını görüntüleyin veya dışa aktarın."
                                                Foreground="#5F7187" />
                                 </StackPanel>
 
@@ -1162,6 +1162,16 @@
                                             Content="PNG Olarak İndir"
                                             Width="180"
                                             Click="ExportPngButton_Click" />
+                                    <!-- Extra - Collection Export START -->
+                                    <Button x:Name="ExportCsvButton"
+                                            Content="CSV İndir"
+                                            Width="120"
+                                            Click="ExportCsvButton_Click" />
+                                    <Button x:Name="ExportExcelButton"
+                                            Content="Excel İndir"
+                                            Width="130"
+                                            Click="ExportExcelButton_Click" />
+                                    <!-- Extra - Collection Export END -->
                                 </StackPanel>
 
                                 <Border Grid.Row="4"
@@ -1326,6 +1336,16 @@
                                             Content="PNG Olarak İndir"
                                             Width="180"
                                             Click="ExportPngButton_Click" />
+                                    <!-- Extra - Collection Export START -->
+                                    <Button x:Name="ExportCsvButtonVehicles"
+                                            Content="CSV İndir"
+                                            Width="120"
+                                            Click="ExportCsvButton_Click" />
+                                    <Button x:Name="ExportExcelButtonVehicles"
+                                            Content="Excel İndir"
+                                            Width="130"
+                                            Click="ExportExcelButton_Click" />
+                                    <!-- Extra - Collection Export END -->
                                 </StackPanel>
                             </Grid>
 
@@ -1382,74 +1402,119 @@
                             BorderThickness="1"
                             CornerRadius="10"
                             Padding="22">
-                        <Grid RowDefinitions="Auto,Auto,*"
+                        <Grid RowDefinitions="Auto,*"
                               RowSpacing="18">
                             <StackPanel Spacing="4">
                                 <TextBlock Text="İstatistikler"
                                            FontSize="22"
                                            FontWeight="Bold"
                                            Foreground="#122033" />
-                                <TextBlock Text="Arama, koleksiyon ve ödeme kullanım özetiniz."
+                                <TextBlock Text="Koleksiyon, araç ve ödeme alışkanlıklarınız."
                                            Foreground="#5F7187" />
                             </StackPanel>
 
-                            <TextBlock x:Name="StatisticsStatusTextBlock"
-                                       Grid.Row="1"
-                                       Foreground="#132235"
-                                       FontWeight="SemiBold"
-                                       TextWrapping="Wrap" />
-
-                            <Grid Grid.Row="2"
-                                  RowDefinitions="Auto,Auto"
+                            <Grid Grid.Row="1"
                                   ColumnDefinitions="*,*,*,*"
-                                  RowSpacing="14"
                                   ColumnSpacing="14">
                                 <Border Background="#F3F7FF" CornerRadius="10" Padding="18">
                                     <StackPanel Spacing="6">
-                                        <TextBlock Text="Toplam arama" Foreground="#5F7187" />
-                                        <TextBlock x:Name="StatisticsTotalSearchesTextBlock" FontSize="26" FontWeight="Bold" Foreground="#122033" />
+                                        <TextBlock Text="Koleksiyon" Foreground="#5F7187" />
+                                        <TextBlock x:Name="StatisticsCollectionsTextBlock" FontSize="26" FontWeight="Bold" Foreground="#122033" />
                                     </StackPanel>
                                 </Border>
                                 <Border Grid.Column="1" Background="#ECFDF5" CornerRadius="10" Padding="18">
                                     <StackPanel Spacing="6">
-                                        <TextBlock Text="Başarılı arama" Foreground="#39705A" />
-                                        <TextBlock x:Name="StatisticsSuccessfulSearchesTextBlock" FontSize="26" FontWeight="Bold" Foreground="#166534" />
+                                        <TextBlock Text="Kayıtlı araç" Foreground="#39705A" />
+                                        <TextBlock x:Name="StatisticsVehiclesTextBlock" FontSize="26" FontWeight="Bold" Foreground="#166534" />
                                     </StackPanel>
                                 </Border>
                                 <Border Grid.Column="2" Background="#FFF7ED" CornerRadius="10" Padding="18">
                                     <StackPanel Spacing="6">
-                                        <TextBlock Text="Toplam sonuç" Foreground="#8A5A24" />
-                                        <TextBlock x:Name="StatisticsTotalResultsTextBlock" FontSize="26" FontWeight="Bold" Foreground="#9A3412" />
+                                        <TextBlock Text="Kiralama sayısı" Foreground="#8A5A24" />
+                                        <TextBlock x:Name="StatisticsPaymentsTextBlock" FontSize="26" FontWeight="Bold" Foreground="#9A3412" />
                                     </StackPanel>
                                 </Border>
                                 <Border Grid.Column="3" Background="#F5F3FF" CornerRadius="10" Padding="18">
                                     <StackPanel Spacing="6">
-                                        <TextBlock Text="Ortalama süre" Foreground="#62548A" />
-                                        <TextBlock x:Name="StatisticsAverageDurationTextBlock" FontSize="26" FontWeight="Bold" Foreground="#4C1D95" />
+                                        <TextBlock Text="Ödenen toplam" Foreground="#62548A" />
+                                        <TextBlock x:Name="StatisticsTotalPaymentTextBlock" FontSize="26" FontWeight="Bold" Foreground="#4C1D95" />
                                     </StackPanel>
                                 </Border>
-                                <Border Grid.Row="1" Background="#F8FAFC" CornerRadius="10" Padding="18">
-                                    <StackPanel Spacing="6">
-                                        <TextBlock Text="Koleksiyon" Foreground="#5F7187" />
-                                        <TextBlock x:Name="StatisticsCollectionsTextBlock" FontSize="22" FontWeight="Bold" Foreground="#122033" />
+                            </Grid>
+
+                            <Grid Grid.Row="1"
+                                  ColumnDefinitions="*,*"
+                                  RowDefinitions="Auto,Auto"
+                                  ColumnSpacing="14"
+                                  RowSpacing="14">
+                                <Border Background="#FBFDFF"
+                                        BorderBrush="#E2EAF2"
+                                        BorderThickness="1"
+                                        CornerRadius="10"
+                                        Padding="12">
+                                    <Grid RowDefinitions="Auto,*" RowSpacing="8">
+                                        <TextBlock Text="En çok kiralanan araçlar"
+                                                   FontSize="17"
+                                                   FontWeight="Bold"
+                                                   Foreground="#122033" />
+                                        <DataGrid Grid.Row="1"
+                                                  x:Name="StatisticsVehiclesDataGrid"
+                                                  IsReadOnly="True"
+                                                  CanUserResizeColumns="True"
+                                                  MinHeight="190" />
+                                    </Grid>
+                                </Border>
+                                <Border Grid.Column="1"
+                                        Background="#FBFDFF"
+                                        BorderBrush="#E2EAF2"
+                                        BorderThickness="1"
+                                        CornerRadius="10"
+                                        Padding="12">
+                                    <Grid RowDefinitions="Auto,*" RowSpacing="8">
+                                        <TextBlock Text="En çok kullanılan şehirler"
+                                                   FontSize="17"
+                                                   FontWeight="Bold"
+                                                   Foreground="#122033" />
+                                        <DataGrid Grid.Row="1"
+                                                  x:Name="StatisticsCitiesDataGrid"
+                                                  IsReadOnly="True"
+                                                  CanUserResizeColumns="True"
+                                                  MinHeight="190" />
+                                    </Grid>
+                                </Border>
+                                <Border Grid.Row="1"
+                                        Background="#FBFDFF"
+                                        BorderBrush="#E2EAF2"
+                                        BorderThickness="1"
+                                        CornerRadius="10"
+                                        Padding="12">
+                                    <StackPanel Spacing="8">
+                                        <TextBlock Text="En yüksek kiralama"
+                                                   FontSize="17"
+                                                   FontWeight="Bold"
+                                                   Foreground="#122033" />
+                                        <TextBlock x:Name="StatisticsHighestPaymentTextBlock"
+                                                   FontSize="22"
+                                                   FontWeight="Bold"
+                                                   Foreground="#122033" />
                                     </StackPanel>
                                 </Border>
-                                <Border Grid.Row="1" Grid.Column="1" Background="#F8FAFC" CornerRadius="10" Padding="18">
-                                    <StackPanel Spacing="6">
-                                        <TextBlock Text="Kayıtlı araç" Foreground="#5F7187" />
-                                        <TextBlock x:Name="StatisticsVehiclesTextBlock" FontSize="22" FontWeight="Bold" Foreground="#122033" />
-                                    </StackPanel>
-                                </Border>
-                                <Border Grid.Row="1" Grid.Column="2" Background="#F8FAFC" CornerRadius="10" Padding="18">
-                                    <StackPanel Spacing="6">
-                                        <TextBlock Text="Ödeme" Foreground="#5F7187" />
-                                        <TextBlock x:Name="StatisticsPaymentsTextBlock" FontSize="22" FontWeight="Bold" Foreground="#122033" />
-                                    </StackPanel>
-                                </Border>
-                                <Border Grid.Row="1" Grid.Column="3" Background="#F8FAFC" CornerRadius="10" Padding="18">
-                                    <StackPanel Spacing="6">
-                                        <TextBlock Text="Ödenen toplam" Foreground="#5F7187" />
-                                        <TextBlock x:Name="StatisticsTotalPaymentTextBlock" FontSize="22" FontWeight="Bold" Foreground="#122033" />
+                                <Border Grid.Row="1"
+                                        Grid.Column="1"
+                                        Background="#FBFDFF"
+                                        BorderBrush="#E2EAF2"
+                                        BorderThickness="1"
+                                        CornerRadius="10"
+                                        Padding="12">
+                                    <StackPanel Spacing="8">
+                                        <TextBlock Text="En düşük kiralama"
+                                                   FontSize="17"
+                                                   FontWeight="Bold"
+                                                   Foreground="#122033" />
+                                        <TextBlock x:Name="StatisticsLowestPaymentTextBlock"
+                                                   FontSize="22"
+                                                   FontWeight="Bold"
+                                                   Foreground="#122033" />
                                     </StackPanel>
                                 </Border>
                             </Grid>

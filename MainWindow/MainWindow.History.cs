@@ -183,6 +183,12 @@ public partial class MainWindow : Window
         DeleteCollectionButton.IsEnabled = enabled;
         ExportPngButton.IsEnabled = enabled;
         ExportPngButtonVehicles.IsEnabled = enabled;
+        // Extra - Collection Export START
+        ExportCsvButton.IsEnabled = enabled;
+        ExportCsvButtonVehicles.IsEnabled = enabled;
+        ExportExcelButton.IsEnabled = enabled;
+        ExportExcelButtonVehicles.IsEnabled = enabled;
+        // Extra - Collection Export END
     }
 
     private void SetCollectionRefreshButtonText(string text)
@@ -246,6 +252,67 @@ public partial class MainWindow : Window
             ExportPngButton.IsEnabled = true;
         }
     }
+
+    // Extra - Collection Export START
+    private async void ExportCsvButton_Click(object? sender, RoutedEventArgs e)
+    {
+        await ExportHistorySelectionAsync(
+            "CSV indirmek için bir kayıt seçin.",
+            "CSV",
+            items => _collectionExportService.ExportCsv(items));
+    }
+
+    private async void ExportExcelButton_Click(object? sender, RoutedEventArgs e)
+    {
+        await ExportHistorySelectionAsync(
+            "Excel indirmek için bir kayıt seçin.",
+            "Excel",
+            items => _collectionExportService.ExportExcel(items));
+    }
+
+    private async Task ExportHistorySelectionAsync(
+        string emptyMessage,
+        string format,
+        Func<IReadOnlyList<(KoleksiyonListItem Collection, List<SearchResultItem> Vehicles)>, string> exporter)
+    {
+        if (_selectedCollections.Count == 0)
+        {
+            HistoryStatusTextBlock.Text = emptyMessage;
+            return;
+        }
+
+        SetCollectionExportButtonsEnabled(false);
+        try
+        {
+            var tasks = _selectedCollections.Select(async collection =>
+            {
+                var vehicles = await _databaseService.GetCollectionVehiclesAsync(collection.Id);
+                return (Collection: collection, Vehicles: vehicles);
+            });
+            var items = (await Task.WhenAll(tasks)).ToList();
+            var path = exporter(items);
+            HistoryStatusTextBlock.Text = $"{format} kaydedildi: {path}";
+        }
+        catch (Exception ex)
+        {
+            HistoryStatusTextBlock.Text = $"{format} oluşturma hatası: {ex.Message}";
+        }
+        finally
+        {
+            SetCollectionExportButtonsEnabled(true);
+        }
+    }
+
+    private void SetCollectionExportButtonsEnabled(bool enabled)
+    {
+        ExportPngButton.IsEnabled = enabled;
+        ExportPngButtonVehicles.IsEnabled = enabled;
+        ExportCsvButton.IsEnabled = enabled;
+        ExportCsvButtonVehicles.IsEnabled = enabled;
+        ExportExcelButton.IsEnabled = enabled;
+        ExportExcelButtonVehicles.IsEnabled = enabled;
+    }
+    // Extra - Collection Export END
 
     private async Task LoadHistoryAsync()
     {

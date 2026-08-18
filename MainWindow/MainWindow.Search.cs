@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Globalization;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -236,8 +235,6 @@ public partial class MainWindow : Window
     {
         SearchButton.IsEnabled = false;
         SearchStatusTextBlock.Text = "Arama hazırlanıyor...";
-        Stopwatch? searchTimer = null;
-
         try
         {
             var pickupDate = PickupDatePicker.SelectedDate?.Date;
@@ -295,10 +292,6 @@ public partial class MainWindow : Window
                 return;
             }
 
-            // Extra - Statistics START
-            searchTimer = Stopwatch.StartNew();
-            // Extra - Statistics END
-
             ResultsDataGrid.ItemsSource = null;
             _searchResultsPlaceholderText = "Arama yapılıyor, bekleyiniz...";
             SetSearchResultsPlaceholder(_searchResultsPlaceholderText);
@@ -344,10 +337,6 @@ public partial class MainWindow : Window
 
             _latestResults = results;
 
-            // Extra - Statistics START
-            await RecordSearchStatisticSafelyAsync(searchTimer, "Araç", true, _latestResults.Count);
-            // Extra - Statistics END
-
             await Dispatcher.UIThread.InvokeAsync(() =>
             {
                 ResultsDataGrid.ItemsSource = null;
@@ -364,10 +353,6 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            // Extra - Statistics START
-            if (searchTimer is not null)
-                await RecordSearchStatisticSafelyAsync(searchTimer, "Araç", false, 0);
-            // Extra - Statistics END
             SearchStatusTextBlock.Text = $"Arama hatası: {ex.Message}";
             _searchResultsPlaceholderText = "Arama sırasında hata oluştu.";
             SetSearchResultsPlaceholder(_searchResultsPlaceholderText);

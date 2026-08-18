@@ -8,7 +8,7 @@ public sealed partial class BAService
     private const string Yolcu360FlightUrl = "https://www.yolcu360.com/ucak-bileti";
     private const string FlightFromInputSelector = "#inputPickUpLocation";
     private const string FlightToInputSelector = "#inputDropOffLocation";
-    private const string FlightLocationSuggestionSelector = ".search-autocomplete .search-autocomplete__item, .search-autocomplete__item, .search-autocomplete .location-item, .search-autocomplete-mobile__item, .location-item, .search-autocomplete div.search-autocomplete__item, .search-autocomplete > div";
+    private const string FlightLocationSuggestionSelector = ".search-autocomplete .search-autocomplete__item, .search-autocomplete__item.location-item, .search-autocomplete .location-item, .search-autocomplete-mobile__item, .location-item";
     private const string FlightSearchButtonSelector = "#flight_search";
     private const string FlightInputResolverScript =
         """
@@ -50,6 +50,25 @@ public sealed partial class BAService
         if (string.IsNullOrWhiteSpace(filter.FromLocation) || string.IsNullOrWhiteSpace(filter.ToLocation))
             throw new InvalidOperationException("Uçuş araması için nereden ve nereye alanları zorunlu.");
 
+        if (!string.IsNullOrWhiteSpace(filter.FromPlaceId) &&
+            !string.IsNullOrWhiteSpace(filter.ToPlaceId) &&
+            !string.IsNullOrWhiteSpace(filter.FromPlaceCode) &&
+            !string.IsNullOrWhiteSpace(filter.ToPlaceCode))
+        {
+            var directSearchUrl = BuildFlightSearchUrl(filter);
+            Report($"Uçuş arama sayfası açılıyor: {filter.FromLocation} ({filter.FromPlaceCode}) → {filter.ToLocation} ({filter.ToPlaceCode})");
+            await NavigateAsync(directSearchUrl);
+            await WaitForDocumentReadyAsync();
+            await EnsureJavaScriptHelpersAsync();
+            await WaitForInitialPopupAndCloseAsync(TimeSpan.FromSeconds(5));
+
+            if (filter.OnlyNonStop)
+                await ToggleFlightOnlyNonStopAsync();
+
+            await WaitForFlightResultsAsync(TimeSpan.FromSeconds(35));
+            return;
+        }
+
         Report("Yolcu360 uçak bileti sayfası açılıyor...");
         await NavigateAsync(Yolcu360FlightUrl);
         await WaitForDocumentReadyAsync();
@@ -59,10 +78,7 @@ public sealed partial class BAService
         await SelectFlightTripTypeAsync(filter.IsRoundTrip);
         await FillFlightLocationAsync(FlightFromInputSelector, filter.FromLocation, "Nereden");
         await FillFlightLocationAsync(FlightToInputSelector, filter.ToLocation, "Nereye");
-        await SelectFlightDateAsync("flight_departure_date", filter.DepartureDate, "Gidiş tarihi");
-
-        if (filter.IsRoundTrip && filter.ReturnDate is not null)
-            await SelectFlightDateAsync("flight_return_date", filter.ReturnDate.Value, "Dönüş tarihi");
+        await SelectFlightDatesAsync(filter.DepartureDate, filter.ReturnDate, filter.IsRoundTrip);
 
         if (filter.OnlyNonStop)
             await ToggleFlightOnlyNonStopAsync();
@@ -70,6 +86,32 @@ public sealed partial class BAService
         var previousResultsSignature = await GetFlightResultsSignatureAsync();
         await ClickFlightSearchButtonAsync();
         await WaitForFlightResultsChangedAsync(previousResultsSignature, TimeSpan.FromSeconds(35));
+    }
+
+    private static string BuildFlightSearchUrl(FlightSearchFilter filter)
+    {
+        var departureDateStr = filter.DepartureDate.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+        var queryParams = new List<string>
+        {
+            $"p_d={departureDateStr}",
+            "sb=lowest_price_first",
+            $"p_p={Uri.EscapeDataString(filter.FromPlaceCode ?? string.Empty)}",
+            $"ppt={Uri.EscapeDataString(filter.FromPlaceType ?? "airport")}",
+            $"pid={Uri.EscapeDataString(filter.FromPlaceId ?? string.Empty)}",
+            $"d_p={Uri.EscapeDataString(filter.ToPlaceCode ?? string.Empty)}",
+            $"dpt={Uri.EscapeDataString(filter.ToPlaceType ?? "airport")}",
+            $"did={Uri.EscapeDataString(filter.ToPlaceId ?? string.Empty)}",
+            "fc=economy",
+            "pa=1"
+        };
+
+        if (filter.IsRoundTrip && filter.ReturnDate is not null)
+        {
+            var returnDateStr = filter.ReturnDate.Value.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+            queryParams.Add($"d_d={returnDateStr}");
+        }
+
+        return $"https://yolcu360.com/ucak-bileti/search?{string.Join("&", queryParams)}";
     }
 
     private async Task SelectFlightTripTypeAsync(bool isRoundTrip)
@@ -116,7 +158,19 @@ public sealed partial class BAService
             Report($"{fieldName} önerisi seçiliyor. Deneme: {attempt}");
             var selectResult = await ClickFlightLocationSuggestionAsync(selector, location);
             Report($"{fieldName} öneri seçim sonucu: {selectResult}");
-            selected = await WaitForFlightLocationSelectionAppliedAsync(selector, location, TimeSpan.FromSeconds(4));
+
+            var clicked = false;
+            try
+            {
+                using var doc = JsonDocument.Parse((selectResult ?? string.Empty).Trim('"'));
+                clicked = doc.RootElement.TryGetProperty("clicked", out var clickedElem) && clickedElem.ValueKind == JsonValueKind.True;
+            }
+            catch {}
+
+            if (clicked)
+            {
+                selected = await WaitForFlightLocationSelectionAppliedAsync(selector, location, TimeSpan.FromSeconds(4));
+            }
 
             if (!selected && attempt < 3)
             {
@@ -308,13 +362,29 @@ public sealed partial class BAService
                 });
 
                 const selected = sorted[0];
-                selected.scrollIntoView({ block: 'center', inline: 'nearest' });
+                try { selected.scrollIntoView({ block: 'center', inline: 'nearest' }); } catch {}
 
-                if (window.__ba?.clickLikeUser) {
-                    window.__ba.clickLikeUser(selected, {{suggestionSelectorJson}});
-                } else {
-                    selected.click();
-                }
+                const triggerClick = el => {
+                    if (!el) return;
+                    const rect = el.getBoundingClientRect();
+                    const x = rect.left + rect.width / 2;
+                    const y = rect.top + rect.height / 2;
+                    const opts = { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y };
+
+                    ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click'].forEach(evtType => {
+                        try {
+                            if (evtType.startsWith('pointer') && typeof PointerEvent === 'function') {
+                                el.dispatchEvent(new PointerEvent(evtType, { ...opts, pointerId: 1, isPrimary: true, buttons: evtType.includes('down') ? 1 : 0 }));
+                            } else {
+                                el.dispatchEvent(new MouseEvent(evtType, { ...opts, buttons: evtType.includes('down') ? 1 : 0 }));
+                            }
+                        } catch {}
+                    });
+                    try { el.click(); } catch {}
+                };
+
+                triggerClick(selected);
+                Array.from(selected.querySelectorAll('div, span, p, strong, i')).forEach(triggerClick);
 
                 return JSON.stringify({
                     clicked: true,
@@ -330,6 +400,7 @@ public sealed partial class BAService
     {
         var inputSelectorJson = JsonSerializer.Serialize(inputSelector);
         var expectedLocationJson = JsonSerializer.Serialize(expectedLocation.Trim());
+        var suggestionSelectorJson = JsonSerializer.Serialize(FlightLocationSuggestionSelector);
 
         return WaitForScriptTrueOrTimeoutAsync(
             $$"""
@@ -337,24 +408,18 @@ public sealed partial class BAService
                 {{FlightInputResolverScript}}
                 const input = resolveFlightInput({{inputSelectorJson}});
                 if (!input) return false;
+                const isVisible = window.__ba?.isVisible || (() => false);
                 const normalize = window.__ba?.normalizeTr || (value => (value || '').toLocaleLowerCase('tr-TR').replace(/\s+/g, ' ').trim());
-                const tokenize = value => normalize(value)
-                    .replace(/[()]/g, ' ')
-                    .split(/[\s,/-]+/)
-                    .map(t => t.trim())
-                    .filter(t => t.length >= 3 && !['airport', 'havalimanı', 'uluslararası', 'international', 'türkiye', 'turkey', 'tüm'].includes(t));
+
+                const openSuggestions = Array
+                    .from(document.querySelectorAll({{suggestionSelectorJson}}))
+                    .filter(isVisible);
+
+                if (openSuggestions.length > 0) return false;
 
                 const actual = normalize(input.value || '');
                 const expected = normalize({{expectedLocationJson}});
-                if (!actual || actual.length === 0) return false;
-
-                const actualTokens = tokenize(actual);
-                const expectedTokens = tokenize(expected);
-                const commonCount = expectedTokens.filter(t => actualTokens.includes(t)).length;
-
-                return actual.includes(expected) ||
-                    expected.includes(actual) ||
-                    (expectedTokens.length > 0 && commonCount >= 1);
+                return actual.length > 0;
             })();
             """,
             timeout);
@@ -422,12 +487,43 @@ public sealed partial class BAService
             throw new TimeoutException($"{fieldName} önerileri gelmedi. Son durum: {lastResult}");
     }
 
-    private async Task SelectFlightDateAsync(string triggerCmsKey, DateTime date, string fieldName)
+    private async Task SelectFlightDatesAsync(DateTime departureDate, DateTime? returnDate, bool isRoundTrip)
+    {
+        Report($"Uçuş tarihi seçiliyor: Gidiş {departureDate:dd.MM.yyyy}" + (isRoundTrip && returnDate is not null ? $", Dönüş {returnDate.Value:dd.MM.yyyy}" : " (Tek yön)"));
+
+        var opened = await OpenFlightDatePickerAsync("flight_departure_date", "Gidiş tarihi");
+        if (!opened)
+            throw new InvalidOperationException("Uçuş takvimi açılamadı.");
+
+        await WaitForDatePickerMenuAsync(TimeSpan.FromSeconds(10));
+        await NavigateToMonthAsync(departureDate);
+
+        var depSelected = await ClickCalendarDayAsync(departureDate);
+        if (!depSelected)
+            throw new InvalidOperationException($"Gidiş tarihi ({departureDate:dd.MM.yyyy}) takvimde seçilemedi.");
+
+        if (isRoundTrip && returnDate is not null)
+        {
+            await Task.Delay(300);
+            if (returnDate.Value.Year != departureDate.Year || returnDate.Value.Month != departureDate.Month)
+            {
+                await NavigateToMonthAsync(returnDate.Value);
+            }
+
+            var retSelected = await ClickCalendarDayAsync(returnDate.Value);
+            if (!retSelected)
+                throw new InvalidOperationException($"Dönüş tarihi ({returnDate.Value:dd.MM.yyyy}) takvimde seçilemedi.");
+        }
+
+        await WaitForDatePickerClosedAsync(TimeSpan.FromSeconds(5));
+    }
+
+    private async Task<bool> OpenFlightDatePickerAsync(string triggerCmsKey, string fieldName)
     {
         var triggerCmsKeyJson = JsonSerializer.Serialize(triggerCmsKey);
         var fieldNameJson = JsonSerializer.Serialize(fieldName);
 
-        Report($"{fieldName} açılıyor: {date:dd.MM.yyyy}");
+        Report($"{fieldName} açılıyor...");
         var openResult = await EvaluateScriptAsync(
             $$"""
             (() => {
@@ -483,30 +579,16 @@ public sealed partial class BAService
             })();
             """);
 
-        var opened = false;
         try
         {
             using var document = JsonDocument.Parse((openResult ?? string.Empty).Trim('"'));
-            opened = document.RootElement.TryGetProperty("opened", out var openedElement) &&
+            return document.RootElement.TryGetProperty("opened", out var openedElement) &&
                 openedElement.ValueKind == JsonValueKind.True;
         }
         catch
         {
-            opened = IsScriptTrue(openResult);
+            return IsScriptTrue(openResult);
         }
-
-        if (!opened)
-            throw new InvalidOperationException($"{fieldName} alanı açılamadı. Detay: {openResult}");
-
-        await WaitForDatePickerMenuAsync(TimeSpan.FromSeconds(10));
-        await NavigateToMonthAsync(date);
-
-        var selected = await ClickCalendarDayAsync(date);
-        if (!selected)
-            throw new InvalidOperationException($"{fieldName} seçilemedi.");
-
-        await WaitForCalendarSelectionStateAsync(date, TimeSpan.FromSeconds(2));
-        await WaitForDatePickerClosedAsync(TimeSpan.FromSeconds(4));
     }
 
     public async Task WaitForFlightResultsAsync(TimeSpan? timeout = null)
