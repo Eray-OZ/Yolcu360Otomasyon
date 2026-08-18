@@ -1,5 +1,6 @@
 using System.Globalization;
 using Avalonia.Controls;
+using Avalonia.Interactivity;
 using Yolcu360Otomasyon.Configuration;
 using Yolcu360Otomasyon.Models;
 using Yolcu360Otomasyon.Services;
@@ -81,12 +82,25 @@ public partial class MainWindow : Window
         ConfigureFlightResultsGrid();
         ConfigureCollectionsGrid();
         ConfigurePaymentsGrid();
+        SuppressAutoBringIntoView(CollectionVehiclesDataGrid);
+        SuppressAutoBringIntoView(CollectionsDataGrid);
+        SuppressAutoBringIntoView(ResultsDataGrid);
+        SuppressAutoBringIntoView(FlightResultsDataGrid);
+        SuppressAutoBringIntoView(PaymentsDataGrid);
         _smsReceiverService.SmsReceived += SmsReceiverService_SmsReceived;
         _ = _databaseService.EnsureDatabaseAsync();
         InitializeSmsReceiver();
 
         _activeUser = null;
         ShowLoginView();
+    }
+
+    private static void SuppressAutoBringIntoView(Control control)
+    {
+        control.AddHandler(
+            RequestBringIntoViewEvent,
+            static (sender, e) => e.Handled = true,
+            RoutingStrategies.Tunnel | RoutingStrategies.Bubble);
     }
 
     private static void InitializeTimeComboBox(ComboBox comboBox, string selectedTime)

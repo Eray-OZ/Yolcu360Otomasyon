@@ -1389,7 +1389,7 @@
                                               CanUserSortColumns="True"
                                               SelectionMode="Single"
                                               SelectionChanged="CollectionVehiclesDataGrid_SelectionChanged"
-                                              MinHeight="300">
+                                              Height="420">
                                         <DataGrid.Columns>
                                             <DataGridTextColumn Header="Araç" Binding="{Binding Title}" Width="2*" />
                                             <DataGridTextColumn Header="Fiyat" Binding="{Binding Price}" Width="1*" />
