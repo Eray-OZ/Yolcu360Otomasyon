@@ -196,56 +196,56 @@ public partial class MainWindow : Window
         {
             Header = "Firma",
             Binding = new Binding(nameof(FlightResultItem.Airline)),
-            Width = new DataGridLength(1.2, DataGridLengthUnitType.Star),
-            MinWidth = 100
+            Width = new DataGridLength(1.3, DataGridLengthUnitType.Star),
+            MinWidth = 115
         });
 
         FlightResultsDataGrid.Columns.Add(new DataGridTextColumn
         {
             Header = "Nereden",
             Binding = new Binding(nameof(FlightResultItem.FromLocation)),
-            Width = new DataGridLength(2, DataGridLengthUnitType.Star),
-            MinWidth = 135
+            Width = new DataGridLength(2.2, DataGridLengthUnitType.Star),
+            MinWidth = 160
         });
 
         FlightResultsDataGrid.Columns.Add(new DataGridTextColumn
         {
             Header = "Nereye",
             Binding = new Binding(nameof(FlightResultItem.ToLocation)),
-            Width = new DataGridLength(2, DataGridLengthUnitType.Star),
-            MinWidth = 135
+            Width = new DataGridLength(2.2, DataGridLengthUnitType.Star),
+            MinWidth = 160
         });
 
         FlightResultsDataGrid.Columns.Add(new DataGridTextColumn
         {
             Header = "Kalkış",
             Binding = new Binding(nameof(FlightResultItem.DepartureTime)),
-            Width = new DataGridLength(1, DataGridLengthUnitType.Star),
-            MinWidth = 75
+            Width = new DataGridLength(1.0, DataGridLengthUnitType.Star),
+            MinWidth = 95
         });
 
         FlightResultsDataGrid.Columns.Add(new DataGridTextColumn
         {
             Header = "Varış",
             Binding = new Binding(nameof(FlightResultItem.ArrivalTime)),
-            Width = new DataGridLength(1, DataGridLengthUnitType.Star),
-            MinWidth = 75
+            Width = new DataGridLength(1.0, DataGridLengthUnitType.Star),
+            MinWidth = 95
         });
 
         FlightResultsDataGrid.Columns.Add(new DataGridTextColumn
         {
             Header = "Süre",
             Binding = new Binding(nameof(FlightResultItem.Duration)),
-            Width = new DataGridLength(1, DataGridLengthUnitType.Star),
-            MinWidth = 80
+            Width = new DataGridLength(1.0, DataGridLengthUnitType.Star),
+            MinWidth = 95
         });
 
         FlightResultsDataGrid.Columns.Add(new DataGridTextColumn
         {
             Header = "Aktarma",
             Binding = new Binding(nameof(FlightResultItem.Detail)),
-            Width = new DataGridLength(1.1, DataGridLengthUnitType.Star),
-            MinWidth = 90
+            Width = new DataGridLength(2.0, DataGridLengthUnitType.Star),
+            MinWidth = 165
         });
 
         FlightResultsDataGrid.Columns.Add(new DataGridTextColumn
@@ -253,7 +253,7 @@ public partial class MainWindow : Window
             Header = "Fiyat",
             Binding = new Binding(nameof(FlightResultItem.Price)),
             Width = new DataGridLength(1.2, DataGridLengthUnitType.Star),
-            MinWidth = 95
+            MinWidth = 110
         });
     }
 

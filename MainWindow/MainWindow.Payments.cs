@@ -45,6 +45,10 @@ public partial class MainWindow : Window
                 }
             };
 
+            // Extra - Flight Car Recommendation START
+            _lastPaidFlight = null;
+            // Extra - Flight Car Recommendation END
+
             PrepareCheckoutSummary();
             ShowPaymentCheckoutSection();
         }
@@ -120,8 +124,7 @@ public partial class MainWindow : Window
             ClearCheckoutForm();
 
             // Extra - Flight Car Recommendation START
-            var isRoundTripFlight = _isLastFlightRoundTrip && _lastPaidRoundTripFlight is not null;
-            if (isRoundTripFlight)
+            if (_lastPaidFlight is not null)
             {
                 PrepareFlightCarRecommendationView();
                 ShowFlightCarRecommendationSection();

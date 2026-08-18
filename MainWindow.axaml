@@ -396,7 +396,8 @@
             <Setter Property="Background" Value="#EEF3F9" />
             <Setter Property="Foreground" Value="#233143" />
             <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="Padding" Value="12,10" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Padding" Value="8,8" />
         </Style>
 
         <Style Selector="DataGridRow">
@@ -414,7 +415,7 @@
             <Setter Property="Foreground" Value="#132235" />
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderBrush" Value="#E8EEF5" />
-            <Setter Property="Padding" Value="10,6" />
+            <Setter Property="Padding" Value="8,6" />
         </Style>
 
         <Style Selector="DataGridCell:current">
@@ -1874,7 +1875,7 @@
                                         BorderThickness="1"
                                         CornerRadius="10"
                                         Padding="20">
-                                    <Grid RowDefinitions="Auto,Auto" RowSpacing="14">
+                                    <Grid RowDefinitions="Auto,Auto,Auto" RowSpacing="14">
                                         <StackPanel Spacing="4">
                                             <TextBlock Text="Varış &amp; Araç Alış Yeri"
                                                        FontSize="12"
@@ -1913,11 +1914,57 @@
                                                            FontSize="14"
                                                            FontWeight="SemiBold"
                                                            Foreground="#1E293B" />
-                                                <TextBlock Text="(Dönüşten önce teslim)"
+                                                <TextBlock x:Name="FlightCarRecReturnSubtitleTextBlock"
+                                                           Text="(Dönüşten önce teslim)"
                                                            FontSize="11"
                                                            Foreground="#94A3B8" />
                                             </StackPanel>
                                         </Grid>
+
+                                        <StackPanel x:Name="FlightCarRecDurationSelectorPanel"
+                                                    Grid.Row="2"
+                                                    IsVisible="False"
+                                                    Spacing="10"
+                                                    Margin="0,6,0,0">
+                                            <TextBlock Text="Araç Teslim / Bırakış Tarihi:"
+                                                       FontSize="12"
+                                                       FontWeight="SemiBold"
+                                                       Foreground="#64748B" />
+                                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="14" VerticalAlignment="Center">
+                                                <DatePicker x:Name="FlightCarRecReturnDatePicker"
+                                                            SelectedDateChanged="FlightCarRecReturnDatePicker_SelectedDateChanged" />
+                                                <StackPanel Grid.Column="1"
+                                                            Orientation="Horizontal"
+                                                            Spacing="6"
+                                                            VerticalAlignment="Center">
+                                                    <Button x:Name="FlightCarDuration1DayButton"
+                                                            Classes="btn-secondary btn-sm"
+                                                            Content="+1 Gün"
+                                                            Click="FlightCarDurationButton_Click"
+                                                            Tag="1" />
+                                                    <Button x:Name="FlightCarDuration2DaysButton"
+                                                            Classes="btn-secondary btn-sm"
+                                                            Content="+2 Gün"
+                                                            Click="FlightCarDurationButton_Click"
+                                                            Tag="2" />
+                                                    <Button x:Name="FlightCarDuration3DaysButton"
+                                                            Classes="primary btn-sm"
+                                                            Content="+3 Gün"
+                                                            Click="FlightCarDurationButton_Click"
+                                                            Tag="3" />
+                                                    <Button x:Name="FlightCarDuration5DaysButton"
+                                                            Classes="btn-secondary btn-sm"
+                                                            Content="+5 Gün"
+                                                            Click="FlightCarDurationButton_Click"
+                                                            Tag="5" />
+                                                    <Button x:Name="FlightCarDuration7DaysButton"
+                                                            Classes="btn-secondary btn-sm"
+                                                            Content="+7 Gün"
+                                                            Click="FlightCarDurationButton_Click"
+                                                            Tag="7" />
+                                                </StackPanel>
+                                            </Grid>
+                                        </StackPanel>
                                     </Grid>
                                 </Border>
 
