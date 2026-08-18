@@ -413,7 +413,7 @@ public partial class MainWindow : Window
         _isLastFlightRoundTrip = isRoundTrip;
         _lastPaidFlight = flight;
         _lastPaidDepartureDate = FlightDepartureDatePicker.SelectedDate ?? DateTime.Today.AddDays(7);
-        _lastPaidReturnDate = isRoundTrip ? FlightReturnDatePicker.SelectedDate : _lastPaidDepartureDate.Value.AddDays(_selectedFlightCarRentalDays);
+        _lastPaidReturnDate = isRoundTrip ? FlightReturnDatePicker.SelectedDate : _lastPaidDepartureDate.Value.AddDays(3);
         // Extra - Flight Car Recommendation END
 
         PrepareCheckoutSummary();
@@ -431,7 +431,6 @@ public partial class MainWindow : Window
     private FlightResultItem? _lastPaidFlight;
     private DateTime? _lastPaidDepartureDate;
     private DateTime? _lastPaidReturnDate;
-    private int _selectedFlightCarRentalDays = 3;
 
     private void PrepareFlightCarRecommendationView()
     {
@@ -457,8 +456,11 @@ public partial class MainWindow : Window
         else
         {
             FlightCarRecDurationSelectorPanel.IsVisible = true;
-            _selectedFlightCarRentalDays = 3;
-            UpdateOneWayCarRentalDuration(3);
+            var initialReturnDate = departureDate.AddDays(3);
+            _lastPaidReturnDate = initialReturnDate;
+            FlightCarRecReturnDatePicker.SelectedDate = initialReturnDate;
+            FlightCarRecReturnTextBlock.Text = $"{initialReturnDate:dd.MM.yyyy} - {pickupTime}";
+            FlightCarRecReturnSubtitleTextBlock.Text = "(3 günlük kiralama)";
         }
     }
 
@@ -480,61 +482,7 @@ public partial class MainWindow : Window
 
             FlightCarRecReturnTextBlock.Text = $"{returnDate:dd.MM.yyyy} - {pickupTime}";
             FlightCarRecReturnSubtitleTextBlock.Text = $"({days} günlük kiralama)";
-
-            FlightCarDuration1DayButton.Classes.Set("primary", days == 1);
-            FlightCarDuration1DayButton.Classes.Set("btn-secondary", days != 1);
-
-            FlightCarDuration2DaysButton.Classes.Set("primary", days == 2);
-            FlightCarDuration2DaysButton.Classes.Set("btn-secondary", days != 2);
-
-            FlightCarDuration3DaysButton.Classes.Set("primary", days == 3);
-            FlightCarDuration3DaysButton.Classes.Set("btn-secondary", days != 3);
-
-            FlightCarDuration5DaysButton.Classes.Set("primary", days == 5);
-            FlightCarDuration5DaysButton.Classes.Set("btn-secondary", days != 5);
-
-            FlightCarDuration7DaysButton.Classes.Set("primary", days == 7);
-            FlightCarDuration7DaysButton.Classes.Set("btn-secondary", days != 7);
         }
-    }
-
-    private void FlightCarDurationButton_Click(object? sender, RoutedEventArgs e)
-    {
-        if (sender is Button btn && btn.Tag is string tagStr && int.TryParse(tagStr, out var days))
-        {
-            UpdateOneWayCarRentalDuration(days);
-        }
-    }
-
-    private void UpdateOneWayCarRentalDuration(int days)
-    {
-        _selectedFlightCarRentalDays = days;
-        if (_lastPaidDepartureDate is null || _lastPaidFlight is null)
-            return;
-
-        var departureDate = _lastPaidDepartureDate.Value;
-        var returnDate = departureDate.AddDays(days);
-        _lastPaidReturnDate = returnDate;
-        FlightCarRecReturnDatePicker.SelectedDate = returnDate;
-        var pickupTime = CalculatePickupTime(_lastPaidFlight.ArrivalTime);
-
-        FlightCarRecReturnTextBlock.Text = $"{returnDate:dd.MM.yyyy} - {pickupTime}";
-        FlightCarRecReturnSubtitleTextBlock.Text = $"({days} günlük kiralama)";
-
-        FlightCarDuration1DayButton.Classes.Set("primary", days == 1);
-        FlightCarDuration1DayButton.Classes.Set("btn-secondary", days != 1);
-
-        FlightCarDuration2DaysButton.Classes.Set("primary", days == 2);
-        FlightCarDuration2DaysButton.Classes.Set("btn-secondary", days != 2);
-
-        FlightCarDuration3DaysButton.Classes.Set("primary", days == 3);
-        FlightCarDuration3DaysButton.Classes.Set("btn-secondary", days != 3);
-
-        FlightCarDuration5DaysButton.Classes.Set("primary", days == 5);
-        FlightCarDuration5DaysButton.Classes.Set("btn-secondary", days != 5);
-
-        FlightCarDuration7DaysButton.Classes.Set("primary", days == 7);
-        FlightCarDuration7DaysButton.Classes.Set("btn-secondary", days != 7);
     }
 
     private static string CalculatePickupTime(string? arrivalTime)

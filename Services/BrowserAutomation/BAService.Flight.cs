@@ -697,6 +697,8 @@ public sealed partial class BAService
 
     public async Task<List<FlightResultItem>> ReadFlightResultsAsync()
     {
+        await ScrollToLoadAllCardsAsync("#flight_card_list .flight-card", "Uçuş sonuçları");
+
         try
         {
             var items = await EvaluateJsonScriptAsync<List<FlightResultItem>>(

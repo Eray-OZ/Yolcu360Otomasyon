@@ -178,6 +178,8 @@ public sealed partial class BAService
 
     public async Task<List<SearchResultItem>> ReadSearchResultsAsync()
     {
+        await ScrollToLoadAllCardsAsync("#car_card_list .car-card", "Araç sonuçları");
+
         Report("Sonuç kartları okunuyor...");
 
         try
@@ -238,5 +240,92 @@ public sealed partial class BAService
             Report($"Sonuç okuma JSON hatası: {ex.Message}");
             return new List<SearchResultItem>();
         }
+    }
+
+    private async Task ScrollToLoadAllCardsAsync(string cardSelector, string listDescription)
+    {
+        Report($"{listDescription} taranıyor ve tüm sonuçlar yükleniyor...");
+
+        var lastCount = -1;
+        var unchangedCount = 0;
+        const int maxScrollSteps = 25;
+
+        for (var step = 0; step < maxScrollSteps; step++)
+        {
+            var cardCount = await EvaluateJsonScriptAsync<int>(
+                $$"""
+                (() => {
+                    const selector = {{JsonSerializer.Serialize(cardSelector)}};
+                    const isVisible = window.__ba?.isVisible || (() => false);
+                    const cards = Array.from(document.querySelectorAll(selector)).filter(isVisible);
+
+                    // 1. "Daha Fazla", "Daha Fazla Göster", "Tümünü Gör" vb. butonlar varsa tıkla
+                    const buttons = Array.from(document.querySelectorAll('button, a, div[role="button"], span'));
+                    for (const btn of buttons) {
+                        const text = (btn.textContent || '').toLocaleLowerCase('tr-TR').trim();
+                        if ((text.includes('daha fazla') || text.includes('daha çok') || text.includes('tümünü göster') || text.includes('fazla uçuş') || text.includes('fazla araç')) &&
+                            (btn.offsetWidth > 0 || btn.offsetHeight > 0)) {
+                            try {
+                                btn.click();
+                            } catch {}
+                        }
+                    }
+
+                    // 2. Sayfayı en alta kaydır
+                    window.scrollTo({
+                        top: Math.max(document.body.scrollHeight, document.documentElement.scrollHeight),
+                        behavior: 'smooth'
+                    });
+
+                    if (document.documentElement) {
+                        document.documentElement.scrollTop = document.documentElement.scrollHeight;
+                    }
+                    if (document.body) {
+                        document.body.scrollTop = document.body.scrollHeight;
+                    }
+
+                    // 3. Özel liste kapsayıcısı varsa kaydır
+                    const listContainer = document.querySelector('#flight_card_list') || document.querySelector('#car_card_list');
+                    if (listContainer) {
+                        let parent = listContainer.parentElement;
+                        while (parent && parent !== document.body) {
+                            if (parent.scrollHeight > parent.clientHeight) {
+                                parent.scrollTop = parent.scrollHeight;
+                            }
+                            parent = parent.parentElement;
+                        }
+                        try {
+                            listContainer.scrollIntoView({ block: 'end', inline: 'nearest' });
+                        } catch {}
+                    }
+
+                    return cards.length;
+                })();
+                """);
+
+            if (cardCount > 0)
+            {
+                Report($"{listDescription}: {cardCount} sonuç yüklendi...");
+            }
+
+            if (cardCount == lastCount && cardCount > 0)
+            {
+                unchangedCount++;
+                if (unchangedCount >= 2)
+                {
+                    break;
+                }
+            }
+            else
+            {
+                unchangedCount = 0;
+                lastCount = cardCount;
+            }
+
+            await Task.Delay(850);
+        }
+
+        await EvaluateScriptAsync("window.scrollTo({ top: 0, behavior: 'smooth' });");
+        await Task.Delay(250);
     }
 }

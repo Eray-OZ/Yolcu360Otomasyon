@@ -2038,46 +2038,15 @@
                                         <StackPanel x:Name="FlightCarRecDurationSelectorPanel"
                                                     Grid.Row="2"
                                                     IsVisible="False"
-                                                    Spacing="10"
+                                                    Spacing="8"
                                                     Margin="0,6,0,0">
                                             <TextBlock Text="Araç Teslim / Bırakış Tarihi:"
                                                        FontSize="12"
                                                        FontWeight="SemiBold"
                                                        Foreground="#64748B" />
-                                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="14" VerticalAlignment="Center">
-                                                <DatePicker x:Name="FlightCarRecReturnDatePicker"
-                                                            SelectedDateChanged="FlightCarRecReturnDatePicker_SelectedDateChanged" />
-                                                <StackPanel Grid.Column="1"
-                                                            Orientation="Horizontal"
-                                                            Spacing="6"
-                                                            VerticalAlignment="Center">
-                                                    <Button x:Name="FlightCarDuration1DayButton"
-                                                            Classes="btn-secondary btn-sm"
-                                                            Content="+1 Gün"
-                                                            Click="FlightCarDurationButton_Click"
-                                                            Tag="1" />
-                                                    <Button x:Name="FlightCarDuration2DaysButton"
-                                                            Classes="btn-secondary btn-sm"
-                                                            Content="+2 Gün"
-                                                            Click="FlightCarDurationButton_Click"
-                                                            Tag="2" />
-                                                    <Button x:Name="FlightCarDuration3DaysButton"
-                                                            Classes="primary btn-sm"
-                                                            Content="+3 Gün"
-                                                            Click="FlightCarDurationButton_Click"
-                                                            Tag="3" />
-                                                    <Button x:Name="FlightCarDuration5DaysButton"
-                                                            Classes="btn-secondary btn-sm"
-                                                            Content="+5 Gün"
-                                                            Click="FlightCarDurationButton_Click"
-                                                            Tag="5" />
-                                                    <Button x:Name="FlightCarDuration7DaysButton"
-                                                            Classes="btn-secondary btn-sm"
-                                                            Content="+7 Gün"
-                                                            Click="FlightCarDurationButton_Click"
-                                                            Tag="7" />
-                                                </StackPanel>
-                                            </Grid>
+                                            <DatePicker x:Name="FlightCarRecReturnDatePicker"
+                                                        HorizontalAlignment="Left"
+                                                        SelectedDateChanged="FlightCarRecReturnDatePicker_SelectedDateChanged" />
                                         </StackPanel>
                                     </Grid>
                                 </Border>
