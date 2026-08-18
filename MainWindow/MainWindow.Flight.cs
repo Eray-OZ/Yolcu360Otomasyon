@@ -442,7 +442,7 @@ public partial class MainWindow : Window
 
     private async void AcceptFlightCarRecommendationButton_Click(object? sender, RoutedEventArgs e)
     {
-        if (_lastPaidRoundTripFlight is null || _lastPaidDepartureDate is null || _lastPaidReturnDate is null)
+        if (_activeUser is null || _lastPaidRoundTripFlight is null || _lastPaidDepartureDate is null || _lastPaidReturnDate is null)
         {
             ShowPaymentsSection();
             await LoadPaymentsAsync();
@@ -456,15 +456,10 @@ public partial class MainWindow : Window
         var pickupTime = CalculatePickupTime(flight.ArrivalTime);
         var returnTime = "16:00";
 
-        PickupLocationTextBox.Text = destination;
-        PickupDatePicker.SelectedDate = departureDate;
-        ReturnDatePicker.SelectedDate = returnDate;
-        SetComboBoxSelectedTime(PickupTimeComboBox, pickupTime);
-        SetComboBoxSelectedTime(ReturnTimeComboBox, returnTime);
-        UpdateSearchDateTexts();
-
-        ShowSearchSection();
-        SearchStatusTextBlock.Text = $"{destination} için arka planda araçlar aranıyor...";
+        // UI Loading State
+        FlightCarRecContentPanel.IsVisible = false;
+        FlightCarRecLoadingPanel.IsVisible = true;
+        FlightCarRecLoadingStatusTextBlock.Text = $"{destination} için kiralık araçlar taranıyor ve koleksiyonunuz hazırlanıyor...";
 
         var filter = new SearchFilter
         {
@@ -477,29 +472,37 @@ public partial class MainWindow : Window
             FuelType = "Farketmez"
         };
 
-        _ = RunBackgroundCarSearchFromFlightAsync(filter);
+        _ = RunBackgroundCarSearchAndCreateCollectionAsync(flight, filter);
     }
 
     private async void DeclineFlightCarRecommendationButton_Click(object? sender, RoutedEventArgs e)
     {
+        FlightCarRecContentPanel.IsVisible = true;
+        FlightCarRecLoadingPanel.IsVisible = false;
         ShowPaymentsSection();
         await LoadPaymentsAsync();
         PaymentsStatusTextBlock.Text = "iyzico sandbox ödeme kaydı oluşturuldu.";
     }
 
-    private async Task RunBackgroundCarSearchFromFlightAsync(SearchFilter filter)
+    private async Task RunBackgroundCarSearchAndCreateCollectionAsync(FlightResultItem flight, SearchFilter filter)
     {
-        SearchButton.IsEnabled = false;
         try
         {
             KeepBrowserAliveOffscreen();
-            SearchStatusTextBlock.Text = $"{filter.PickupLocation} için arka planda araçlar aranıyor...";
 
             var baService = CreateBAService(attachProgress: false);
             if (_activeUser is not null && !string.IsNullOrWhiteSpace(_activeUser.SessionStatePath))
             {
                 await baService.RestoreSessionAsync(_activeUser.SessionStatePath);
             }
+
+            baService.ProgressChanged += message =>
+            {
+                Dispatcher.UIThread.Post(() =>
+                {
+                    FlightCarRecLoadingStatusTextBlock.Text = message;
+                });
+            };
 
             await baService.OpenYolcu360HomeAsync();
             await baService.FillPickupLocationAsync(filter.PickupLocation);
@@ -509,29 +512,68 @@ public partial class MainWindow : Window
             await baService.ClickSearchButtonAsync();
             await baService.WaitForSearchResultsAsync();
 
-            SearchStatusTextBlock.Text = "Arama sonuçları okunuyor...";
-            var results = await baService.ReadSearchResultsAsync();
-
-            _latestResults = results;
-
-            await Dispatcher.UIThread.InvokeAsync(() =>
+            Dispatcher.UIThread.Post(() =>
             {
-                ResultsDataGrid.ItemsSource = null;
-                ResultsDataGrid.ItemsSource = _latestResults;
-                SetSearchResultsPlaceholder(_latestResults.Count == 0 ? "Kiralık araç bulunamadı." : null);
+                FlightCarRecLoadingStatusTextBlock.Text = "Araç sonuçları okunuyor...";
             });
 
-            SearchStatusTextBlock.Text = _latestResults.Count == 0
-                ? "Araç araması tamamlandı, sonuç bulunamadı."
-                : $"{_latestResults.Count} araç bulundu ({filter.PickupLocation}).";
+            var results = await baService.ReadSearchResultsAsync();
+            _latestResults = results;
+
+            if (results.Count > 0 && _activeUser is not null)
+            {
+                Dispatcher.UIThread.Post(() =>
+                {
+                    FlightCarRecLoadingStatusTextBlock.Text = $"{results.Count} araç bulundu. Koleksiyon kaydediliyor...";
+                });
+
+                var collectionName = $"[Uçuş Önerisi] {flight.ToLocation} ({filter.PickupDate:dd.MM.yyyy} - {filter.ReturnDate:dd.MM.yyyy})";
+                var collectionId = await _databaseService.SaveCollectionAsync(_activeUser.Id, collectionName, filter, results);
+
+                await Dispatcher.UIThread.InvokeAsync(async () =>
+                {
+                    FlightCarRecContentPanel.IsVisible = true;
+                    FlightCarRecLoadingPanel.IsVisible = false;
+                    ShowHistorySection();
+                    await LoadHistoryAsync();
+
+                    var collections = (CollectionsDataGrid.ItemsSource as IEnumerable<KoleksiyonListItem>)?.ToList()
+                        ?? new List<KoleksiyonListItem>();
+                    var createdCollection = collections.FirstOrDefault(item => item.Id == collectionId);
+                    if (createdCollection is not null)
+                    {
+                        _selectedCollection = createdCollection;
+                        _selectedCollections = [createdCollection];
+                        CollectionsDataGrid.SelectedItem = createdCollection;
+                        await OpenSelectedCollectionVehiclesAsync();
+                        VehicleStatusTextBlock.Text = $"Uçuşunuza özel {collectionName} koleksiyonu oluşturuldu ve {results.Count} araç listelendi.";
+                    }
+                });
+            }
+            else
+            {
+                await Dispatcher.UIThread.InvokeAsync(async () =>
+                {
+                    FlightCarRecLoadingStatusTextBlock.Text = $"{filter.PickupLocation} için araç bulunamadı. Ödemeler sayfasına aktarılıyorsunuz...";
+                    await Task.Delay(1500);
+                    FlightCarRecContentPanel.IsVisible = true;
+                    FlightCarRecLoadingPanel.IsVisible = false;
+                    ShowPaymentsSection();
+                    await LoadPaymentsAsync();
+                });
+            }
         }
         catch (Exception ex)
         {
-            SearchStatusTextBlock.Text = $"Araç arama hatası: {ex.Message}";
-        }
-        finally
-        {
-            SearchButton.IsEnabled = true;
+            await Dispatcher.UIThread.InvokeAsync(async () =>
+            {
+                FlightCarRecLoadingStatusTextBlock.Text = $"Arama sırasında hata oluştu: {ex.Message}";
+                await Task.Delay(1800);
+                FlightCarRecContentPanel.IsVisible = true;
+                FlightCarRecLoadingPanel.IsVisible = false;
+                ShowPaymentsSection();
+                await LoadPaymentsAsync();
+            });
         }
     }
     // Extra - Flight Car Recommendation END

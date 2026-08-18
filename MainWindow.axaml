@@ -386,9 +386,10 @@
             <Setter Property="Foreground" Value="#132235" />
             <Setter Property="BorderBrush" Value="#D6DFEA" />
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="RowHeight" Value="46" />
             <Setter Property="HeadersVisibility" Value="Column" />
             <Setter Property="GridLinesVisibility" Value="Horizontal" />
+            <Setter Property="HorizontalScrollBarVisibility" Value="Auto" />
+            <Setter Property="VerticalScrollBarVisibility" Value="Auto" />
         </Style>
 
         <Style Selector="DataGridColumnHeader">
@@ -401,6 +402,7 @@
         <Style Selector="DataGridRow">
             <Setter Property="Background" Value="White" />
             <Setter Property="Foreground" Value="#132235" />
+            <Setter Property="MinHeight" Value="42" />
         </Style>
 
         <Style Selector="DataGridRow:pointerover">
@@ -412,7 +414,7 @@
             <Setter Property="Foreground" Value="#132235" />
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderBrush" Value="#E8EEF5" />
-            <Setter Property="Padding" Value="10,8" />
+            <Setter Property="Padding" Value="10,6" />
         </Style>
 
         <Style Selector="DataGridCell:current">
@@ -422,6 +424,8 @@
 
         <Style Selector="DataGridCell TextBlock">
             <Setter Property="Foreground" Value="#132235" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="VerticalAlignment" Value="Center" />
         </Style>
     </Window.Styles>
 
@@ -870,28 +874,29 @@
                                 BorderBrush="#D9E2EC"
                                 BorderThickness="1"
                                 CornerRadius="10"
-                                Padding="18">
+                                Padding="22">
                             <Grid RowDefinitions="Auto,Auto,*"
-                                  RowSpacing="14">
+                                  RowSpacing="16">
                                 <StackPanel Spacing="4">
                                     <TextBlock Text="Arama Sonuçları"
                                                FontSize="20"
                                                FontWeight="Bold"
                                                Foreground="#122033" />
-                                    <TextBlock Text="Liste doğrudan tarayıcıdan okunan sonuçlarla güncellenir."
+                                    <TextBlock Text="Aşağıdaki listeden araçları inceleyebilir, koleksiyonunuza kaydedebilirsiniz."
+                                               FontSize="13"
                                                Foreground="#5F7187" />
                                 </StackPanel>
 
                                 <Grid Grid.Row="1"
                                       ColumnDefinitions="*,Auto"
-                                      ColumnSpacing="10">
+                                      ColumnSpacing="10"
+                                      VerticalAlignment="Center">
                                     <TextBox x:Name="CollectionNameTextBox"
-                                             PlaceholderText="Kaydetmek için özel isim girin" />
+                                             PlaceholderText="Kaydetmek için bir koleksiyon adı girin (Örn: İzmir Seyahati)" />
                                     <Button Grid.Column="1"
                                             x:Name="SaveResultsButton"
-                                            Classes="primary"
-                                            Content="Kaydet"
-                                            Width="120"
+                                            Classes="primary btn-sm"
+                                            Content="Koleksiyonu Kaydet"
                                             Click="SaveResultsButton_Click" />
                                 </Grid>
 
@@ -902,25 +907,26 @@
                                         CornerRadius="10"
                                         Padding="0">
                                     <Grid>
-                                    <DataGrid x:Name="ResultsDataGrid"
-                                              AutoGenerateColumns="True"
-                                              IsReadOnly="True"
-                                              CanUserResizeColumns="True"
-                                              CanUserSortColumns="True"
-                                              HorizontalScrollBarVisibility="Auto"
-                                              VerticalScrollBarVisibility="Auto"
-                                              VerticalAlignment="Stretch"
-                                              HorizontalAlignment="Stretch"
-                                              MinHeight="520" />
-                                    <TextBlock x:Name="SearchResultsEmptyTextBlock"
-                                               Text="Sonuçları görmek için arama yapın."
-                                               IsVisible="False"
-                                               HorizontalAlignment="Center"
-                                               VerticalAlignment="Center"
-                                               TextAlignment="Center"
-                                               TextWrapping="Wrap"
-                                               Foreground="#5F7187"
-                                               FontWeight="SemiBold" />
+                                        <DataGrid x:Name="ResultsDataGrid"
+                                                  AutoGenerateColumns="False"
+                                                  IsReadOnly="True"
+                                                  CanUserResizeColumns="True"
+                                                  CanUserSortColumns="True"
+                                                  SelectionMode="Single"
+                                                  HorizontalScrollBarVisibility="Auto"
+                                                  VerticalScrollBarVisibility="Auto"
+                                                  VerticalAlignment="Stretch"
+                                                  HorizontalAlignment="Stretch"
+                                                  MinHeight="440" />
+                                        <TextBlock x:Name="SearchResultsEmptyTextBlock"
+                                                   Text="Sonuçları görmek için arama yapın."
+                                                   IsVisible="False"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center"
+                                                   TextAlignment="Center"
+                                                   TextWrapping="Wrap"
+                                                   Foreground="#5F7187"
+                                                   FontWeight="SemiBold" />
                                     </Grid>
                                 </Border>
                             </Grid>
@@ -1111,67 +1117,68 @@
                                         Width="160" />
                             </StackPanel>
 
-                            <Border Grid.Column="1"
+                                <Border Grid.Column="1"
                                     Background="White"
                                     BorderBrush="#D9E2EC"
                                     BorderThickness="1"
                                     CornerRadius="10"
-                                    Padding="18">
-                                <Grid RowDefinitions="Auto,*,Auto"
-                                      RowSpacing="14">
-                                    <StackPanel Spacing="4">
-                                        <TextBlock Text="Uçuş Sonuçları"
-                                                   FontSize="20"
-                                                   FontWeight="Bold"
-                                                   Foreground="#122033" />
-                                        <TextBlock Text="Liste doğrudan tarayıcıdan okunan uçuşlarla güncellenir."
-                                                   Foreground="#5F7187"
-                                                   TextWrapping="Wrap" />
-                                    </StackPanel>
+                                    Padding="22">
+                                 <Grid RowDefinitions="Auto,*,Auto"
+                                       RowSpacing="16">
+                                     <StackPanel Spacing="4">
+                                         <TextBlock Text="Uçuş Sonuçları"
+                                                    FontSize="20"
+                                                    FontWeight="Bold"
+                                                    Foreground="#122033" />
+                                         <TextBlock Text="Aşağıdaki listeden bir uçuş seçerek doğrudan ödeme yapabilirsiniz."
+                                                    FontSize="13"
+                                                    Foreground="#5F7187"
+                                                    TextWrapping="Wrap" />
+                                     </StackPanel>
 
-                                    <Border Grid.Row="1"
-                                            Background="#FBFDFF"
-                                            BorderBrush="#E2EAF2"
-                                            BorderThickness="1"
-                                            CornerRadius="10"
-                                            Padding="0">
-                                        <Grid>
-                                            <DataGrid x:Name="FlightResultsDataGrid"
-                                                      AutoGenerateColumns="False"
-                                                      IsReadOnly="True"
-                                                      CanUserResizeColumns="True"
-                                                      CanUserSortColumns="True"
-                                                      SelectionMode="Single"
-                                                      SelectionChanged="FlightResultsDataGrid_SelectionChanged"
-                                                      HorizontalScrollBarVisibility="Auto"
-                                                      VerticalScrollBarVisibility="Auto"
-                                                      VerticalAlignment="Stretch"
-                                                      HorizontalAlignment="Stretch"
-                                                      Height="510" />
-                                            <TextBlock x:Name="FlightResultsEmptyTextBlock"
-                                                       Text="Uçuş sonuçlarını görmek için arama yapın."
-                                                       IsVisible="True"
-                                                       HorizontalAlignment="Center"
-                                                       VerticalAlignment="Center"
-                                                       TextAlignment="Center"
-                                                       TextWrapping="Wrap"
-                                                       Foreground="#5F7187"
-                                                       FontWeight="SemiBold" />
-                                        </Grid>
-                                    </Border>
+                                     <Border Grid.Row="1"
+                                             Background="#FBFDFF"
+                                             BorderBrush="#E2EAF2"
+                                             BorderThickness="1"
+                                             CornerRadius="10"
+                                             Padding="0">
+                                         <Grid>
+                                             <DataGrid x:Name="FlightResultsDataGrid"
+                                                       AutoGenerateColumns="False"
+                                                       IsReadOnly="True"
+                                                       CanUserResizeColumns="True"
+                                                       CanUserSortColumns="True"
+                                                       SelectionMode="Single"
+                                                       SelectionChanged="FlightResultsDataGrid_SelectionChanged"
+                                                       HorizontalScrollBarVisibility="Auto"
+                                                       VerticalScrollBarVisibility="Auto"
+                                                       VerticalAlignment="Stretch"
+                                                       HorizontalAlignment="Stretch"
+                                                       MinHeight="440" />
+                                             <TextBlock x:Name="FlightResultsEmptyTextBlock"
+                                                        Text="Uçuş sonuçlarını görmek için arama yapın."
+                                                        IsVisible="True"
+                                                        HorizontalAlignment="Center"
+                                                        VerticalAlignment="Center"
+                                                        TextAlignment="Center"
+                                                        TextWrapping="Wrap"
+                                                        Foreground="#5F7187"
+                                                        FontWeight="SemiBold" />
+                                         </Grid>
+                                     </Border>
 
-                                    <!-- UÇUŞ İŞLEMLERİ TOOLBAR -->
-                                    <StackPanel Grid.Row="2"
-                                                Orientation="Horizontal"
-                                                Spacing="10">
-                                        <Button x:Name="FlightCreatePaymentButton"
-                                                Classes="primary btn-sm"
-                                                Content="Seçilen Uçuş İçin Ödeme"
-                                                IsEnabled="False"
-                                                Click="FlightCreatePaymentButton_Click" />
-                                    </StackPanel>
-                                </Grid>
-                            </Border>
+                                     <!-- UÇUŞ İŞLEMLERİ TOOLBAR -->
+                                     <StackPanel Grid.Row="2"
+                                                 Orientation="Horizontal"
+                                                 Spacing="10">
+                                         <Button x:Name="FlightCreatePaymentButton"
+                                                 Classes="primary btn-sm"
+                                                 Content="Seçilen Uçuş İçin Ödeme"
+                                                 IsEnabled="False"
+                                                 Click="FlightCreatePaymentButton_Click" />
+                                     </StackPanel>
+                                 </Grid>
+                             </Border>
                         </Grid>
                     </Border>
 
@@ -1829,101 +1836,150 @@
                             MaxWidth="760"
                             HorizontalAlignment="Center"
                             VerticalAlignment="Center">
-                        <StackPanel Spacing="24">
-                            <!-- BAŞARI İKONU & BAŞLIK -->
-                            <StackPanel Spacing="10" HorizontalAlignment="Center">
-                                <Border Background="#ECFDF5"
-                                        BorderBrush="#A7F3D0"
+                        <Grid>
+                            <!-- ÖNERİ İÇERİK PANELİ -->
+                            <StackPanel x:Name="FlightCarRecContentPanel"
+                                        IsVisible="True"
+                                        Spacing="24">
+                                <!-- BAŞARI İKONU & BAŞLIK -->
+                                <StackPanel Spacing="10" HorizontalAlignment="Center">
+                                    <Border Background="#ECFDF5"
+                                            BorderBrush="#A7F3D0"
+                                            BorderThickness="1"
+                                            CornerRadius="24"
+                                            Padding="14,6"
+                                            HorizontalAlignment="Center">
+                                        <TextBlock Text="✓ Uçak Bileti Ödemesi Başarılı"
+                                                   Foreground="#047857"
+                                                   FontSize="13"
+                                                   FontWeight="Bold" />
+                                    </Border>
+
+                                    <TextBlock Text="Biletiniz Başarıyla Alındı!"
+                                               FontSize="24"
+                                               FontWeight="Bold"
+                                               Foreground="#122033"
+                                               HorizontalAlignment="Center" />
+
+                                    <TextBlock Text="Seyahatiniz için iniş noktanızda konforlu bir kiralık araç bulmak ister misiniz?"
+                                               FontSize="14"
+                                               Foreground="#5F7187"
+                                               HorizontalAlignment="Center"
+                                               TextAlignment="Center" />
+                                </StackPanel>
+
+                                <!-- SEYAHAT BİLGİ KARTI -->
+                                <Border Background="#F8FAFC"
+                                        BorderBrush="#E2E8F0"
                                         BorderThickness="1"
-                                        CornerRadius="24"
-                                        Padding="14,6"
-                                        HorizontalAlignment="Center">
-                                    <TextBlock Text="✓ Uçak Bileti Ödemesi Başarılı"
-                                               Foreground="#047857"
-                                               FontSize="13"
-                                               FontWeight="Bold" />
+                                        CornerRadius="10"
+                                        Padding="20">
+                                    <Grid RowDefinitions="Auto,Auto" RowSpacing="14">
+                                        <StackPanel Spacing="4">
+                                            <TextBlock Text="Varış &amp; Araç Alış Yeri"
+                                                       FontSize="12"
+                                                       FontWeight="SemiBold"
+                                                       Foreground="#64748B" />
+                                            <TextBlock x:Name="FlightCarRecLocationTextBlock"
+                                                       Text="-"
+                                                       FontSize="16"
+                                                       FontWeight="Bold"
+                                                       Foreground="#0F172A" />
+                                        </StackPanel>
+
+                                        <Grid Grid.Row="1" ColumnDefinitions="*,*" ColumnSpacing="20">
+                                            <StackPanel Spacing="4">
+                                                <TextBlock Text="Araç Alış Tarihi &amp; Saati"
+                                                           FontSize="12"
+                                                           FontWeight="SemiBold"
+                                                           Foreground="#64748B" />
+                                                <TextBlock x:Name="FlightCarRecPickupTextBlock"
+                                                           Text="-"
+                                                           FontSize="14"
+                                                           FontWeight="SemiBold"
+                                                           Foreground="#1E293B" />
+                                                <TextBlock Text="(İnişten 30 dk sonra teslim)"
+                                                           FontSize="11"
+                                                           Foreground="#94A3B8" />
+                                            </StackPanel>
+
+                                            <StackPanel Grid.Column="1" Spacing="4">
+                                                <TextBlock Text="Araç Bırakış Tarihi &amp; Saati"
+                                                           FontSize="12"
+                                                           FontWeight="SemiBold"
+                                                           Foreground="#64748B" />
+                                                <TextBlock x:Name="FlightCarRecReturnTextBlock"
+                                                           Text="-"
+                                                           FontSize="14"
+                                                           FontWeight="SemiBold"
+                                                           Foreground="#1E293B" />
+                                                <TextBlock Text="(Dönüşten önce teslim)"
+                                                           FontSize="11"
+                                                           Foreground="#94A3B8" />
+                                            </StackPanel>
+                                        </Grid>
+                                    </Grid>
                                 </Border>
 
-                                <TextBlock Text="Biletiniz Başarıyla Alındı!"
-                                           FontSize="24"
-                                           FontWeight="Bold"
-                                           Foreground="#122033"
-                                           HorizontalAlignment="Center" />
-
-                                <TextBlock Text="Seyahatiniz için iniş noktanızda konforlu bir kiralık araç bulmak ister misiniz?"
-                                           FontSize="14"
-                                           Foreground="#5F7187"
-                                           HorizontalAlignment="Center"
-                                           TextAlignment="Center" />
+                                <!-- AKSİYON BUTONLARI -->
+                                <StackPanel Orientation="Horizontal"
+                                            HorizontalAlignment="Center"
+                                            Spacing="14">
+                                    <Button x:Name="AcceptFlightCarRecommendationButton"
+                                            Classes="primary btn-sm"
+                                            Content="Evet, Uygun Araçları Bul"
+                                            Click="AcceptFlightCarRecommendationButton_Click" />
+                                    <Button x:Name="DeclineFlightCarRecommendationButton"
+                                            Classes="btn-secondary btn-sm"
+                                            Content="Hayır"
+                                            Click="DeclineFlightCarRecommendationButton_Click" />
+                                </StackPanel>
                             </StackPanel>
 
-                            <!-- SEYAHAT BİLGİ KARTI -->
-                            <Border Background="#F8FAFC"
-                                    BorderBrush="#E2E8F0"
-                                    BorderThickness="1"
-                                    CornerRadius="10"
-                                    Padding="20">
-                                <Grid RowDefinitions="Auto,Auto" RowSpacing="14">
-                                    <StackPanel Spacing="4">
-                                        <TextBlock Text="Varış &amp; Araç Alış Yeri"
-                                                   FontSize="12"
-                                                   FontWeight="SemiBold"
-                                                   Foreground="#64748B" />
-                                        <TextBlock x:Name="FlightCarRecLocationTextBlock"
-                                                   Text="-"
-                                                   FontSize="16"
-                                                   FontWeight="Bold"
-                                                   Foreground="#0F172A" />
-                                    </StackPanel>
-
-                                    <Grid Grid.Row="1" ColumnDefinitions="*,*" ColumnSpacing="20">
-                                        <StackPanel Spacing="4">
-                                            <TextBlock Text="Araç Alış Tarihi &amp; Saati"
-                                                       FontSize="12"
-                                                       FontWeight="SemiBold"
-                                                       Foreground="#64748B" />
-                                            <TextBlock x:Name="FlightCarRecPickupTextBlock"
-                                                       Text="-"
-                                                       FontSize="14"
-                                                       FontWeight="SemiBold"
-                                                       Foreground="#1E293B" />
-                                            <TextBlock Text="(İnişten 30 dk sonra teslim)"
-                                                       FontSize="11"
-                                                       Foreground="#94A3B8" />
-                                        </StackPanel>
-
-                                        <StackPanel Grid.Column="1" Spacing="4">
-                                            <TextBlock Text="Araç Bırakış Tarihi &amp; Saati"
-                                                       FontSize="12"
-                                                       FontWeight="SemiBold"
-                                                       Foreground="#64748B" />
-                                            <TextBlock x:Name="FlightCarRecReturnTextBlock"
-                                                       Text="-"
-                                                       FontSize="14"
-                                                       FontWeight="SemiBold"
-                                                       Foreground="#1E293B" />
-                                            <TextBlock Text="(Dönüşten önce teslim)"
-                                                       FontSize="11"
-                                                       Foreground="#94A3B8" />
-                                        </StackPanel>
-                                    </Grid>
-                                </Grid>
-                            </Border>
-
-                            <!-- AKSİYON BUTONLARI -->
-                            <StackPanel Orientation="Horizontal"
+                            <!-- YÜKLENİYOR / ARAMA PANELİ -->
+                            <StackPanel x:Name="FlightCarRecLoadingPanel"
+                                        IsVisible="False"
+                                        Spacing="20"
                                         HorizontalAlignment="Center"
-                                        Spacing="14">
-                                <Button x:Name="AcceptFlightCarRecommendationButton"
-                                        Classes="primary btn-sm"
-                                        Content="Evet, Uygun Araçları Bul"
-                                        Click="AcceptFlightCarRecommendationButton_Click" />
-                                <Button x:Name="DeclineFlightCarRecommendationButton"
-                                        Classes="btn-secondary btn-sm"
-                                        Content="Hayır, Ödemelere Geç"
-                                        Click="DeclineFlightCarRecommendationButton_Click" />
+                                        VerticalAlignment="Center"
+                                        Margin="0,20">
+                                <Border Background="#EFF6FF"
+                                        BorderBrush="#BFDBFE"
+                                        BorderThickness="1"
+                                        CornerRadius="50"
+                                        Width="64"
+                                        Height="64"
+                                        HorizontalAlignment="Center">
+                                    <TextBlock Text="🚗"
+                                               FontSize="28"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center" />
+                                </Border>
+
+                                <StackPanel Spacing="8" HorizontalAlignment="Center">
+                                    <TextBlock Text="En Uygun Araçlar Bulunuyor..."
+                                               FontSize="20"
+                                               FontWeight="Bold"
+                                               Foreground="#122033"
+                                               HorizontalAlignment="Center" />
+                                    <TextBlock x:Name="FlightCarRecLoadingStatusTextBlock"
+                                               Text="Uçuş lokasyonunuz için kiralık araçlar taranıyor ve koleksiyonunuz hazırlanıyor..."
+                                               FontSize="14"
+                                               Foreground="#5F7187"
+                                               HorizontalAlignment="Center"
+                                               TextAlignment="Center"
+                                               TextWrapping="Wrap"
+                                               MaxWidth="480" />
+                                </StackPanel>
+
+                                <ProgressBar IsIndeterminate="True"
+                                             Width="300"
+                                             Height="6"
+                                             CornerRadius="3"
+                                             Foreground="#0F62FE"
+                                             HorizontalAlignment="Center" />
                             </StackPanel>
-                        </StackPanel>
+                        </Grid>
                     </Border>
                     <!-- Extra - Flight Car Recommendation END -->
                 </Grid>
