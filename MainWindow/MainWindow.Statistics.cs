@@ -39,8 +39,10 @@ public partial class MainWindow : Window
 
     private void ConfigureStatisticsGrids()
     {
-        ConfigureStatisticsGrid(StatisticsVehiclesDataGrid, "Araç", "Kiralama sayısı");
-        ConfigureStatisticsGrid(StatisticsCitiesDataGrid, "Şehir", "Kiralama sayısı");
+        ConfigureStatisticsGrid(StatisticsVehiclesDataGrid, "Araç Modeli", "Kayıt / İşlem");
+        ConfigureStatisticsGrid(StatisticsCitiesDataGrid, "Lokasyon / Şehir", "Kayıt Sayısı");
+        ConfigureStatisticsGrid(StatisticsSuppliersDataGrid, "Tedarikçi Firma", "Araç Sayısı");
+        ConfigureStatisticsGrid(StatisticsTransmissionDataGrid, "Vites Tipi", "Araç Sayısı");
     }
 
     private static void ConfigureStatisticsGrid(DataGrid grid, string nameHeader, string countHeader)
@@ -57,7 +59,7 @@ public partial class MainWindow : Window
         {
             Header = countHeader,
             Binding = new Binding(nameof(IstatistikSatir.Sayi)),
-            Width = new DataGridLength(90)
+            Width = new DataGridLength(110)
         });
     }
 
@@ -70,14 +72,25 @@ public partial class MainWindow : Window
         {
             var summary = await _statisticsService.GetSummaryAsync(_activeUser.Id);
 
+            // 1. Genel Metrikler
             StatisticsCollectionsTextBlock.Text = summary.KoleksiyonSayisi.ToString();
             StatisticsVehiclesTextBlock.Text = summary.AracSayisi.ToString();
-            StatisticsPaymentsTextBlock.Text = summary.OdemeSayisi.ToString();
             StatisticsTotalPaymentTextBlock.Text = $"{summary.ToplamOdeme:N2} TL";
+            StatisticsPaymentsTextBlock.Text = summary.OdemeSayisi.ToString();
+            StatisticsPaymentsBreakdownTextBlock.Text = $"({summary.AracOdemeSayisi} Araç / {summary.UcakOdemeSayisi} Uçak)";
+
+            // 2. Fiyat & Harcama Analizi
             StatisticsHighestPaymentTextBlock.Text = $"{summary.EnYuksekKiralama:N2} TL";
             StatisticsLowestPaymentTextBlock.Text = $"{summary.EnDusukKiralama:N2} TL";
+            StatisticsAvgPaymentTextBlock.Text = $"{summary.OrtalamaOdeme:N2} TL";
+            StatisticsAvgVehiclePriceTextBlock.Text = $"{summary.OrtalamaAracFiyati:N2} TL";
+            StatisticsVehiclePriceRangeTextBlock.Text = $"Min: {summary.EnDusukAracFiyati:N0} TL - Max: {summary.EnYuksekAracFiyati:N0} TL";
+
+            // 3. Tablo ve Listeler
             StatisticsVehiclesDataGrid.ItemsSource = summary.EnCokKiralananAraclar;
             StatisticsCitiesDataGrid.ItemsSource = summary.EnCokKiralananSehirler;
+            StatisticsSuppliersDataGrid.ItemsSource = summary.EnCokTedarikciler;
+            StatisticsTransmissionDataGrid.ItemsSource = summary.VitesDagitimi;
         }
         catch
         {

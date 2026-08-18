@@ -34,14 +34,34 @@ public sealed class StatisticsService
             .Where(item => IsSuccessfulPayment(item.Durum))
             .ToList();
 
+        var allVehicles = collections.SelectMany(item => item.Araclar).ToList();
+        var vehiclePrices = allVehicles
+            .Select(v => DatabaseService.ParseCurrency(v.Fiyat))
+            .Where(p => p > 0)
+            .ToList();
+
+        var carPayments = payments.Where(p => p.KoleksiyonId != null || !p.KoleksiyonAdi.StartsWith("[Uçak Bileti]", StringComparison.OrdinalIgnoreCase)).ToList();
+        var flightPayments = payments.Where(p => p.KoleksiyonId == null && p.KoleksiyonAdi.StartsWith("[Uçak Bileti]", StringComparison.OrdinalIgnoreCase)).ToList();
+
+        var totalPayment = payments.Sum(item => item.Tutar);
+        var totalCount = payments.Count;
+
         return new IstatistikOzet
         {
             KoleksiyonSayisi = collections.Count,
-            AracSayisi = collections.Sum(item => item.Araclar.Count),
-            OdemeSayisi = payments.Count,
-            ToplamOdeme = payments.Sum(item => item.Tutar),
-            EnYuksekKiralama = payments.Count == 0 ? 0m : payments.Max(item => item.Tutar),
-            EnDusukKiralama = payments.Count == 0 ? 0m : payments.Min(item => item.Tutar),
+            AracSayisi = allVehicles.Count,
+            OdemeSayisi = totalCount,
+            ToplamOdeme = totalPayment,
+            AracOdemeSayisi = carPayments.Count,
+            AracToplamOdeme = carPayments.Sum(p => p.Tutar),
+            UcakOdemeSayisi = flightPayments.Count,
+            UcakToplamOdeme = flightPayments.Sum(p => p.Tutar),
+            OrtalamaOdeme = totalCount == 0 ? 0m : Math.Round(totalPayment / totalCount, 2),
+            EnYuksekKiralama = totalCount == 0 ? 0m : payments.Max(item => item.Tutar),
+            EnDusukKiralama = totalCount == 0 ? 0m : payments.Min(item => item.Tutar),
+            EnDusukAracFiyati = vehiclePrices.Count == 0 ? 0m : vehiclePrices.Min(),
+            EnYuksekAracFiyati = vehiclePrices.Count == 0 ? 0m : vehiclePrices.Max(),
+            OrtalamaAracFiyati = vehiclePrices.Count == 0 ? 0m : Math.Round(vehiclePrices.Average(), 2),
             EnCokKiralananAraclar = payments
                 .Select(item => ExtractVehicleName(item.KoleksiyonAdi))
                 .Where(item => !string.IsNullOrWhiteSpace(item))
@@ -59,6 +79,22 @@ public sealed class StatisticsService
                 .ThenBy(group => group.Key)
                 .Take(5)
                 .Select(group => new IstatistikSatir { Ad = group.First(), Sayi = group.Count() })
+                .ToList(),
+            EnCokTedarikciler = allVehicles
+                .Where(v => !string.IsNullOrWhiteSpace(v.Sirket))
+                .GroupBy(v => v.Sirket.Trim(), StringComparer.OrdinalIgnoreCase)
+                .OrderByDescending(group => group.Count())
+                .ThenBy(group => group.Key)
+                .Take(5)
+                .Select(group => new IstatistikSatir { Ad = group.Key, Sayi = group.Count() })
+                .ToList(),
+            VitesDagitimi = allVehicles
+                .Where(v => !string.IsNullOrWhiteSpace(v.Vites))
+                .GroupBy(v => v.Vites.Trim(), StringComparer.OrdinalIgnoreCase)
+                .OrderByDescending(group => group.Count())
+                .ThenBy(group => group.Key)
+                .Take(5)
+                .Select(group => new IstatistikSatir { Ad = group.Key, Sayi = group.Count() })
                 .ToList()
         };
     }
