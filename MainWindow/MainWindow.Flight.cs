@@ -21,11 +21,29 @@ public partial class MainWindow : Window
         e.Handled = true;
     }
 
+    private void FlightRoundTripCheckBox_IsCheckedChanged(object? sender, RoutedEventArgs e)
+    {
+        var isRoundTrip = FlightRoundTripCheckBox.IsChecked == true;
+        FlightReturnDateContainer.IsVisible = isRoundTrip;
+
+        if (isRoundTrip)
+        {
+            if (FlightReturnDatePicker.SelectedDate is null)
+            {
+                var depDate = FlightDepartureDatePicker.SelectedDate ?? DateTime.Today.AddDays(7);
+                FlightReturnDatePicker.SelectedDate = depDate.AddDays(3);
+            }
+        }
+        else
+        {
+            FlightReturnDatePicker.SelectedDate = null;
+        }
+
+        UpdateFlightDateTexts();
+    }
+
     private void FlightDatePicker_SelectedDateChanged(object? sender, SelectionChangedEventArgs e)
     {
-        if (sender == FlightReturnDatePicker && FlightReturnDatePicker.SelectedDate is not null)
-            FlightRoundTripCheckBox.IsChecked = true;
-
         UpdateFlightDateTexts();
     }
 

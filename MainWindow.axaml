@@ -182,9 +182,11 @@
 
         <Style Selector="Button">
             <Setter Property="MinHeight" Value="42" />
-            <Setter Property="Padding" Value="18,10" />
+            <Setter Property="Padding" Value="18,0" />
             <Setter Property="CornerRadius" Value="10" />
             <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
         </Style>
 
         <Style Selector="Button.primary">
@@ -218,6 +220,8 @@
 
         <Style Selector="Button.primary /template/ ContentPresenter">
             <Setter Property="TextElement.Foreground" Value="White" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
         </Style>
 
         <Style Selector="Button.primary /template/ Border">
@@ -262,6 +266,8 @@
 
         <Style Selector="Button.danger /template/ ContentPresenter">
             <Setter Property="TextElement.Foreground" Value="White" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
         </Style>
 
         <Style Selector="Button.danger /template/ Border">
@@ -280,6 +286,99 @@
             <Setter Property="Background" Value="#991B1B" />
             <Setter Property="BorderBrush" Value="#991B1B" />
             <Setter Property="Opacity" Value="1" />
+        </Style>
+
+        <Style Selector="Button.btn-sm">
+            <Setter Property="MinHeight" Value="34" />
+            <Setter Property="Height" Value="34" />
+            <Setter Property="Padding" Value="14,0" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontWeight" Value="Medium" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+        </Style>
+
+        <Style Selector="Button.btn-secondary">
+            <Setter Property="Background" Value="#F8FAFC" />
+            <Setter Property="Foreground" Value="#334155" />
+            <Setter Property="BorderBrush" Value="#CBD5E1" />
+            <Setter Property="BorderThickness" Value="1" />
+        </Style>
+
+        <Style Selector="Button.btn-secondary:pointerover">
+            <Setter Property="Background" Value="#EDF2F7" />
+            <Setter Property="Foreground" Value="#0F172A" />
+            <Setter Property="BorderBrush" Value="#94A3B8" />
+        </Style>
+
+        <Style Selector="Button.btn-secondary:pressed">
+            <Setter Property="Background" Value="#E2E8F0" />
+            <Setter Property="Foreground" Value="#0F172A" />
+        </Style>
+
+        <Style Selector="Button.btn-secondary /template/ ContentPresenter">
+            <Setter Property="TextElement.Foreground" Value="#334155" />
+        </Style>
+
+        <Style Selector="Button.btn-secondary:pointerover /template/ ContentPresenter">
+            <Setter Property="TextElement.Foreground" Value="#0F172A" />
+        </Style>
+
+        <Style Selector="Button.btn-secondary /template/ Border">
+            <Setter Property="Background" Value="#F8FAFC" />
+            <Setter Property="BorderBrush" Value="#CBD5E1" />
+        </Style>
+
+        <Style Selector="Button.btn-secondary:pointerover /template/ Border">
+            <Setter Property="Background" Value="#EDF2F7" />
+            <Setter Property="BorderBrush" Value="#94A3B8" />
+        </Style>
+
+        <Style Selector="Button.btn-secondary:pressed /template/ Border">
+            <Setter Property="Background" Value="#E2E8F0" />
+            <Setter Property="BorderBrush" Value="#94A3B8" />
+        </Style>
+
+        <Style Selector="Button.btn-danger-subtle">
+            <Setter Property="Background" Value="#FEF2F2" />
+            <Setter Property="Foreground" Value="#DC2626" />
+            <Setter Property="BorderBrush" Value="#FECACA" />
+            <Setter Property="BorderThickness" Value="1" />
+        </Style>
+
+        <Style Selector="Button.btn-danger-subtle:pointerover">
+            <Setter Property="Background" Value="#FEE2E2" />
+            <Setter Property="Foreground" Value="#B91C1C" />
+            <Setter Property="BorderBrush" Value="#FCA5A5" />
+        </Style>
+
+        <Style Selector="Button.btn-danger-subtle:pressed">
+            <Setter Property="Background" Value="#FECACA" />
+            <Setter Property="Foreground" Value="#991B1B" />
+        </Style>
+
+        <Style Selector="Button.btn-danger-subtle /template/ ContentPresenter">
+            <Setter Property="TextElement.Foreground" Value="#DC2626" />
+        </Style>
+
+        <Style Selector="Button.btn-danger-subtle:pointerover /template/ ContentPresenter">
+            <Setter Property="TextElement.Foreground" Value="#B91C1C" />
+        </Style>
+
+        <Style Selector="Button.btn-danger-subtle /template/ Border">
+            <Setter Property="Background" Value="#FEF2F2" />
+            <Setter Property="BorderBrush" Value="#FECACA" />
+        </Style>
+
+        <Style Selector="Button.btn-danger-subtle:pointerover /template/ Border">
+            <Setter Property="Background" Value="#FEE2E2" />
+            <Setter Property="BorderBrush" Value="#FCA5A5" />
+        </Style>
+
+        <Style Selector="Button.btn-danger-subtle:pressed /template/ Border">
+            <Setter Property="Background" Value="#FECACA" />
+            <Setter Property="BorderBrush" Value="#FCA5A5" />
         </Style>
 
         <Style Selector="DataGrid">
@@ -930,16 +1029,17 @@
                                     </Border>
                                 </StackPanel>
 
-                                <Grid ColumnDefinitions="*,*"
+                                <Grid ColumnDefinitions="Auto,Auto"
                                       ColumnSpacing="14">
                                     <StackPanel Spacing="6">
                                         <TextBlock Text="Gidiş tarihi"
                                                    Foreground="#243446"
                                                    FontWeight="SemiBold" />
-                                        <Grid>
+                                        <Grid HorizontalAlignment="Left">
                                             <Border x:Name="FlightDepartureDateBox"
                                                     Width="142"
                                                     Height="38"
+                                                    HorizontalAlignment="Left"
                                                     Background="White"
                                                     BorderBrush="#D6DFEA"
                                                     BorderThickness="1"
@@ -961,15 +1061,18 @@
                                         </Grid>
                                     </StackPanel>
 
-                                    <StackPanel Grid.Column="1"
-                                                Spacing="6">
+                                    <StackPanel x:Name="FlightReturnDateContainer"
+                                                Grid.Column="1"
+                                                Spacing="6"
+                                                IsVisible="False">
                                         <TextBlock Text="Dönüş tarihi"
                                                    Foreground="#243446"
                                                    FontWeight="SemiBold" />
-                                        <Grid>
+                                        <Grid HorizontalAlignment="Left">
                                             <Border x:Name="FlightReturnDateBox"
                                                     Width="142"
                                                     Height="38"
+                                                    HorizontalAlignment="Left"
                                                     Background="White"
                                                     BorderBrush="#D6DFEA"
                                                     BorderThickness="1"
@@ -995,7 +1098,8 @@
                                 <StackPanel Orientation="Horizontal"
                                             Spacing="16">
                                     <CheckBox x:Name="FlightRoundTripCheckBox"
-                                              Content="Gidiş-Dönüş" />
+                                              Content="Gidiş-Dönüş"
+                                              IsCheckedChanged="FlightRoundTripCheckBox_IsCheckedChanged" />
                                     <CheckBox x:Name="FlightOnlyNonStopCheckBox"
                                               Content="Sadece aktarmasız uçuşlar" />
                                 </StackPanel>
@@ -1105,24 +1209,77 @@
                             <!-- KOLEKSİYONLAR LİSTESİ GÖRÜNÜMÜ -->
                             <Grid x:Name="CollectionsViewPanel"
                                   IsVisible="True"
-                                  RowDefinitions="Auto,Auto,*,Auto,Auto"
-                                  RowSpacing="16">
+                                  RowDefinitions="Auto,Auto,Auto,*"
+                                  RowSpacing="14">
                                 <StackPanel Spacing="4">
                                     <TextBlock Text="Geçmiş Kayıtlar ve Koleksiyonlar"
-                                               FontSize="22"
+                                               FontSize="20"
                                                FontWeight="Bold"
                                                Foreground="#122033" />
                                     <TextBlock Text="Kaydedilen arama listelerinizi inceleyin, araçlarını görüntüleyin veya dışa aktarın."
+                                               FontSize="13"
                                                Foreground="#5F7187" />
                                 </StackPanel>
 
                                 <TextBlock x:Name="HistoryStatusTextBlock"
                                            Grid.Row="1"
                                            Foreground="#132235"
+                                           FontSize="13"
                                            FontWeight="SemiBold"
                                            TextWrapping="Wrap" />
 
-                                <Border Grid.Row="2"
+                                <!-- MODERN TOOLBAR -->
+                                <Grid Grid.Row="2"
+                                      ColumnDefinitions="Auto,*,Auto"
+                                      VerticalAlignment="Center">
+                                    <!-- SOL GRUP: ANA İŞLEMLER -->
+                                    <StackPanel Orientation="Horizontal"
+                                                Spacing="8">
+                                        <Button x:Name="ViewVehiclesButton"
+                                                Classes="primary btn-sm"
+                                                Content="Araçları Göster"
+                                                Click="ViewVehiclesButton_Click" />
+                                        <!-- Extra - Dynamic Collections START -->
+                                        <Button x:Name="RefreshCollectionButton"
+                                                Classes="btn-secondary btn-sm"
+                                                Content="Güncelle"
+                                                Click="RefreshSelectedCollectionButton_Click" />
+                                        <!-- Extra - Dynamic Collections END -->
+                                        <Button x:Name="DeleteCollectionButton"
+                                                Classes="btn-danger-subtle btn-sm"
+                                                Content="Sil"
+                                                Click="DeleteCollectionButton_Click" />
+                                    </StackPanel>
+
+                                    <!-- SAĞ GRUP: DIŞA AKTAR -->
+                                    <StackPanel Grid.Column="2"
+                                                Orientation="Horizontal"
+                                                Spacing="6"
+                                                VerticalAlignment="Center">
+                                        <TextBlock Text="Dışa Aktar:"
+                                                   VerticalAlignment="Center"
+                                                   FontSize="12"
+                                                   FontWeight="SemiBold"
+                                                   Foreground="#64748B"
+                                                   Margin="0,0,4,0" />
+                                        <Button x:Name="ExportPngButton"
+                                                Classes="btn-secondary btn-sm"
+                                                Content="PNG"
+                                                Click="ExportPngButton_Click" />
+                                        <!-- Extra - Collection Export START -->
+                                        <Button x:Name="ExportCsvButton"
+                                                Classes="btn-secondary btn-sm"
+                                                Content="CSV"
+                                                Click="ExportCsvButton_Click" />
+                                        <Button x:Name="ExportExcelButton"
+                                                Classes="btn-secondary btn-sm"
+                                                Content="Excel"
+                                                Click="ExportExcelButton_Click" />
+                                        <!-- Extra - Collection Export END -->
+                                    </StackPanel>
+                                </Grid>
+
+                                <Border Grid.Row="3"
                                         Background="#FBFDFF"
                                         BorderBrush="#E2EAF2"
                                         BorderThickness="1"
@@ -1136,157 +1293,89 @@
                                               SelectionMode="Extended"
                                               SelectionChanged="CollectionsDataGrid_SelectionChanged"
                                               DoubleTapped="CollectionsDataGrid_DoubleTapped"
-                                              Height="360" />
-                                </Border>
-
-                                <StackPanel Grid.Row="3"
-                                            Orientation="Horizontal"
-                                            Spacing="12">
-                                    <Button x:Name="ViewVehiclesButton"
-                                            Classes="primary"
-                                            Content="Araçları Göster"
-                                            Width="160"
-                                            Click="ViewVehiclesButton_Click" />
-                                    <!-- Extra - Dynamic Collections START -->
-                                    <Button x:Name="RefreshCollectionButton"
-                                            Content="Güncelle"
-                                            Width="130"
-                                            Click="RefreshSelectedCollectionButton_Click" />
-                                    <!-- Extra - Dynamic Collections END -->
-                                    <Button x:Name="DeleteCollectionButton"
-                                            Content="Sil"
-                                            Width="120"
-                                            Click="DeleteCollectionButton_Click" />
-                                    <Button x:Name="ExportPngButton"
-                                            Classes="primary"
-                                            Content="PNG Olarak İndir"
-                                            Width="180"
-                                            Click="ExportPngButton_Click" />
-                                    <!-- Extra - Collection Export START -->
-                                    <Button x:Name="ExportCsvButton"
-                                            Content="CSV İndir"
-                                            Width="120"
-                                            Click="ExportCsvButton_Click" />
-                                    <Button x:Name="ExportExcelButton"
-                                            Content="Excel İndir"
-                                            Width="130"
-                                            Click="ExportExcelButton_Click" />
-                                    <!-- Extra - Collection Export END -->
-                                </StackPanel>
-
-                                <Border Grid.Row="4"
-                                        Background="#F7FAFE"
-                                        BorderBrush="#DCE6F2"
-                                        BorderThickness="1"
-                                        CornerRadius="10"
-                                        Padding="18">
-                                    <Grid ColumnDefinitions="*,*"
-                                          RowDefinitions="Auto,Auto,Auto"
-                                          ColumnSpacing="18"
-                                          RowSpacing="10">
-                                        <StackPanel Spacing="4">
-                                            <TextBlock Text="Seçili Kayıt"
-                                                       FontWeight="Bold"
-                                                       Foreground="#122033" />
-                                            <TextBlock x:Name="SelectedCollectionNameTextBlock"
-                                                       Text="-"
-                                                       Foreground="#132235"
-                                                       FontWeight="SemiBold"
-                                                       TextWrapping="Wrap" />
-                                        </StackPanel>
-
-                                        <StackPanel Grid.Column="1"
-                                                    Spacing="4">
-                                            <TextBlock Text="Alış Yeri"
-                                                       FontWeight="Bold"
-                                                       Foreground="#122033" />
-                                            <TextBlock x:Name="SelectedCollectionLocationTextBlock"
-                                                       Text="-"
-                                                       Foreground="#132235"
-                                                       TextWrapping="Wrap" />
-                                        </StackPanel>
-
-                                        <StackPanel Grid.Row="1"
-                                                    Spacing="4">
-                                            <TextBlock Text="Tarih ve Saat"
-                                                       FontWeight="Bold"
-                                                       Foreground="#122033" />
-                                            <TextBlock x:Name="SelectedCollectionDateRangeTextBlock"
-                                                       Text="-"
-                                                       Foreground="#132235"
-                                                       TextWrapping="Wrap" />
-                                        </StackPanel>
-
-                                        <StackPanel Grid.Row="1"
-                                                    Grid.Column="1"
-                                                    Spacing="4">
-                                            <TextBlock Text="Filtreler"
-                                                       FontWeight="Bold"
-                                                       Foreground="#122033" />
-                                            <TextBlock x:Name="SelectedCollectionFiltersTextBlock"
-                                                       Text="-"
-                                                       Foreground="#132235"
-                                                       TextWrapping="Wrap" />
-                                        </StackPanel>
-
-                                        <StackPanel Grid.Row="2"
-                                                    Spacing="4">
-                                            <TextBlock Text="Araç Sayısı"
-                                                       FontWeight="Bold"
-                                                       Foreground="#122033" />
-                                            <TextBlock x:Name="SelectedCollectionCountTextBlock"
-                                                       Text="-"
-                                                       Foreground="#132235"
-                                                       TextWrapping="Wrap" />
-                                        </StackPanel>
-
-                                        <StackPanel Grid.Row="2"
-                                                    Grid.Column="1"
-                                                    Spacing="4">
-                                            <TextBlock Text="Oluşturulma"
-                                                       FontWeight="Bold"
-                                                       Foreground="#122033" />
-                                            <TextBlock x:Name="SelectedCollectionCreatedAtTextBlock"
-                                                       Text="-"
-                                                       Foreground="#132235"
-                                                       TextWrapping="Wrap" />
-                                        </StackPanel>
-                                    </Grid>
+                                              MinHeight="440" />
                                 </Border>
                             </Grid>
 
                             <!-- KOLEKSİYON ARAÇLARI LİSTESİ GÖRÜNÜMÜ -->
                             <Grid x:Name="VehiclesViewPanel"
                                   IsVisible="False"
-                                  RowDefinitions="Auto,Auto,*,Auto"
-                                  RowSpacing="16">
+                                  RowDefinitions="Auto,Auto,Auto,*,Auto"
+                                  RowSpacing="14">
                                 <Grid ColumnDefinitions="*,Auto"
                                       VerticalAlignment="Center">
                                     <StackPanel Spacing="4">
                                         <TextBlock x:Name="VehicleViewTitleTextBlock"
                                                    Text="Koleksiyondaki Araçlar"
-                                                   FontSize="22"
+                                                   FontSize="20"
                                                    FontWeight="Bold"
                                                    Foreground="#122033" />
                                         <TextBlock x:Name="VehicleViewSubtitleTextBlock"
                                                    Text="Aşağıdaki listeden bir araç seçerek ödemesini gerçekleştirebilirsiniz."
+                                                   FontSize="13"
                                                    Foreground="#5F7187" />
                                     </StackPanel>
 
                                     <Button Grid.Column="1"
                                             x:Name="BackToCollectionsButton"
+                                            Classes="btn-secondary btn-sm"
                                             Content="← Koleksiyonlara Dön"
-                                            Width="190"
                                             Click="BackToCollectionsButton_Click" />
                                 </Grid>
 
                                 <TextBlock x:Name="VehicleStatusTextBlock"
                                            Grid.Row="1"
                                            Foreground="#132235"
+                                           FontSize="13"
                                            FontWeight="SemiBold"
                                            TextWrapping="Wrap" />
 
-                                <Border Grid.Row="2"
+                                <!-- ARAÇLAR TOOLBAR -->
+                                <Grid Grid.Row="2"
+                                      ColumnDefinitions="Auto,*,Auto"
+                                      VerticalAlignment="Center">
+                                    <StackPanel Orientation="Horizontal"
+                                                Spacing="8">
+                                        <Button x:Name="CreatePaymentButton"
+                                                Classes="primary btn-sm"
+                                                Content="Seçilen Araç İçin Ödeme"
+                                                Click="CreatePaymentButton_Click" />
+                                        <!-- Extra - Dynamic Collections START -->
+                                        <Button x:Name="RefreshCollectionButtonVehicles"
+                                                Classes="btn-secondary btn-sm"
+                                                Content="Güncelle"
+                                                Click="RefreshSelectedCollectionButton_Click" />
+                                        <!-- Extra - Dynamic Collections END -->
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Column="2"
+                                                Orientation="Horizontal"
+                                                Spacing="6"
+                                                VerticalAlignment="Center">
+                                        <TextBlock Text="Dışa Aktar:"
+                                                   VerticalAlignment="Center"
+                                                   FontSize="12"
+                                                   FontWeight="SemiBold"
+                                                   Foreground="#64748B"
+                                                   Margin="0,0,4,0" />
+                                        <Button x:Name="ExportPngButtonVehicles"
+                                                Classes="btn-secondary btn-sm"
+                                                Content="PNG"
+                                                Click="ExportPngButton_Click" />
+                                        <!-- Extra - Collection Export START -->
+                                        <Button x:Name="ExportCsvButtonVehicles"
+                                                Classes="btn-secondary btn-sm"
+                                                Content="CSV"
+                                                Click="ExportCsvButton_Click" />
+                                        <Button x:Name="ExportExcelButtonVehicles"
+                                                Classes="btn-secondary btn-sm"
+                                                Content="Excel"
+                                                Click="ExportExcelButton_Click" />
+                                        <!-- Extra - Collection Export END -->
+                                    </StackPanel>
+                                </Grid>
+
+                                <Border Grid.Row="3"
                                         Background="#FBFDFF"
                                         BorderBrush="#E2EAF2"
                                         BorderThickness="1"
@@ -1303,7 +1392,6 @@
                                               MinHeight="300">
                                         <DataGrid.Columns>
                                             <DataGridTextColumn Header="Araç" Binding="{Binding Title}" Width="2*" />
-                                            <DataGridTextColumn Header="Detay" Binding="{Binding Subtitle}" Width="2*" />
                                             <DataGridTextColumn Header="Fiyat" Binding="{Binding Price}" Width="1*" />
                                             <DataGridTextColumn Header="Günlük Fiyat" Binding="{Binding DailyPrice}" Width="1*" />
                                             <DataGridTextColumn Header="Vites" Binding="{Binding Transmission}" Width="1*" />
@@ -1313,39 +1401,13 @@
                                     </DataGrid>
                                 </Border>
 
-                                <StackPanel Grid.Row="3"
+                                <StackPanel Grid.Row="4"
                                             Orientation="Horizontal"
-                                            Spacing="12">
+                                            Spacing="10">
                                     <Button x:Name="BackToCollectionsButtonBottom"
+                                            Classes="btn-secondary btn-sm"
                                             Content="← Koleksiyonlara Dön"
-                                            Width="190"
                                             Click="BackToCollectionsButton_Click" />
-                                    <Button x:Name="CreatePaymentButton"
-                                            Classes="primary"
-                                            Content="Seçilen Araç İçin Ödeme"
-                                            Width="220"
-                                            Click="CreatePaymentButton_Click" />
-                                    <!-- Extra - Dynamic Collections START -->
-                                    <Button x:Name="RefreshCollectionButtonVehicles"
-                                            Content="Güncelle"
-                                            Width="130"
-                                            Click="RefreshSelectedCollectionButton_Click" />
-                                    <!-- Extra - Dynamic Collections END -->
-                                    <Button x:Name="ExportPngButtonVehicles"
-                                            Classes="primary"
-                                            Content="PNG Olarak İndir"
-                                            Width="180"
-                                            Click="ExportPngButton_Click" />
-                                    <!-- Extra - Collection Export START -->
-                                    <Button x:Name="ExportCsvButtonVehicles"
-                                            Content="CSV İndir"
-                                            Width="120"
-                                            Click="ExportCsvButton_Click" />
-                                    <Button x:Name="ExportExcelButtonVehicles"
-                                            Content="Excel İndir"
-                                            Width="130"
-                                            Click="ExportExcelButton_Click" />
-                                    <!-- Extra - Collection Export END -->
                                 </StackPanel>
                             </Grid>
 

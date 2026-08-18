@@ -347,42 +347,16 @@ public partial class MainWindow : Window
         if (collections.Count == 1)
         {
             var collection = collections[0];
-            SelectedCollectionNameTextBlock.Text = collection.OzelAd;
-            SelectedCollectionLocationTextBlock.Text = collection.AlisYeri;
-            SelectedCollectionDateRangeTextBlock.Text =
-                $"{collection.AlisTarihi:dd.MM.yyyy} {collection.AlisSaati} - {collection.DonusTarihi:dd.MM.yyyy} {collection.DonusSaati}";
-
-            var transmission = string.IsNullOrWhiteSpace(collection.SecilenVitesFiltresi) || collection.SecilenVitesFiltresi == "Farketmez"
-                ? "-"
-                : collection.SecilenVitesFiltresi;
-            var fuel = string.IsNullOrWhiteSpace(collection.SecilenYakitFiltresi) || collection.SecilenYakitFiltresi == "Farketmez"
-                ? "-"
-                : collection.SecilenYakitFiltresi;
-            SelectedCollectionFiltersTextBlock.Text = $"Vites: {transmission} | Yakıt: {fuel}";
-            SelectedCollectionCountTextBlock.Text = collection.AracSayisi.ToString();
-            SelectedCollectionCreatedAtTextBlock.Text = collection.OlusturmaTarihi.ToLocalTime().ToString("dd.MM.yyyy HH:mm");
+            HistoryStatusTextBlock.Text = $"{collection.OzelAd} ({collection.AracSayisi} araç, {collection.AlisYeri}) seçildi.";
             return;
         }
 
-        SelectedCollectionNameTextBlock.Text = $"{collections.Count} kayıt seçildi";
-        SelectedCollectionLocationTextBlock.Text = string.Join(", ", collections.Select(item => item.AlisYeri).Distinct());
-        SelectedCollectionDateRangeTextBlock.Text =
-            $"{collections.Min(item => item.AlisTarihi):dd.MM.yyyy} - {collections.Max(item => item.DonusTarihi):dd.MM.yyyy}";
-        SelectedCollectionFiltersTextBlock.Text =
-            $"Vites: {string.Join(", ", collections.Select(item => string.IsNullOrWhiteSpace(item.SecilenVitesFiltresi) || item.SecilenVitesFiltresi == "Farketmez" ? "-" : item.SecilenVitesFiltresi).Distinct())} | " +
-            $"Yakıt: {string.Join(", ", collections.Select(item => string.IsNullOrWhiteSpace(item.SecilenYakitFiltresi) || item.SecilenYakitFiltresi == "Farketmez" ? "-" : item.SecilenYakitFiltresi).Distinct())}";
-        SelectedCollectionCountTextBlock.Text = collections.Sum(item => item.AracSayisi).ToString();
-        SelectedCollectionCreatedAtTextBlock.Text =
-            $"{collections.Min(item => item.OlusturmaTarihi).ToLocalTime():dd.MM.yyyy HH:mm} - {collections.Max(item => item.OlusturmaTarihi).ToLocalTime():dd.MM.yyyy HH:mm}";
+        HistoryStatusTextBlock.Text = collections.Count > 1
+            ? $"{collections.Count} kayıt seçildi (Toplam {collections.Sum(c => c.AracSayisi)} araç)."
+            : $"{collections.Count} kayıt listelendi.";
     }
 
     private void ClearSelectedCollectionSummary()
     {
-        SelectedCollectionNameTextBlock.Text = "-";
-        SelectedCollectionLocationTextBlock.Text = "-";
-        SelectedCollectionDateRangeTextBlock.Text = "-";
-        SelectedCollectionFiltersTextBlock.Text = "-";
-        SelectedCollectionCountTextBlock.Text = "-";
-        SelectedCollectionCreatedAtTextBlock.Text = "-";
     }
 }
