@@ -206,6 +206,45 @@ public partial class MainWindow : Window
         ShowFlightSection();
     }
 
+    // Extra - Flight Filter START
+    private List<FlightResultItem> _allLatestFlightResults = new();
+
+    private void FlightOnlyNonStopCheckBox_IsCheckedChanged(object? sender, RoutedEventArgs e)
+    {
+        if (_allLatestFlightResults.Count > 0)
+        {
+            ApplyFlightFiltersAndDisplay();
+        }
+    }
+
+    private void ApplyFlightFiltersAndDisplay()
+    {
+        var onlyNonStop = FlightOnlyNonStopCheckBox.IsChecked == true;
+        if (onlyNonStop)
+        {
+            _latestFlightResults = _allLatestFlightResults
+                .Where(f =>
+                {
+                    var d = (f.Detail ?? string.Empty).ToLowerInvariant().Trim();
+                    return d.Contains("aktarmasız") || d.Contains("direkt") || (!d.Contains("aktarma") && !d.Contains("transfer"));
+                })
+                .ToList();
+        }
+        else
+        {
+            _latestFlightResults = _allLatestFlightResults.ToList();
+        }
+
+        FlightResultsDataGrid.ItemsSource = null;
+        FlightResultsDataGrid.ItemsSource = _latestFlightResults;
+        SetFlightResultsPlaceholder(_latestFlightResults.Count == 0 ? "Uçuş sonucu bulunamadı." : null);
+
+        FlightStatusTextBlock.Text = _latestFlightResults.Count == 0
+            ? "Uçuş araması tamamlandı, sonuç bulunamadı."
+            : $"{_latestFlightResults.Count} uçuş sonucu listelendi.";
+    }
+    // Extra - Flight Filter END
+
     private async void FlightSearchButton_Click(object? sender, RoutedEventArgs e)
     {
         FlightSearchButton.IsEnabled = false;
@@ -303,8 +342,8 @@ public partial class MainWindow : Window
             await baService.SearchFlightTicketsAsync(filter);
 
             FlightStatusTextBlock.Text = "Uçuş sonuçları okunuyor...";
-            _latestFlightResults = await baService.ReadFlightResultsAsync();
-            foreach (var flightResult in _latestFlightResults)
+            _allLatestFlightResults = await baService.ReadFlightResultsAsync();
+            foreach (var flightResult in _allLatestFlightResults)
             {
                 if (string.IsNullOrWhiteSpace(flightResult.FromLocation))
                     flightResult.FromLocation = filter.FromLocation;
@@ -316,16 +355,7 @@ public partial class MainWindow : Window
                     flightResult.Route = $"{flightResult.FromLocation} → {flightResult.ToLocation}";
             }
 
-            await Dispatcher.UIThread.InvokeAsync(() =>
-            {
-                FlightResultsDataGrid.ItemsSource = null;
-                FlightResultsDataGrid.ItemsSource = _latestFlightResults;
-                SetFlightResultsPlaceholder(_latestFlightResults.Count == 0 ? "Uçuş sonucu bulunamadı." : null);
-            });
-
-            FlightStatusTextBlock.Text = _latestFlightResults.Count == 0
-                ? "Uçuş araması tamamlandı, sonuç bulunamadı."
-                : $"{_latestFlightResults.Count} uçuş sonucu listelendi.";
+            await Dispatcher.UIThread.InvokeAsync(ApplyFlightFiltersAndDisplay);
         }
         catch (Exception ex)
         {

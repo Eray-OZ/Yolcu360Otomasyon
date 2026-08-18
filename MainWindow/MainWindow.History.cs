@@ -150,9 +150,9 @@ public partial class MainWindow : Window
             _selectedVehicle = null;
         }
 
-        VehicleViewTitleTextBlock.Text = $"{_selectedCollection.OzelAd} (Araç Listesi)";
-        VehicleViewSubtitleTextBlock.Text = $"Alış Yeri: {_selectedCollection.AlisYeri} | Toplam {_selectedCollectionVehicles.Count} Araç Kayıtlı";
-        VehicleStatusTextBlock.Text = $"{_selectedCollection.OzelAd} koleksiyonu için {_selectedCollectionVehicles.Count} araç listelendi.";
+        VehicleViewTitleTextBlock.Text = _selectedCollection.OzelAd;
+        VehicleViewSubtitleTextBlock.Text = $"Alış Yeri: {_selectedCollection.AlisYeri}";
+        VehicleStatusTextBlock.Text = $"{_selectedCollectionVehicles.Count} araç listelendi.";
 
         CollectionsViewPanel.IsVisible = false;
         VehiclesViewPanel.IsVisible = true;
@@ -347,12 +347,12 @@ public partial class MainWindow : Window
         if (collections.Count == 1)
         {
             var collection = collections[0];
-            HistoryStatusTextBlock.Text = $"{collection.OzelAd} ({collection.AracSayisi} araç, {collection.AlisYeri}) seçildi.";
+            HistoryStatusTextBlock.Text = $"{collection.OzelAd} ({collection.AracSayisi} araç)";
             return;
         }
 
         HistoryStatusTextBlock.Text = collections.Count > 1
-            ? $"{collections.Count} kayıt seçildi (Toplam {collections.Sum(c => c.AracSayisi)} araç)."
+            ? $"{collections.Count} kayıt seçildi."
             : $"{collections.Count} kayıt listelendi.";
     }
 

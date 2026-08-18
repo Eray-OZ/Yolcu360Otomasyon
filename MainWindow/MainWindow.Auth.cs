@@ -16,7 +16,7 @@ public partial class MainWindow : Window
         try
         {
             await _smsReceiverService.StartAsync();
-            SetAuthStatus(_smsReceiverService.GetStatusMessage());
+            SetAuthStatus(string.Empty);
         }
         catch (Exception ex)
         {
