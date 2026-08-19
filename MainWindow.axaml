@@ -1285,14 +1285,28 @@
                                         CornerRadius="10"
                                         Padding="0">
                                     <DataGrid x:Name="CollectionsDataGrid"
-                                              AutoGenerateColumns="True"
+                                              x:DataType="models:KoleksiyonListItem"
+                                              AutoGenerateColumns="False"
                                               IsReadOnly="True"
                                               CanUserResizeColumns="True"
                                               CanUserSortColumns="True"
                                               SelectionMode="Extended"
                                               SelectionChanged="CollectionsDataGrid_SelectionChanged"
                                               DoubleTapped="CollectionsDataGrid_DoubleTapped"
-                                              MinHeight="440" />
+                                              MinHeight="440">
+                                        <DataGrid.Columns>
+                                            <DataGridTextColumn Header="Koleksiyon Adı" Binding="{Binding OzelAd}" Width="1.5*" />
+                                            <DataGridTextColumn Header="Alış Yeri" Binding="{Binding AlisYeri}" Width="1.5*" />
+                                            <DataGridTextColumn Header="Alış Tarihi" Binding="{Binding AlisTarihi, StringFormat='{}{0:dd.MM.yyyy}'}" Width="*" />
+                                            <DataGridTextColumn Header="Alış Saati" Binding="{Binding AlisSaati}" Width="Auto" />
+                                            <DataGridTextColumn Header="Dönüş Tarihi" Binding="{Binding DonusTarihi, StringFormat='{}{0:dd.MM.yyyy}'}" Width="*" />
+                                            <DataGridTextColumn Header="Dönüş Saati" Binding="{Binding DonusSaati}" Width="Auto" />
+                                            <DataGridTextColumn Header="Vites" Binding="{Binding SecilenVitesFiltresi}" Width="*" />
+                                            <DataGridTextColumn Header="Yakıt" Binding="{Binding SecilenYakitFiltresi}" Width="*" />
+                                            <DataGridTextColumn Header="Araç Sayısı" Binding="{Binding AracSayisi}" Width="Auto" />
+                                            <DataGridTextColumn Header="Kayıt Tarihi" Binding="{Binding OlusturmaTarihi, StringFormat='{}{0:dd.MM.yyyy HH:mm}'}" Width="*" />
+                                        </DataGrid.Columns>
+                                    </DataGrid>
                                 </Border>
                             </Grid>
 
@@ -1311,7 +1325,9 @@
                                                    Foreground="#122033" />
                                         <TextBlock x:Name="VehicleViewSubtitleTextBlock"
                                                    Text=""
-                                                   IsVisible="False" />
+                                                   Foreground="#4B637D"
+                                                   FontSize="13"
+                                                   IsVisible="True" />
                                     </StackPanel>
 
                                     <Button Grid.Column="1"

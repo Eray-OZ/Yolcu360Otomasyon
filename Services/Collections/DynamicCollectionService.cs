@@ -49,15 +49,22 @@ public sealed class DynamicCollectionService
         await baService.WaitForSearchResultsAsync();
 
         var refreshedResults = await baService.ReadSearchResultsAsync();
-        if (refreshedResults.Count == 0)
-            throw new InvalidOperationException("Güncel aramada sonuç bulunamadı. Eski araç listesi korundu.");
 
-        await baService.ApplyResultFiltersAsync(filter);
-        refreshedResults = await baService.ReadSearchResultsAsync();
-        if (refreshedResults.Count == 0)
-            throw new InvalidOperationException("Filtrelerden sonra sonuç bulunamadı. Eski araç listesi korundu.");
+        var hasFilter = (!string.IsNullOrWhiteSpace(filter.TransmissionType) && filter.TransmissionType != "-") ||
+                        (!string.IsNullOrWhiteSpace(filter.FuelType) && filter.FuelType != "-");
 
-        await _databaseService.ReplaceCollectionVehiclesAsync(koleksiyonId, kullaniciId, refreshedResults);
+        if (hasFilter && refreshedResults.Count > 0)
+        {
+            try
+            {
+                await baService.ApplyResultFiltersAsync(filter);
+                var filteredResults = await baService.ReadSearchResultsAsync();
+                refreshedResults = filteredResults;
+            }
+            catch {}
+        }
+
+        await _databaseService.ReplaceCollectionVehiclesAsync(koleksiyonId, kullaniciId, filter, refreshedResults);
 
         return refreshedResults;
     }
@@ -69,17 +76,19 @@ public sealed class DynamicCollectionService
         var returnDate = filter.ReturnDate.Date;
 
         if (returnDate < today)
-            throw new InvalidOperationException("Bu koleksiyonun tarih aralığı geçmişte kaldığı için güncellenemez.");
+        {
+            throw new InvalidOperationException("Bu koleksiyonun bırakış tarihi geçmişte kaldığı için güncellenemez.");
+        }
 
         if (pickupDate < today)
+        {
             pickupDate = today;
+        }
 
         return new SearchFilter
         {
             PickupLocation = filter.PickupLocation,
-            // Extra - Dropoff Location START
             DropoffLocation = filter.DropoffLocation,
-            // Extra - Dropoff Location END
             PickupDate = pickupDate,
             ReturnDate = returnDate,
             PickupTime = filter.PickupTime,

@@ -103,8 +103,12 @@ public partial class MainWindow : Window
 
             VehicleViewTitleTextBlock.Text = $"{collection.OzelAd} (Araç Listesi)";
             VehicleViewSubtitleTextBlock.Text = $"Alış Yeri: {collection.AlisYeri} | Toplam {refreshedVehicles.Count} Araç Kayıtlı";
-            HistoryStatusTextBlock.Text = $"{collection.OzelAd} güncellendi. {refreshedVehicles.Count} araç kaydedildi.";
-            VehicleStatusTextBlock.Text = $"{collection.OzelAd} güncellendi. {refreshedVehicles.Count} araç listelendi.";
+            HistoryStatusTextBlock.Text = refreshedVehicles.Count == 0
+                ? $"{collection.OzelAd} güncellendi: Uygun araç bulunamadı (0 araç)."
+                : $"{collection.OzelAd} güncellendi. {refreshedVehicles.Count} araç kaydedildi.";
+            VehicleStatusTextBlock.Text = refreshedVehicles.Count == 0
+                ? $"{collection.OzelAd} için uygun araç bulunamadı (0 araç)."
+                : $"{collection.OzelAd} güncellendi. {refreshedVehicles.Count} araç listelendi.";
             ShowHistorySection();
             CollectionsViewPanel.IsVisible = !wasVehiclesViewVisible;
             VehiclesViewPanel.IsVisible = wasVehiclesViewVisible;
@@ -151,7 +155,7 @@ public partial class MainWindow : Window
         }
 
         VehicleViewTitleTextBlock.Text = _selectedCollection.OzelAd;
-        VehicleViewSubtitleTextBlock.Text = $"Alış Yeri: {_selectedCollection.AlisYeri}";
+        VehicleViewSubtitleTextBlock.Text = $"Alış Yeri: {_selectedCollection.AlisYeri} | Tarih: {_selectedCollection.AlisTarihi:dd.MM.yyyy} {_selectedCollection.AlisSaati} - {_selectedCollection.DonusTarihi:dd.MM.yyyy} {_selectedCollection.DonusSaati}";
         VehicleStatusTextBlock.Text = $"{_selectedCollectionVehicles.Count} araç listelendi.";
 
         CollectionsViewPanel.IsVisible = false;
@@ -347,7 +351,7 @@ public partial class MainWindow : Window
         if (collections.Count == 1)
         {
             var collection = collections[0];
-            HistoryStatusTextBlock.Text = $"{collection.OzelAd} ({collection.AracSayisi} araç)";
+            HistoryStatusTextBlock.Text = $"{collection.OzelAd} | {collection.AlisYeri} | {collection.AlisTarihi:dd.MM.yyyy} {collection.AlisSaati} - {collection.DonusTarihi:dd.MM.yyyy} {collection.DonusSaati} ({collection.AracSayisi} araç)";
             return;
         }
 

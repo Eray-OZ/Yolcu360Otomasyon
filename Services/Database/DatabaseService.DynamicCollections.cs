@@ -31,17 +31,20 @@ public sealed partial class DatabaseService
     public async Task ReplaceCollectionVehiclesAsync(
         int koleksiyonId,
         int kullaniciId,
+        SearchFilter filter,
         IReadOnlyCollection<SearchResultItem> currentResults)
     {
         await EnsureSchemaAsync();
         await using var context = new AppDbContext(_options);
 
-        var koleksiyonVarMi = await context.Koleksiyonlar
-            .AsNoTracking()
-            .AnyAsync(item => item.Id == koleksiyonId && item.KullaniciId == kullaniciId);
+        var koleksiyon = await context.Koleksiyonlar
+            .FirstOrDefaultAsync(item => item.Id == koleksiyonId && item.KullaniciId == kullaniciId);
 
-        if (!koleksiyonVarMi)
+        if (koleksiyon is null)
             throw new InvalidOperationException("Araçları güncellenecek koleksiyon bulunamadı.");
+
+        koleksiyon.AlisTarihi = filter.PickupDate;
+        koleksiyon.DonusTarihi = filter.ReturnDate;
 
         var eskiAraclar = await context.Araclar
             .Where(item => item.KoleksiyonId == koleksiyonId)
