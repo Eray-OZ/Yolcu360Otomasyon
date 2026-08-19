@@ -29,12 +29,24 @@ public sealed partial class BAService
                             if (!name) continue;
 
                             const lowerName = name.toLowerCase();
-                            // Google reCAPTCHA güven çerezlerini ve analitik belirteçlerini koru
+                            // Google reCAPTCHA, Google Hesap Oturumu (SID/HSID), Cloudflare ve analitik güven çerezlerini koru
                             if (lowerName.includes('recaptcha') ||
                                 lowerName.startsWith('_grecaptcha') ||
                                 lowerName === '_ga' ||
                                 lowerName.startsWith('_ga_') ||
-                                lowerName.startsWith('_gid')) {
+                                lowerName.startsWith('_gid') ||
+                                lowerName === 'nid' ||
+                                lowerName.startsWith('1p_jar') ||
+                                lowerName.includes('consent') ||
+                                lowerName.includes('cf_bm') ||
+                                lowerName.includes('cfuvid') ||
+                                lowerName === 'sid' ||
+                                lowerName === 'hsid' ||
+                                lowerName === 'ssid' ||
+                                lowerName === 'apisid' ||
+                                lowerName === 'sapisid' ||
+                                lowerName.startsWith('__secure') ||
+                                lowerName.startsWith('__host')) {
                                 continue;
                             }
 
