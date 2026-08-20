@@ -121,6 +121,41 @@ public partial class MainWindow : Window
                 _paymentPreviewItems,
                 paymentResult);
 
+            // Extra - Invoice PDF START
+            try
+            {
+                foreach (var item in _paymentPreviewItems)
+                {
+                    var isFlight = item.KoleksiyonAdi.StartsWith("[Uçak Bileti]");
+                    var total = item.Tutar;
+                    var subtotal = Math.Round(total / 1.20m, 2);
+                    var kdv = total - subtotal;
+
+                    var invoiceModel = new InvoiceModel
+                    {
+                        FaturaNo = $"FAT-{paymentResult.ReferenceNo.Substring(Math.Max(0, paymentResult.ReferenceNo.Length - 8))}",
+                        ReferansNo = paymentResult.ReferenceNo,
+                        DuzenlemeTarihi = DateTime.Now,
+                        MusteriEmail = _activeUser.Email,
+                        MusteriTelefon = _activeUser.PhoneNumber,
+                        KartSahibi = paymentResult.CardHolderName ?? _activeUser.Email,
+                        KartSon4 = paymentResult.LastFourDigits ?? string.Empty,
+                        OdemeSaglayici = paymentResult.Provider,
+                        HizmetBasligi = item.KoleksiyonAdi,
+                        HizmetTuru = isFlight ? "Uçak Bileti Rezervasyonu" : "Araç Kiralama Rezervasyonu",
+                        AraToplam = subtotal,
+                        KdvTutari = kdv,
+                        GenelToplam = total,
+                        ParaBirimi = "TRY",
+                        OdemeDurumu = "SUCCESS"
+                    };
+
+                    _ = _invoicePdfService.GenerateInvoicePdfAsync(invoiceModel);
+                }
+            }
+            catch {}
+            // Extra - Invoice PDF END
+
             ClearCheckoutForm();
 
             // Extra - Flight Car Recommendation START
@@ -134,7 +169,7 @@ public partial class MainWindow : Window
 
             ShowPaymentsSection();
             await LoadPaymentsAsync();
-            PaymentsStatusTextBlock.Text = "iyzico sandbox ödeme kaydı oluşturuldu.";
+            PaymentsStatusTextBlock.Text = "iyzico sandbox ödeme kaydı ve Fatura PDF'i oluşturuldu.";
         }
         catch (Exception ex)
         {
@@ -178,7 +213,7 @@ public partial class MainWindow : Window
 
         PaymentsStatusTextBlock.Text = filtered.Count == 0
             ? $"{filterName} ödeme kaydı bulunamadı."
-            : $"{filtered.Count} {filterName} ödeme kaydı listelendi (Toplam {_allPayments.Count} kayıt).";
+            : $"{filtered.Count} {filterName} ödeme kaydı listelendi (Toplam {_allPayments.Count} kayıt). Faturayı görüntülemek için çift tıklayın.";
     }
 
     private void UpdatePaymentFilterButtonStyles()
@@ -210,6 +245,125 @@ public partial class MainWindow : Window
         _currentPaymentFilter = PaymentFilterType.Flight;
         ApplyPaymentFilter();
     }
+
+    // Extra - Invoice PDF START
+    private async void OpenInvoicePdfButton_Click(object? sender, RoutedEventArgs e)
+    {
+        if (PaymentsDataGrid.SelectedItem is not OdemeListItem selectedOdeme)
+        {
+            PaymentsStatusTextBlock.Text = "Faturasını görüntülemek için lütfen listeden bir ödeme seçin.";
+            return;
+        }
+
+        await OpenInvoiceViewerAsync(selectedOdeme);
+    }
+
+    private async void PaymentsDataGrid_DoubleTapped(object? sender, Avalonia.Input.TappedEventArgs e)
+    {
+        if (PaymentsDataGrid.SelectedItem is not OdemeListItem selectedOdeme)
+            return;
+
+        await OpenInvoiceViewerAsync(selectedOdeme);
+    }
+
+    private async Task OpenInvoiceViewerAsync(OdemeListItem odeme)
+    {
+        if (_activeUser is null) return;
+
+        PaymentsStatusTextBlock.Text = $"{odeme.ReferansNo} numaralı ödemenin faturası hazırlanıyor...";
+        try
+        {
+            var downloadsDir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                "Downloads");
+
+            var safeRef = string.Concat(odeme.ReferansNo.Select(ch => char.IsLetterOrDigit(ch) ? ch : '_'));
+            var pdfPath = Path.Combine(downloadsDir, $"Fatura_{safeRef}.pdf");
+
+            if (!File.Exists(pdfPath))
+            {
+                var isFlight = odeme.KoleksiyonAdi.StartsWith("[Uçak Bileti]");
+                var total = odeme.Tutar;
+                var subtotal = Math.Round(total / 1.20m, 2);
+                var kdv = total - subtotal;
+
+                var invoiceModel = new InvoiceModel
+                {
+                    FaturaNo = $"FAT-{odeme.ReferansNo.Substring(Math.Max(0, odeme.ReferansNo.Length - 8))}",
+                    ReferansNo = odeme.ReferansNo,
+                    DuzenlemeTarihi = odeme.OdemeTarihi,
+                    MusteriEmail = _activeUser.Email,
+                    MusteriTelefon = _activeUser.PhoneNumber,
+                    KartSahibi = odeme.KartSahibi ?? _activeUser.Email,
+                    KartSon4 = odeme.KartSon4 ?? string.Empty,
+                    OdemeSaglayici = odeme.Saglayici,
+                    HizmetBasligi = odeme.KoleksiyonAdi,
+                    HizmetTuru = isFlight ? "Uçak Bileti Rezervasyonu" : "Araç Kiralama Rezervasyonu",
+                    AraToplam = subtotal,
+                    KdvTutari = kdv,
+                    GenelToplam = total,
+                    ParaBirimi = odeme.ParaBirimi,
+                    OdemeDurumu = odeme.Durum
+                };
+
+                pdfPath = await _invoicePdfService.GenerateInvoicePdfAsync(invoiceModel, downloadsDir);
+            }
+
+            _currentOpenedInvoicePdfPath = pdfPath;
+
+            InvoiceInfoRefTextBlock.Text = $"Referans: {odeme.ReferansNo}";
+            InvoiceInfoPathTextBlock.Text = $"Dosya: {Path.GetFileName(pdfPath)}";
+            InvoiceInfoAmountTextBlock.Text = $"Tutar: {odeme.Tutar:N2} {odeme.ParaBirimi}";
+
+            InvoicePdfWebView.Source = new Uri($"file://{pdfPath}");
+
+            ShowInvoiceViewerSection();
+        }
+        catch (Exception ex)
+        {
+            PaymentsStatusTextBlock.Text = $"Fatura görüntüleme hatası: {ex.Message}";
+        }
+    }
+
+    private void OpenExternalPdfButton_Click(object? sender, RoutedEventArgs e)
+    {
+        if (string.IsNullOrWhiteSpace(_currentOpenedInvoicePdfPath) || !File.Exists(_currentOpenedInvoicePdfPath))
+            return;
+
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = _currentOpenedInvoicePdfPath,
+                UseShellExecute = true
+            });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[Invoice] Harici açma hatası: {ex.Message}");
+        }
+    }
+
+    private void OpenInvoiceFolderButton_Click(object? sender, RoutedEventArgs e)
+    {
+        if (string.IsNullOrWhiteSpace(_currentOpenedInvoicePdfPath) || !File.Exists(_currentOpenedInvoicePdfPath))
+            return;
+
+        try
+        {
+            System.Diagnostics.Process.Start("open", $"-R \"{_currentOpenedInvoicePdfPath}\"");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[Invoice] Klasörde gösterme hatası: {ex.Message}");
+        }
+    }
+
+    private void CloseInvoiceViewerButton_Click(object? sender, RoutedEventArgs e)
+    {
+        ShowPaymentsSection();
+    }
+    // Extra - Invoice PDF END
 
     private void PrepareCheckoutSummary()
     {

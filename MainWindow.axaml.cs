@@ -23,6 +23,10 @@ public partial class MainWindow : Window
     private readonly LocationSuggestionService _locationSuggestionService = new();
     private readonly FlightLocationSuggestionService _flightLocationSuggestionService = new();
     // Extra - Location Suggestion END
+    // Extra - Invoice PDF START
+    private readonly InvoicePdfService _invoicePdfService = new();
+    private string? _currentOpenedInvoicePdfPath;
+    // Extra - Invoice PDF END
     private readonly SmsReceiverService _smsReceiverService = new(5001);
     private readonly IyzicoPaymentService _iyzicoPaymentService;
     private AppUser? _activeUser;

@@ -1471,6 +1471,13 @@
                                             Classes="btn-secondary btn-sm"
                                             Content="Uçak Bileti"
                                             Click="PaymentFilterFlightButton_Click" />
+                                    <!-- Extra - Invoice PDF START -->
+                                    <Button x:Name="OpenInvoicePdfButton"
+                                            Classes="primary btn-sm"
+                                            Content="📄 Fatura PDF'ini Aç"
+                                            Click="OpenInvoicePdfButton_Click"
+                                            Margin="8,0,0,0" />
+                                    <!-- Extra - Invoice PDF END -->
                                 </StackPanel>
                             </Grid>
 
@@ -1491,6 +1498,7 @@
                                           IsReadOnly="True"
                                           CanUserResizeColumns="True"
                                           CanUserSortColumns="True"
+                                          DoubleTapped="PaymentsDataGrid_DoubleTapped"
                                           Height="440" />
                             </Border>
                         </Grid>
@@ -2128,6 +2136,95 @@
                         </Grid>
                     </Border>
                     <!-- Extra - Flight Car Recommendation END -->
+
+                    <!-- Extra - Invoice PDF START -->
+                    <Border Grid.Row="1"
+                            Grid.RowSpan="2"
+                            x:Name="InvoiceViewerPanel"
+                            IsVisible="False"
+                            Background="White"
+                            BorderBrush="#D9E2EC"
+                            BorderThickness="1"
+                            CornerRadius="10"
+                            Padding="22">
+                        <Grid RowDefinitions="Auto,Auto,*" RowSpacing="14">
+                            <!-- Üst Başlık ve Aksiyon Butonları -->
+                            <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
+                                <StackPanel Spacing="4">
+                                    <TextBlock x:Name="InvoiceViewerTitleTextBlock"
+                                               Text="Fatura Önizleme"
+                                               FontSize="22"
+                                               FontWeight="Bold"
+                                               Foreground="#122033" />
+                                    <TextBlock x:Name="InvoiceViewerSubtitleTextBlock"
+                                               Text="Elektronik Fatura / Rezervasyon Dekontu"
+                                               FontSize="13"
+                                               Foreground="#64748B" />
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="1"
+                                            Orientation="Horizontal"
+                                            Spacing="10">
+                                    <Button x:Name="OpenExternalPdfButton"
+                                            Classes="btn-secondary btn-sm"
+                                            Content="↗ Harici Aç (Preview / Adobe)"
+                                            Click="OpenExternalPdfButton_Click" />
+                                    <Button x:Name="OpenInvoiceFolderButton"
+                                            Classes="btn-secondary btn-sm"
+                                            Content="📁 Klasörde Göster"
+                                            Click="OpenInvoiceFolderButton_Click" />
+                                    <Button x:Name="CloseInvoiceViewerButton"
+                                            Classes="primary btn-sm"
+                                            Content="← Ödemelere Dön"
+                                            Click="CloseInvoiceViewerButton_Click" />
+                                </StackPanel>
+                            </Grid>
+
+                            <!-- Durum / Bilgi Çubuğu -->
+                            <Border Grid.Row="1"
+                                    Background="#F8FAFC"
+                                    BorderBrush="#E2E8F0"
+                                    BorderThickness="1"
+                                    CornerRadius="8"
+                                    Padding="14,10">
+                                <Grid ColumnDefinitions="Auto,*,Auto">
+                                    <TextBlock x:Name="InvoiceInfoRefTextBlock"
+                                               Text="Referans: -"
+                                               FontWeight="SemiBold"
+                                               Foreground="#0F172A"
+                                               VerticalAlignment="Center" />
+                                    <TextBlock x:Name="InvoiceInfoPathTextBlock"
+                                               Grid.Column="1"
+                                               Text="Dosya: -"
+                                               Foreground="#64748B"
+                                               Margin="16,0"
+                                               VerticalAlignment="Center"
+                                               TextTrimming="CharacterEllipsis" />
+                                    <TextBlock x:Name="InvoiceInfoAmountTextBlock"
+                                               Grid.Column="2"
+                                               Text="Tutar: -"
+                                               FontWeight="Bold"
+                                               Foreground="#0284C7"
+                                               VerticalAlignment="Center" />
+                                </Grid>
+                            </Border>
+
+                            <!-- Gömülü PDF / NativeWebView Alanı -->
+                            <Border Grid.Row="2"
+                                    Background="#F1F5F9"
+                                    BorderBrush="#CBD5E1"
+                                    BorderThickness="1"
+                                    CornerRadius="10"
+                                    ClipToBounds="True"
+                                    MinHeight="500">
+                                <NativeWebView x:Name="InvoicePdfWebView"
+                                               Source="about:blank"
+                                               HorizontalAlignment="Stretch"
+                                               VerticalAlignment="Stretch" />
+                            </Border>
+                        </Grid>
+                    </Border>
+                    <!-- Extra - Invoice PDF END -->
                 </Grid>
             </Grid>
         </ScrollViewer>
