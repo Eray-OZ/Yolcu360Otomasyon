@@ -24,6 +24,9 @@ public partial class MainWindow : Window
         // Extra - Invoice PDF START
         InvoiceViewerPanel.IsVisible = false;
         // Extra - Invoice PDF END
+        // Extra - Car Comparison START
+        CarComparisonPanel.IsVisible = false;
+        // Extra - Car Comparison END
         BrowserSectionPanel.IsVisible = false;
         SearchTabButton.Classes.Set("primary", true);
         FlightTabButton.Classes.Set("primary", false);
@@ -46,6 +49,9 @@ public partial class MainWindow : Window
         // Extra - Invoice PDF START
         InvoiceViewerPanel.IsVisible = false;
         // Extra - Invoice PDF END
+        // Extra - Car Comparison START
+        CarComparisonPanel.IsVisible = false;
+        // Extra - Car Comparison END
         BrowserSectionPanel.IsVisible = false;
         SearchTabButton.Classes.Set("primary", false);
         FlightTabButton.Classes.Set("primary", false);
@@ -68,6 +74,9 @@ public partial class MainWindow : Window
         // Extra - Invoice PDF START
         InvoiceViewerPanel.IsVisible = false;
         // Extra - Invoice PDF END
+        // Extra - Car Comparison START
+        CarComparisonPanel.IsVisible = false;
+        // Extra - Car Comparison END
         BrowserSectionPanel.IsVisible = false;
         SearchTabButton.Classes.Set("primary", false);
         FlightTabButton.Classes.Set("primary", false);
@@ -90,6 +99,9 @@ public partial class MainWindow : Window
         // Extra - Invoice PDF START
         InvoiceViewerPanel.IsVisible = false;
         // Extra - Invoice PDF END
+        // Extra - Car Comparison START
+        CarComparisonPanel.IsVisible = false;
+        // Extra - Car Comparison END
         BrowserSectionPanel.IsVisible = false;
         SearchTabButton.Classes.Set("primary", false);
         FlightTabButton.Classes.Set("primary", false);
@@ -113,6 +125,9 @@ public partial class MainWindow : Window
         // Extra - Invoice PDF START
         InvoiceViewerPanel.IsVisible = false;
         // Extra - Invoice PDF END
+        // Extra - Car Comparison START
+        CarComparisonPanel.IsVisible = false;
+        // Extra - Car Comparison END
         BrowserSectionPanel.IsVisible = true;
         SearchTabButton.Classes.Set("primary", false);
         FlightTabButton.Classes.Set("primary", false);
@@ -136,6 +151,9 @@ public partial class MainWindow : Window
         // Extra - Invoice PDF START
         InvoiceViewerPanel.IsVisible = false;
         // Extra - Invoice PDF END
+        // Extra - Car Comparison START
+        CarComparisonPanel.IsVisible = false;
+        // Extra - Car Comparison END
         BrowserSectionPanel.IsVisible = true;
         BrowserSectionPanel.Opacity = 1;
         BrowserSectionPanel.IsHitTestVisible = false;
@@ -181,6 +199,9 @@ public partial class MainWindow : Window
         // Extra - Invoice PDF START
         InvoiceViewerPanel.IsVisible = false;
         // Extra - Invoice PDF END
+        // Extra - Car Comparison START
+        CarComparisonPanel.IsVisible = false;
+        // Extra - Car Comparison END
         BrowserSectionPanel.IsVisible = false;
         SearchTabButton.Classes.Set("primary", false);
         FlightTabButton.Classes.Set("primary", true);
@@ -201,6 +222,9 @@ public partial class MainWindow : Window
         // Extra - Invoice PDF START
         InvoiceViewerPanel.IsVisible = false;
         // Extra - Invoice PDF END
+        // Extra - Car Comparison START
+        CarComparisonPanel.IsVisible = false;
+        // Extra - Car Comparison END
         BrowserSectionPanel.IsVisible = false;
         FlightCarRecommendationPanel.IsVisible = true;
         SearchTabButton.Classes.Set("primary", false);
@@ -221,6 +245,9 @@ public partial class MainWindow : Window
         StatisticsPanel.IsVisible = false;
         PaymentCheckoutPanel.IsVisible = false;
         FlightCarRecommendationPanel.IsVisible = false;
+        // Extra - Car Comparison START
+        CarComparisonPanel.IsVisible = false;
+        // Extra - Car Comparison END
         BrowserSectionPanel.IsVisible = false;
         InvoiceViewerPanel.IsVisible = true;
         SearchTabButton.Classes.Set("primary", false);
@@ -230,6 +257,22 @@ public partial class MainWindow : Window
         StatisticsTabButton.Classes.Set("primary", false);
     }
     // Extra - Invoice PDF END
+
+    // Extra - Car Comparison START
+    private void ShowComparisonSection()
+    {
+        SearchPanel.IsVisible = false;
+        FlightPanel.IsVisible = false;
+        HistoryPanel.IsVisible = false;
+        PaymentsPanel.IsVisible = false;
+        StatisticsPanel.IsVisible = false;
+        PaymentCheckoutPanel.IsVisible = false;
+        FlightCarRecommendationPanel.IsVisible = false;
+        InvoiceViewerPanel.IsVisible = false;
+        BrowserSectionPanel.IsVisible = false;
+        CarComparisonPanel.IsVisible = true;
+    }
+    // Extra - Car Comparison END
 
     private void ConfigureFlightResultsGrid()
     {

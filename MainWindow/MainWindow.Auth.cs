@@ -266,6 +266,9 @@ public partial class MainWindow : Window
         // Extra - Invoice PDF START
         InvoiceViewerPanel.IsVisible = false;
         // Extra - Invoice PDF END
+        // Extra - Car Comparison START
+        CarComparisonPanel.IsVisible = false;
+        // Extra - Car Comparison END
         BrowserSectionPanel.IsVisible = false;
         SearchTabButton.Classes.Set("primary", false);
         FlightTabButton.Classes.Set("primary", false);

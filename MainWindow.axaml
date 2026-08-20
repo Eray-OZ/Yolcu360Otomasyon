@@ -878,12 +878,20 @@
                                 </StackPanel>
 
                                 <Grid Grid.Row="1"
-                                      ColumnDefinitions="*,Auto"
+                                      ColumnDefinitions="*,Auto,Auto"
                                       ColumnSpacing="10"
                                       VerticalAlignment="Center">
                                     <TextBox x:Name="CollectionNameTextBox"
                                              PlaceholderText="Kaydetmek için bir koleksiyon adı girin (Örn: İzmir Seyahati)" />
+                                    <!-- Extra - Car Comparison START -->
                                     <Button Grid.Column="1"
+                                            x:Name="CompareResultsButton"
+                                            Classes="btn-secondary btn-sm"
+                                            Content="⚖️ Karşılaştır (2-3 Araç)"
+                                            ToolTip.Tip="Listeden 2 veya 3 araç seçerek yan yana karşılaştırabilirsiniz (Maksimum 3 araç)."
+                                            Click="CompareResultsButton_Click" />
+                                    <!-- Extra - Car Comparison END -->
+                                    <Button Grid.Column="2"
                                             x:Name="SaveResultsButton"
                                             Classes="primary btn-sm"
                                             Content="Koleksiyonu Kaydet"
@@ -902,7 +910,7 @@
                                                   IsReadOnly="True"
                                                   CanUserResizeColumns="True"
                                                   CanUserSortColumns="True"
-                                                  SelectionMode="Single"
+                                                  SelectionMode="Extended"
                                                   HorizontalScrollBarVisibility="Auto"
                                                   VerticalScrollBarVisibility="Auto"
                                                   VerticalAlignment="Stretch"
@@ -1354,6 +1362,13 @@
                                                 Classes="primary btn-sm"
                                                 Content="Seçilen Araç İçin Ödeme"
                                                 Click="CreatePaymentButton_Click" />
+                                        <!-- Extra - Car Comparison START -->
+                                        <Button x:Name="CompareHistoryVehiclesButton"
+                                                Classes="btn-secondary btn-sm"
+                                                Content="⚖️ Karşılaştır (2-3 Araç)"
+                                                ToolTip.Tip="Listeden 2 veya 3 araç seçerek yan yana karşılaştırabilirsiniz (Maksimum 3 araç)."
+                                                Click="CompareHistoryVehiclesButton_Click" />
+                                        <!-- Extra - Car Comparison END -->
                                         <!-- Extra - Dynamic Collections START -->
                                         <Button x:Name="RefreshCollectionButtonVehicles"
                                                 Classes="btn-secondary btn-sm"
@@ -1401,7 +1416,7 @@
                                               IsReadOnly="True"
                                               CanUserResizeColumns="True"
                                               CanUserSortColumns="True"
-                                              SelectionMode="Single"
+                                              SelectionMode="Extended"
                                               SelectionChanged="CollectionVehiclesDataGrid_SelectionChanged"
                                               Height="420">
                                         <DataGrid.Columns>
@@ -2225,6 +2240,335 @@
                         </Grid>
                     </Border>
                     <!-- Extra - Invoice PDF END -->
+
+                    <!-- Extra - Car Comparison START -->
+                    <Border Grid.Row="1"
+                            Grid.RowSpan="2"
+                            x:Name="CarComparisonPanel"
+                            IsVisible="False"
+                            Background="White"
+                            BorderBrush="#D9E2EC"
+                            BorderThickness="1"
+                            CornerRadius="10"
+                            Padding="24">
+                        <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                                      VerticalScrollBarVisibility="Auto">
+                            <Grid RowDefinitions="Auto,Auto,*" RowSpacing="18">
+                                <!-- Üst Başlık ve Geri Dön Butonu -->
+                                <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
+                                    <StackPanel Spacing="4">
+                                        <TextBlock Text="⚖️ Araç Karşılaştırma"
+                                                   FontSize="22"
+                                                   FontWeight="Bold"
+                                                   Foreground="#122033" />
+                                        <TextBlock x:Name="CarComparisonSubtitleTextBlock"
+                                                   Text="Seçilen araçların fiyat, donanım ve avantaj karşılaştırması"
+                                                   FontSize="13"
+                                                   Foreground="#64748B" />
+                                    </StackPanel>
+
+                                    <Button Grid.Column="1"
+                                            x:Name="CloseComparisonButton"
+                                            Classes="btn-secondary btn-sm"
+                                            Content="← Listeye Dön"
+                                            Click="CloseComparisonButton_Click" />
+                                </Grid>
+
+                                <!-- Bilgi / Durum Çubuğu -->
+                                <Border Grid.Row="1"
+                                        Background="#F8FAFC"
+                                        BorderBrush="#E2E8F0"
+                                        BorderThickness="1"
+                                        CornerRadius="8"
+                                        Padding="14,10">
+                                    <TextBlock x:Name="CarComparisonStatusTextBlock"
+                                               Text="2 araç karşılaştırılıyor."
+                                               FontWeight="SemiBold"
+                                               Foreground="#0F172A" />
+                                </Border>
+
+                                <!-- Karşılaştırma Kartları Konteyneri -->
+                                <Grid Grid.Row="2"
+                                      x:Name="CarComparisonCardsGrid"
+                                      ColumnDefinitions="*,*,*"
+                                      ColumnSpacing="18">
+                                    <!-- 1. ARAÇ KARTI -->
+                                    <Border x:Name="ComparisonCard1"
+                                            Background="#FFFFFF"
+                                            BorderBrush="#E2E8F0"
+                                            BorderThickness="1"
+                                            CornerRadius="12"
+                                            Padding="18">
+                                        <Grid RowDefinitions="Auto,Auto,Auto,*,Auto" RowSpacing="14">
+                                            <!-- Araç Başlığı -->
+                                            <StackPanel Spacing="4">
+                                                <TextBlock x:Name="CompCard1SupplierText"
+                                                           Text="Garenta"
+                                                           FontSize="12"
+                                                           FontWeight="Bold"
+                                                           Foreground="#0284C7" />
+                                                <TextBlock x:Name="CompCard1TitleText"
+                                                           Text="Renault Clio"
+                                                           FontSize="18"
+                                                           FontWeight="Bold"
+                                                           Foreground="#0F172A"
+                                                           TextWrapping="Wrap" />
+                                            </StackPanel>
+
+                                            <!-- Fiyat Kutusu -->
+                                            <Border Grid.Row="1"
+                                                    Background="#F8FAFC"
+                                                    BorderBrush="#E2E8F0"
+                                                    BorderThickness="1"
+                                                    CornerRadius="8"
+                                                    Padding="12">
+                                                <StackPanel Spacing="6">
+                                                    <TextBlock x:Name="CompCard1PriceText"
+                                                               Text="3.750 TL"
+                                                               FontSize="22"
+                                                               FontWeight="Bold"
+                                                               Foreground="#0F172A" />
+                                                    <TextBlock x:Name="CompCard1DailyPriceText"
+                                                               Text="1.250 TL / gün"
+                                                               FontSize="12"
+                                                               Foreground="#64748B" />
+                                                    <Border x:Name="CompCard1BadgeBorder"
+                                                            Background="#DCFCE7"
+                                                            CornerRadius="4"
+                                                            Padding="6,2"
+                                                            HorizontalAlignment="Left">
+                                                        <TextBlock x:Name="CompCard1BadgeText"
+                                                                   Text="🏆 EN UYGUN FİYAT"
+                                                                   FontSize="11"
+                                                                   FontWeight="Bold"
+                                                                   Foreground="#15803D" />
+                                                    </Border>
+                                                </StackPanel>
+                                            </Border>
+
+                                            <!-- Donanım ve Teknik Özellikler -->
+                                            <StackPanel Grid.Row="2" Spacing="8">
+                                                <Grid ColumnDefinitions="Auto,*">
+                                                    <TextBlock Text="⚙️ Vites:" Foreground="#64748B" Width="80" />
+                                                    <TextBlock x:Name="CompCard1TransmissionText" Grid.Column="1" Text="Otomatik" FontWeight="SemiBold" Foreground="#1E293B" />
+                                                </Grid>
+                                                <Grid ColumnDefinitions="Auto,*">
+                                                    <TextBlock Text="⛽ Yakıt:" Foreground="#64748B" Width="80" />
+                                                    <TextBlock x:Name="CompCard1FuelText" Grid.Column="1" Text="Benzin" FontWeight="SemiBold" Foreground="#1E293B" />
+                                                </Grid>
+                                                <Grid ColumnDefinitions="Auto,*">
+                                                    <TextBlock Text="📍 Teslimat:" Foreground="#64748B" Width="80" />
+                                                    <TextBlock x:Name="CompCard1PickupText" Grid.Column="1" Text="Havalimanı Ofisi" FontWeight="SemiBold" Foreground="#1E293B" TextWrapping="Wrap" />
+                                                </Grid>
+                                            </StackPanel>
+
+                                            <!-- Avantaj Çipleri -->
+                                            <StackPanel Grid.Row="3" Spacing="6">
+                                                <TextBlock Text="Öne Çıkanlar:" FontSize="11" FontWeight="Bold" Foreground="#64748B" />
+                                                <TextBlock x:Name="CompCard1AdvantagesText"
+                                                           Text="• Otomatik Vites Konforu&#x0a;• Havalimanı İçi Ofis"
+                                                           FontSize="12"
+                                                           Foreground="#334155"
+                                                           TextWrapping="Wrap" />
+                                            </StackPanel>
+
+                                            <!-- Aksiyon Butonu -->
+                                            <Button Grid.Row="4"
+                                                    x:Name="CompCard1PayButton"
+                                                    Classes="primary"
+                                                    Content="💳 Bu Aracı Seç &amp; Öde"
+                                                    HorizontalAlignment="Stretch"
+                                                    Click="CompCard1PayButton_Click" />
+                                        </Grid>
+                                    </Border>
+
+                                    <!-- 2. ARAÇ KARTI -->
+                                    <Border Grid.Column="1"
+                                            x:Name="ComparisonCard2"
+                                            Background="#FFFFFF"
+                                            BorderBrush="#E2E8F0"
+                                            BorderThickness="1"
+                                            CornerRadius="12"
+                                            Padding="18">
+                                        <Grid RowDefinitions="Auto,Auto,Auto,*,Auto" RowSpacing="14">
+                                            <!-- Araç Başlığı -->
+                                            <StackPanel Spacing="4">
+                                                <TextBlock x:Name="CompCard2SupplierText"
+                                                           Text="Sixt"
+                                                           FontSize="12"
+                                                           FontWeight="Bold"
+                                                           Foreground="#0284C7" />
+                                                <TextBlock x:Name="CompCard2TitleText"
+                                                           Text="Fiat Egea"
+                                                           FontSize="18"
+                                                           FontWeight="Bold"
+                                                           Foreground="#0F172A"
+                                                           TextWrapping="Wrap" />
+                                            </StackPanel>
+
+                                            <!-- Fiyat Kutusu -->
+                                            <Border Grid.Row="1"
+                                                    Background="#F8FAFC"
+                                                    BorderBrush="#E2E8F0"
+                                                    BorderThickness="1"
+                                                    CornerRadius="8"
+                                                    Padding="12">
+                                                <StackPanel Spacing="6">
+                                                    <TextBlock x:Name="CompCard2PriceText"
+                                                               Text="3.300 TL"
+                                                               FontSize="22"
+                                                               FontWeight="Bold"
+                                                               Foreground="#0F172A" />
+                                                    <TextBlock x:Name="CompCard2DailyPriceText"
+                                                               Text="1.100 TL / gün"
+                                                               FontSize="12"
+                                                               Foreground="#64748B" />
+                                                    <Border x:Name="CompCard2BadgeBorder"
+                                                            Background="#F1F5F9"
+                                                            CornerRadius="4"
+                                                            Padding="6,2"
+                                                            HorizontalAlignment="Left">
+                                                        <TextBlock x:Name="CompCard2BadgeText"
+                                                                   Text="+450 TL Fark"
+                                                                   FontSize="11"
+                                                                   FontWeight="Bold"
+                                                                   Foreground="#64748B" />
+                                                    </Border>
+                                                </StackPanel>
+                                            </Border>
+
+                                            <!-- Donanım ve Teknik Özellikler -->
+                                            <StackPanel Grid.Row="2" Spacing="8">
+                                                <Grid ColumnDefinitions="Auto,*">
+                                                    <TextBlock Text="⚙️ Vites:" Foreground="#64748B" Width="80" />
+                                                    <TextBlock x:Name="CompCard2TransmissionText" Grid.Column="1" Text="Manuel" FontWeight="SemiBold" Foreground="#1E293B" />
+                                                </Grid>
+                                                <Grid ColumnDefinitions="Auto,*">
+                                                    <TextBlock Text="⛽ Yakıt:" Foreground="#64748B" Width="80" />
+                                                    <TextBlock x:Name="CompCard2FuelText" Grid.Column="1" Text="Dizel" FontWeight="SemiBold" Foreground="#1E293B" />
+                                                </Grid>
+                                                <Grid ColumnDefinitions="Auto,*">
+                                                    <TextBlock Text="📍 Teslimat:" Foreground="#64748B" Width="80" />
+                                                    <TextBlock x:Name="CompCard2PickupText" Grid.Column="1" Text="Karşılama" FontWeight="SemiBold" Foreground="#1E293B" TextWrapping="Wrap" />
+                                                </Grid>
+                                            </StackPanel>
+
+                                            <!-- Avantaj Çipleri -->
+                                            <StackPanel Grid.Row="3" Spacing="6">
+                                                <TextBlock Text="Öne Çıkanlar:" FontSize="11" FontWeight="Bold" Foreground="#64748B" />
+                                                <TextBlock x:Name="CompCard2AdvantagesText"
+                                                           Text="• Dizel Yakıt Tasarrufu"
+                                                           FontSize="12"
+                                                           Foreground="#334155"
+                                                           TextWrapping="Wrap" />
+                                            </StackPanel>
+
+                                            <!-- Aksiyon Butonu -->
+                                            <Button Grid.Row="4"
+                                                    x:Name="CompCard2PayButton"
+                                                    Classes="primary"
+                                                    Content="💳 Bu Aracı Seç &amp; Öde"
+                                                    HorizontalAlignment="Stretch"
+                                                    Click="CompCard2PayButton_Click" />
+                                        </Grid>
+                                    </Border>
+
+                                    <!-- 3. ARAÇ KARTI -->
+                                    <Border Grid.Column="2"
+                                            x:Name="ComparisonCard3"
+                                            Background="#FFFFFF"
+                                            BorderBrush="#E2E8F0"
+                                            BorderThickness="1"
+                                            CornerRadius="12"
+                                            Padding="18"
+                                            IsVisible="False">
+                                        <Grid RowDefinitions="Auto,Auto,Auto,*,Auto" RowSpacing="14">
+                                            <!-- Araç Başlığı -->
+                                            <StackPanel Spacing="4">
+                                                <TextBlock x:Name="CompCard3SupplierText"
+                                                           Text="Avis"
+                                                           FontSize="12"
+                                                           FontWeight="Bold"
+                                                           Foreground="#0284C7" />
+                                                <TextBlock x:Name="CompCard3TitleText"
+                                                           Text="Dacia Duster"
+                                                           FontSize="18"
+                                                           FontWeight="Bold"
+                                                           Foreground="#0F172A"
+                                                           TextWrapping="Wrap" />
+                                            </StackPanel>
+
+                                            <!-- Fiyat Kutusu -->
+                                            <Border Grid.Row="1"
+                                                    Background="#F8FAFC"
+                                                    BorderBrush="#E2E8F0"
+                                                    BorderThickness="1"
+                                                    CornerRadius="8"
+                                                    Padding="12">
+                                                <StackPanel Spacing="6">
+                                                    <TextBlock x:Name="CompCard3PriceText"
+                                                               Text="4.200 TL"
+                                                               FontSize="22"
+                                                               FontWeight="Bold"
+                                                               Foreground="#0F172A" />
+                                                    <TextBlock x:Name="CompCard3DailyPriceText"
+                                                               Text="1.400 TL / gün"
+                                                               FontSize="12"
+                                                               Foreground="#64748B" />
+                                                    <Border x:Name="CompCard3BadgeBorder"
+                                                            Background="#F1F5F9"
+                                                            CornerRadius="4"
+                                                            Padding="6,2"
+                                                            HorizontalAlignment="Left">
+                                                        <TextBlock x:Name="CompCard3BadgeText"
+                                                                   Text="+900 TL Fark"
+                                                                   FontSize="11"
+                                                                   FontWeight="Bold"
+                                                                   Foreground="#64748B" />
+                                                    </Border>
+                                                </StackPanel>
+                                            </Border>
+
+                                            <!-- Donanım ve Teknik Özellikler -->
+                                            <StackPanel Grid.Row="2" Spacing="8">
+                                                <Grid ColumnDefinitions="Auto,*">
+                                                    <TextBlock Text="⚙️ Vites:" Foreground="#64748B" Width="80" />
+                                                    <TextBlock x:Name="CompCard3TransmissionText" Grid.Column="1" Text="Manuel" FontWeight="SemiBold" Foreground="#1E293B" />
+                                                </Grid>
+                                                <Grid ColumnDefinitions="Auto,*">
+                                                    <TextBlock Text="⛽ Yakıt:" Foreground="#64748B" Width="80" />
+                                                    <TextBlock x:Name="CompCard3FuelText" Grid.Column="1" Text="Dizel" FontWeight="SemiBold" Foreground="#1E293B" />
+                                                </Grid>
+                                                <Grid ColumnDefinitions="Auto,*">
+                                                    <TextBlock Text="📍 Teslimat:" Foreground="#64748B" Width="80" />
+                                                    <TextBlock x:Name="CompCard3PickupText" Grid.Column="1" Text="Havalimanı" FontWeight="SemiBold" Foreground="#1E293B" TextWrapping="Wrap" />
+                                                </Grid>
+                                            </StackPanel>
+
+                                            <!-- Avantaj Çipleri -->
+                                            <StackPanel Grid.Row="3" Spacing="6">
+                                                <TextBlock Text="Öne Çıkanlar:" FontSize="11" FontWeight="Bold" Foreground="#64748B" />
+                                                <TextBlock x:Name="CompCard3AdvantagesText"
+                                                           Text="• Geniş SUV Bagajı"
+                                                           FontSize="12"
+                                                           Foreground="#334155"
+                                                           TextWrapping="Wrap" />
+                                            </StackPanel>
+
+                                            <!-- Aksiyon Butonu -->
+                                            <Button Grid.Row="4"
+                                                    x:Name="CompCard3PayButton"
+                                                    Classes="primary"
+                                                    Content="💳 Bu Aracı Seç &amp; Öde"
+                                                    HorizontalAlignment="Stretch"
+                                                    Click="CompCard3PayButton_Click" />
+                                        </Grid>
+                                    </Border>
+                                </Grid>
+                            </Grid>
+                        </ScrollViewer>
+                    </Border>
+                    <!-- Extra - Car Comparison END -->
                 </Grid>
             </Grid>
         </ScrollViewer>
